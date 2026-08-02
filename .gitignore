@@ -1,0 +1,49 @@
+# compiled output
+/dist
+/node_modules
+/.next
+/out
+
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# Dependency directories
+/node_modules
+
+# Optional npm cache directory
+.npm
+
+# Output of 'npm pack'
+*.tgz
+
+# dotenv environment variable files
+.env
+.env.*
+!.env.example
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Coverage directory
+coverage
+
+# Temporary files
+/tmp
+/temp
+*.tmp
+*.bak
+*.old
+*.copy
+*.backup
+
+# Docker volumes
+postgres_data/
+redis_data/
+opspilot_workspaces/
+opspilot_artifacts/

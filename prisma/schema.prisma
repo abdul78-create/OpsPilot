@@ -1,0 +1,579 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum OrgRole {
+  OWNER
+  ADMIN
+  MEMBER
+  VIEWER
+}
+
+enum OrgStatus {
+  ACTIVE
+  SUSPENDED
+  PENDING_DELETE
+  DELETED
+}
+
+enum MemberStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  REMOVED
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  REVOKED
+  EXPIRED
+}
+
+enum ProjectStatus {
+  ACTIVE
+  ARCHIVED
+  SUSPENDED
+  DELETED
+}
+
+enum EnvironmentType {
+  DEVELOPMENT
+  STAGING
+  PRODUCTION
+  EPHEMERAL
+}
+
+enum VariableType {
+  STRING
+  NUMBER
+  BOOLEAN
+  JSON
+}
+
+enum VariableScope {
+  ORGANIZATION
+  PROJECT
+  ENVIRONMENT
+}
+
+enum VariableSource {
+  MANUAL
+  IMPORTED
+  GENERATED
+}
+
+enum RepositoryProvider {
+  GITHUB
+  GITLAB
+  BITBUCKET
+  AZURE_DEVOPS
+}
+
+enum TriggerType {
+  GIT_PUSH
+  PULL_REQUEST
+  TAG_CREATED
+  MANUAL
+  SCHEDULED_CRON
+  API_WEBHOOK
+  AI_AGENT
+}
+
+enum PipelineRunStatus {
+  QUEUED
+  RUNNING
+  SUCCESS
+  FAILED
+  CANCELLED
+  TIMEOUT
+}
+
+enum JobStatus {
+  QUEUED
+  RUNNING
+  SUCCESS
+  FAILED
+  SKIPPED
+  CANCELLED
+}
+
+enum DeploymentStatus {
+  PENDING_APPROVAL
+  IN_PROGRESS
+  SUCCESS
+  FAILED
+  ROLLED_BACK
+  REJECTED
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum AuditAction {
+  CREATE
+  READ
+  UPDATE
+  DELETE
+  EXECUTE
+  APPROVE
+  REJECT
+  ROTATE
+  REVEAL
+  ROLLBACK
+}
+
+enum ArtifactStatus {
+  PENDING
+  AVAILABLE
+  EXPIRED
+  DELETED
+}
+
+enum ArtifactRetentionPolicy {
+  KEEP_FOREVER
+  KEEP_30_DAYS
+  KEEP_90_DAYS
+  KEEP_LATEST_N
+}
+
+enum LogLevel {
+  DEBUG
+  INFO
+  WARN
+  ERROR
+}
+
+enum AiRiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum AiAnalysisType {
+  RUN_RCA
+  DEPLOYMENT_RISK
+  PIPELINE_OPTIMIZATION
+  SECURITY_AUDIT
+}
+
+model User {
+  id            String         @id @default(uuid())
+  email         String         @unique
+  passwordHash  String
+  name          String
+  avatarUrl     String?
+  role          Role           @default(USER)
+  isSuperAdmin  Boolean        @default(false)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  deletedAt     DateTime?
+
+  memberships   Member[]
+  sessions      Session[]
+  refreshTokens RefreshToken[]
+  invitations   Invitation[]   @relation("InvitedBy")
+
+  @@map("users")
+}
+
+model Organization {
+  id           String       @id @default(uuid())
+  name         String
+  slug         String       @unique
+  avatarUrl    String?
+  billingEmail String?
+  status       OrgStatus    @default(ACTIVE)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  deletedAt    DateTime?
+
+  members      Member[]
+  invitations  Invitation[]
+  projects     Project[]
+  aiReports    AiAnalysisReport[]
+
+  @@map("organizations")
+}
+
+model Member {
+  id             String       @id @default(uuid())
+  organizationId String
+  userId         String
+  role           OrgRole      @default(MEMBER)
+  status         MemberStatus @default(ACTIVE)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  deletedAt      DateTime?
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@map("members")
+}
+
+model Invitation {
+  id              String           @id @default(uuid())
+  organizationId  String
+  invitedEmail    String
+  invitedByUserId String
+  intendedRole    OrgRole          @default(MEMBER)
+  status          InvitationStatus @default(PENDING)
+  tokenHash       String           @unique
+  expiresAt       DateTime
+  acceptedAt      DateTime?
+  revokedAt       DateTime?
+  lastSentAt      DateTime         @default(now())
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  invitedBy       User             @relation("InvitedBy", fields: [invitedByUserId], references: [id], onDelete: Cascade)
+
+  @@map("invitations")
+}
+
+model Project {
+  id                    String                 @id @default(uuid())
+  organizationId        String
+  name                  String
+  slug                  String
+  description           String?
+  status                ProjectStatus          @default(ACTIVE)
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  deletedAt             DateTime?
+
+  organization          Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  environments          Environment[]
+  repositoryConnections RepositoryConnection[]
+  pipelineDefinitions   PipelineDefinition[]
+  aiReports             AiAnalysisReport[]
+
+  @@unique([organizationId, slug])
+  @@map("projects")
+}
+
+model Environment {
+  id                  String                @id @default(uuid())
+  projectId           String
+  name                String
+  slug                String
+  type                EnvironmentType       @default(DEVELOPMENT)
+  requiresApproval    Boolean               @default(false)
+  minApprovers        Int                   @default(1)
+  allowedRoles        OrgRole[]             @default([OWNER, ADMIN])
+  deploymentWindow    String?
+  autoRollbackEnabled Boolean               @default(true)
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+  deletedAt           DateTime?
+
+  project             Project               @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  variables           EnvironmentVariable[]
+  secrets             Secret[]
+  deployments         Deployment[]
+
+  @@unique([projectId, slug])
+  @@map("environments")
+}
+
+model EnvironmentVariable {
+  id              String         @id @default(uuid())
+  environmentId   String
+  key             String
+  value           String
+  type            VariableType   @default(STRING)
+  scope           VariableScope  @default(ENVIRONMENT)
+  source          VariableSource @default(MANUAL)
+  isRequired      Boolean        @default(false)
+  validationRegex String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  deletedAt       DateTime?
+
+  environment     Environment    @relation(fields: [environmentId], references: [id], onDelete: Cascade)
+
+  @@unique([environmentId, key])
+  @@map("environment_variables")
+}
+
+model Secret {
+  id             String      @id @default(uuid())
+  environmentId  String
+  key            String
+  encryptedValue String
+  iv             String
+  authTag        String
+  algorithm      String      @default("aes-256-gcm")
+  keyVersion     Int         @default(1)
+  lastRotatedAt  DateTime    @default(now())
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  deletedAt      DateTime?
+
+  environment    Environment @relation(fields: [environmentId], references: [id], onDelete: Cascade)
+
+  @@unique([environmentId, key])
+  @@map("secrets")
+}
+
+model RepositoryConnection {
+  id            String             @id @default(uuid())
+  projectId     String
+  provider      RepositoryProvider @default(GITHUB)
+  repositoryUrl String
+  defaultBranch String             @default("main")
+  authSecretId  String?
+  webhookId     String?
+  webhookSecret String?
+  isVerified    Boolean            @default(false)
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  deletedAt     DateTime?
+
+  project       Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, repositoryUrl])
+  @@map("repository_connections")
+}
+
+model PipelineDefinition {
+  id                   String            @id @default(uuid())
+  projectId            String
+  name                 String
+  slug                 String
+  description          String?
+  triggerType          TriggerType       @default(GIT_PUSH)
+  triggerBranch        String            @default("main")
+  currentVersionNumber Int               @default(1)
+  isActive             Boolean           @default(true)
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+  deletedAt            DateTime?
+
+  project              Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  versions             PipelineVersion[]
+  runs                 PipelineRun[]
+
+  @@unique([projectId, slug])
+  @@map("pipeline_definitions")
+}
+
+model PipelineVersion {
+  id                   String             @id @default(uuid())
+  pipelineDefinitionId String
+  versionNumber        Int
+  yamlConfig           String
+  checksum             String
+  changeSummary        String?
+  createdByUserId      String?
+  createdAt            DateTime           @default(now())
+
+  pipelineDefinition   PipelineDefinition @relation(fields: [pipelineDefinitionId], references: [id], onDelete: Cascade)
+  runs                 PipelineRun[]
+
+  @@unique([pipelineDefinitionId, versionNumber])
+  @@map("pipeline_versions")
+}
+
+model PipelineRun {
+  id                   String             @id @default(uuid())
+  pipelineDefinitionId String
+  pipelineVersionId    String
+  status               PipelineRunStatus  @default(QUEUED)
+  triggerType          TriggerType        @default(MANUAL)
+  triggeredBy          String
+  commitSha            String?
+  branch               String?
+  queuedAt             DateTime           @default(now())
+  startedAt            DateTime?
+  finishedAt           DateTime?
+  durationSeconds      Int?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+  deletedAt            DateTime?
+
+  pipelineDefinition   PipelineDefinition @relation(fields: [pipelineDefinitionId], references: [id], onDelete: Cascade)
+  pipelineVersion      PipelineVersion    @relation(fields: [pipelineVersionId], references: [id], onDelete: Cascade)
+  jobs                 PipelineJob[]
+  deployments          Deployment[]
+  artifacts            Artifact[]
+  logs                 PipelineRunLog[]
+
+  @@map("pipeline_runs")
+}
+
+model PipelineJob {
+  id              String      @id @default(uuid())
+  pipelineRunId   String
+  name            String
+  stage           String
+  status          JobStatus   @default(QUEUED)
+  startedAt       DateTime?
+  finishedAt      DateTime?
+  durationSeconds Int?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  pipelineRun     PipelineRun    @relation(fields: [pipelineRunId], references: [id], onDelete: Cascade)
+  logs            PipelineRunLog[]
+
+  @@map("pipeline_jobs")
+}
+
+model PipelineRunLog {
+  id            String      @id @default(uuid())
+  pipelineRunId String
+  jobId         String?
+  level         LogLevel    @default(INFO)
+  message       String
+  timestamp     DateTime    @default(now())
+
+  pipelineRun   PipelineRun  @relation(fields: [pipelineRunId], references: [id], onDelete: Cascade)
+  job           PipelineJob? @relation(fields: [jobId], references: [id], onDelete: SetNull)
+
+  @@index([pipelineRunId, timestamp])
+  @@map("pipeline_run_logs")
+}
+
+model Artifact {
+  id              String                  @id @default(uuid())
+  pipelineRunId   String
+  name            String
+  version         String
+  checksum        String
+  storageLocation String
+  sizeBytes       BigInt                  @default(0)
+  status          ArtifactStatus          @default(AVAILABLE)
+  retentionPolicy ArtifactRetentionPolicy @default(KEEP_30_DAYS)
+  expiresAt       DateTime?
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
+  deletedAt       DateTime?
+
+  pipelineRun     PipelineRun             @relation(fields: [pipelineRunId], references: [id], onDelete: Cascade)
+  deployments     Deployment[]
+
+  @@map("artifacts")
+}
+
+model Deployment {
+  id                       String               @id @default(uuid())
+  environmentId            String
+  pipelineRunId            String
+  artifactId               String?
+  status                   DeploymentStatus     @default(PENDING_APPROVAL)
+  releaseVersion           String               @default("v1.0.0")
+  deployedByUserId         String
+  startedAt                DateTime?
+  finishedAt               DateTime?
+  durationSeconds          Int?
+  rollbackFromDeploymentId String?
+  createdAt                DateTime             @default(now())
+  updatedAt                DateTime             @updatedAt
+  deletedAt                DateTime?
+
+  environment              Environment          @relation(fields: [environmentId], references: [id], onDelete: Cascade)
+  pipelineRun              PipelineRun          @relation(fields: [pipelineRunId], references: [id], onDelete: Cascade)
+  artifact                 Artifact?            @relation(fields: [artifactId], references: [id])
+  approvals                DeploymentApproval[]
+
+  @@map("deployments")
+}
+
+model DeploymentApproval {
+  id             String         @id @default(uuid())
+  deploymentId   String
+  approverUserId String
+  status         ApprovalStatus @default(PENDING)
+  comment        String?
+  decidedAt      DateTime?
+  createdAt      DateTime       @default(now())
+
+  deployment     Deployment     @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
+
+  @@map("deployment_approvals")
+}
+
+model AuditLog {
+  id             String      @id @default(uuid())
+  organizationId String?
+  userId         String?
+  action         AuditAction
+  resourceType   String
+  resourceId     String?
+  payload        Json?
+  ipAddress      String?
+  userAgent      String?
+  createdAt      DateTime    @default(now())
+
+  @@map("audit_logs")
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  userId    String
+  ipAddress String?
+  userAgent String?
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model RefreshToken {
+  id                String    @id @default(uuid())
+  userId            String
+  tokenHash         String    @unique
+  deviceInfo        String?
+  isRevoked         Boolean   @default(false)
+  revokedAt         DateTime?
+  parentTokenId     String?
+  replacedByTokenId String?
+  expiresAt         DateTime
+  createdAt         DateTime  @default(now())
+
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+}
+
+model AiAnalysisReport {
+  id              String         @id @default(uuid())
+  organizationId  String
+  projectId       String?
+  type            AiAnalysisType
+  targetId        String
+  summary         String
+  rootCause       String?
+  confidenceScore Float          @default(0.85)
+  riskLevel       AiRiskLevel    @default(LOW)
+  recommendations Json
+  metadata        Json?
+  createdAt       DateTime       @default(now())
+
+  organization    Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  project         Project?       @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, createdAt])
+  @@index([targetId])
+  @@map("ai_analysis_reports")
+}

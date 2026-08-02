@@ -1,0 +1,136 @@
+version: '3.9'
+
+# ─────────────────────────────────────────────────────────────
+#  OpsPilot AI — Full Stack Docker Compose
+#
+#  Services:
+#    frontend  → React dashboard  (Nginx, port 80)
+#    backend   → NestJS API       (Node, port 3000)
+#    postgres  → PostgreSQL 16    (port 5432)
+#    redis     → Redis 7          (port 6379)
+#
+#  Usage:
+#    docker compose up --build          # first run
+#    docker compose up -d               # background
+#    docker compose down                # stop (keep volumes)
+#    docker compose down -v             # stop + wipe storage
+# ─────────────────────────────────────────────────────────────
+
+services:
+
+  # ── PostgreSQL 16 ──────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: opspilot_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER:     ${POSTGRES_USER:-opspilot}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-opspilot_secret}
+      POSTGRES_DB:       ${POSTGRES_DB:-opspilot}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-opspilot}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - opspilot_net
+
+  # ── Redis 7 ────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: opspilot_redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy noeviction
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - opspilot_net
+
+  # ── NestJS Backend ─────────────────────────────────────────
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: opspilot_backend
+    user: root
+    restart: unless-stopped
+    environment:
+      NODE_ENV:               production
+      PORT:                   3000
+      DATABASE_URL:           postgresql://${POSTGRES_USER:-opspilot}:${POSTGRES_PASSWORD:-opspilot_secret}@postgres:5432/${POSTGRES_DB:-opspilot}?schema=public
+      REDIS_URL:              redis://redis:6379
+      JWT_SECRET:             ${JWT_SECRET:-change_me_in_production_min_32_chars!!}
+      JWT_EXPIRES_IN:         ${JWT_EXPIRES_IN:-15m}
+      REFRESH_TOKEN_SECRET:   ${REFRESH_TOKEN_SECRET:-change_me_refresh_min_32_chars!!}
+      ENCRYPTION_KEY:         ${ENCRYPTION_KEY:-0000000000000000000000000000000000000000000000000000000000000000}
+      LOG_LEVEL:              ${LOG_LEVEL:-info}
+      SWAGGER_PATH:           api/docs
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3000/v1/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      start_period: 30s
+      retries: 5
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - opspilot_workspaces:/opspilot-workspaces
+      - opspilot_artifacts:/opspilot-artifacts
+    networks:
+      - opspilot_net
+
+  # ── Next.js 15 Frontend (Nginx) ────────────────────────────
+  frontend:
+    build:
+      context: ./frontend-next
+      dockerfile: Dockerfile
+      args:
+        # Nginx proxies /v1/ to backend, so the browser uses a relative path
+        VITE_API_URL: /v1
+    container_name: opspilot_frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - opspilot_net
+
+# ── Persistent Volumes ──────────────────────────────────────
+volumes:
+  postgres_data:
+    driver: local
+    name: opspilot_postgres_data
+  redis_data:
+    driver: local
+    name: opspilot_redis_data
+  opspilot_workspaces:
+    driver: local
+    name: opspilot_workspaces_data
+  opspilot_artifacts:
+    driver: local
+    name: opspilot_artifacts_data
+
+# ── Internal Network ────────────────────────────────────────
+networks:
+  opspilot_net:
+    driver: bridge
+    name: opspilot_network

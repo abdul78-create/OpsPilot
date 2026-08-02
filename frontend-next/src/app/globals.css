@@ -1,0 +1,256 @@
+@import "tailwindcss";
+
+/* ─────────────────────────────────────────────
+   OPSPILOT PREMIUM DESIGN TOKENS
+   Inspired by: Vercel · Linear · Railway · Supabase
+───────────────────────────────────────────── */
+:root {
+  /* Core Backgrounds */
+  --background:      #09090B;
+  --surface:         #111113;
+  --surface-raised:  #18181B;
+  --surface-overlay: rgba(24, 24, 27, 0.85);
+
+  /* Borders */
+  --border:          #27272A;
+  --border-subtle:   #1C1C1F;
+  --border-bright:   #3F3F46;
+
+  /* Text */
+  --foreground:      #FAFAFA;
+  --text-secondary:  #A1A1AA;
+  --text-muted:      #52525B;
+  --text-disabled:   #3F3F46;
+
+  /* Accents */
+  --violet:          #8B5CF6;
+  --violet-dim:      rgba(139, 92, 246, 0.12);
+  --violet-glow:     rgba(139, 92, 246, 0.35);
+  --blue:            #3B82F6;
+  --blue-dim:        rgba(59, 130, 246, 0.12);
+  --cyan:            #06B6D4;
+  --emerald:         #10B981;
+  --emerald-dim:     rgba(16, 185, 129, 0.12);
+  --red:             #EF4444;
+  --red-dim:         rgba(239, 68, 68, 0.12);
+  --amber:           #F59E0B;
+  --amber-dim:       rgba(245, 158, 11, 0.12);
+
+  /* Gradients */
+  --gradient-brand:  linear-gradient(135deg, #8B5CF6 0%, #3B82F6 50%, #06B6D4 100%);
+  --gradient-success: linear-gradient(135deg, #10B981 0%, #06B6D4 100%);
+  --gradient-hero:   radial-gradient(ellipse at 50% 0%, rgba(139, 92, 246, 0.15) 0%, transparent 70%);
+}
+
+@theme inline {
+  --color-background:      var(--background);
+  --color-surface:         var(--surface);
+  --color-surface-raised:  var(--surface-raised);
+  --color-border:          var(--border);
+  --color-border-subtle:   var(--border-subtle);
+  --color-border-bright:   var(--border-bright);
+  --color-foreground:      var(--foreground);
+  --color-text-secondary:  var(--text-secondary);
+  --color-text-muted:      var(--text-muted);
+  --color-violet:          var(--violet);
+  --color-blue:            var(--blue);
+  --color-cyan:            var(--cyan);
+  --color-emerald:         var(--emerald);
+  --color-red:             var(--red);
+  --color-amber:           var(--amber);
+  --font-sans:    var(--font-inter), system-ui, sans-serif;
+  --font-heading: var(--font-geist), system-ui, sans-serif;
+  --font-mono:    var(--font-mono), 'IBM Plex Mono', monospace;
+}
+
+/* ─────────────────────────────────────────────
+   BASE RESET
+───────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-inter), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
+}
+
+/* ─────────────────────────────────────────────
+   SCROLLBARS — Premium thin style
+───────────────────────────────────────────── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 9999px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-bright); }
+
+/* ─────────────────────────────────────────────
+   SELECTION
+───────────────────────────────────────────── */
+::selection {
+  background: rgba(139, 92, 246, 0.25);
+  color: #ffffff;
+}
+
+/* ─────────────────────────────────────────────
+   ANIMATIONS
+───────────────────────────────────────────── */
+@keyframes shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+@keyframes pulse-glow {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+@keyframes slide-in-left {
+  from { opacity: 0; transform: translateX(-12px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes slide-in-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+@keyframes progress-fill {
+  from { width: 0%; }
+  to   { width: var(--progress-target, 100%); }
+}
+@keyframes count-up {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes gradient-shift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-6px); }
+}
+@keyframes terminal-cursor {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
+/* ─────────────────────────────────────────────
+   SKELETON SHIMMER
+───────────────────────────────────────────── */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--surface) 25%,
+    var(--surface-raised) 50%,
+    var(--surface) 75%
+  );
+  background-size: 800px 100%;
+  animation: shimmer 1.5s infinite linear;
+  border-radius: 6px;
+}
+
+/* ─────────────────────────────────────────────
+   GLASS CARD UTILITY
+───────────────────────────────────────────── */
+.glass {
+  background: var(--surface-overlay);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+}
+.glass-raised {
+  background: rgba(24, 24, 27, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border-bright);
+}
+
+/* ─────────────────────────────────────────────
+   GRADIENT TEXT
+───────────────────────────────────────────── */
+.gradient-text {
+  background: var(--gradient-brand);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-size: 200% auto;
+  animation: gradient-shift 4s ease infinite;
+}
+
+/* ─────────────────────────────────────────────
+   GRADIENT BORDER GLOW
+───────────────────────────────────────────── */
+.glow-violet { box-shadow: 0 0 24px rgba(139, 92, 246, 0.2); }
+.glow-blue   { box-shadow: 0 0 24px rgba(59, 130, 246, 0.2); }
+.glow-emerald { box-shadow: 0 0 20px rgba(16, 185, 129, 0.2); }
+
+/* ─────────────────────────────────────────────
+   ANIMATION UTILITIES
+───────────────────────────────────────────── */
+.animate-slide-up    { animation: slide-in-up 0.35s ease-out both; }
+.animate-slide-left  { animation: slide-in-left 0.35s ease-out both; }
+.animate-fade-in     { animation: fade-in 0.4s ease-out both; }
+.animate-float       { animation: float 3s ease-in-out infinite; }
+.animate-spin-slow   { animation: spin-slow 8s linear infinite; }
+.animate-count-up    { animation: count-up 0.5s ease-out both; }
+.animate-terminal-cursor { animation: terminal-cursor 1s step-end infinite; }
+.animate-pulse-glow  { animation: pulse-glow 2s ease-in-out infinite; }
+
+/* Stagger delays */
+.delay-75  { animation-delay: 75ms; }
+.delay-150 { animation-delay: 150ms; }
+.delay-200 { animation-delay: 200ms; }
+.delay-300 { animation-delay: 300ms; }
+.delay-500 { animation-delay: 500ms; }
+
+/* ─────────────────────────────────────────────
+   INTERACTIVE CARD LIFT
+───────────────────────────────────────────── */
+.card-hover {
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+/* ─────────────────────────────────────────────
+   TERMINAL STYLING
+───────────────────────────────────────────── */
+.terminal {
+  background: #0A0A0D;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.7;
+  color: #D4D4D4;
+}
+.terminal .log-info    { color: #A1A1AA; }
+.terminal .log-success { color: #10B981; }
+.terminal .log-error   { color: #EF4444; }
+.terminal .log-warn    { color: #F59E0B; }
+.terminal .log-cmd     { color: #8B5CF6; }
+
+/* ─────────────────────────────────────────────
+   SIDEBAR NAV ACTIVE INDICATOR
+───────────────────────────────────────────── */
+.nav-active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 60%;
+  border-radius: 0 3px 3px 0;
+  background: var(--gradient-brand);
+}
