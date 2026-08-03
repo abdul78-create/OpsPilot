@@ -5,8 +5,8 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo "  OpsPilot AI — Backend Startup"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-echo "→ Syncing database schema..."
-npx prisma@5 db push --accept-data-loss --skip-generate
+echo "→ Running database migrations..."
+npx prisma migrate deploy
 
 echo "→ Starting NestJS server..."
 exec node dist/main
