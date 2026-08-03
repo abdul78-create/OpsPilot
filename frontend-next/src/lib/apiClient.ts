@@ -21,10 +21,12 @@
  *   GET  /v1/deployments/:id
  */
 
-const API_BASE = typeof window !== 'undefined' ? '/v1' : 'http://localhost:3000/v1';
+const API_BASE =
+  process.env.NEXT_PUBLIC_API_URL ||
+  (typeof window !== 'undefined' ? '/v1' : 'http://localhost:3000/v1');
 
 // ─── Hardcoded defaults (real seeded data) ────────────────────────────────────
-export const DEFAULT_ORG_ID    = '3fdaca7b-c8e4-4be4-ba50-e1a2085ac913';
+export const DEFAULT_ORG_ID = '3fdaca7b-c8e4-4be4-ba50-e1a2085ac913';
 export const DEFAULT_PROJECT_ID = '138ae2ae-2d30-4536-8789-267c5901f05c';
 // Primary pipeline: StockFlow
 export const DEFAULT_PIPELINE_ID = '923a1e6e-3f99-4e6e-8d04-4531a3c6e8a1';
@@ -33,9 +35,10 @@ export const DEFAULT_PIPELINE_ID = '923a1e6e-3f99-4e6e-8d04-4531a3c6e8a1';
 
 function getHeaders(extra: Record<string, string> = {}): Record<string, string> {
   const token = typeof window !== 'undefined' ? localStorage.getItem('opspilot_token') : null;
-  const orgId  = typeof window !== 'undefined'
-    ? (localStorage.getItem('opspilot_org_id') ?? DEFAULT_ORG_ID)
-    : DEFAULT_ORG_ID;
+  const orgId =
+    typeof window !== 'undefined'
+      ? (localStorage.getItem('opspilot_org_id') ?? DEFAULT_ORG_ID)
+      : DEFAULT_ORG_ID;
   return {
     'Content-Type': 'application/json',
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -47,7 +50,7 @@ function getHeaders(extra: Record<string, string> = {}): Record<string, string> 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     ...init,
-    headers: { ...getHeaders(), ...(init?.headers as Record<string, string> ?? {}) },
+    headers: { ...getHeaders(), ...((init?.headers as Record<string, string>) ?? {}) },
     cache: 'no-store',
   });
   if (!res.ok) {
@@ -99,7 +102,6 @@ export interface PipelineDefinition {
 }
 
 export type Pipeline = PipelineDefinition;
-
 
 export interface PipelineVersion {
   id: string;
@@ -229,7 +231,9 @@ export function isAuthenticated(): boolean {
 // ─── Health ───────────────────────────────────────────────────────────────────
 
 export async function checkHealth() {
-  return apiFetch<{ data: { status: string; info: Record<string, { status: string }> } }>('/health');
+  return apiFetch<{ data: { status: string; info: Record<string, { status: string }> } }>(
+    '/health',
+  );
 }
 
 export async function checkBackendHealth() {
@@ -237,7 +241,9 @@ export async function checkBackendHealth() {
     const r = await checkHealth();
     const dbUp = r.data?.info?.database?.status === 'up';
     return { isOnline: true, dbStatus: dbUp ? 'Up' : 'Down' };
-  } catch { return { isOnline: false, dbStatus: 'disconnected' }; }
+  } catch {
+    return { isOnline: false, dbStatus: 'disconnected' };
+  }
 }
 
 // ─── Organizations ────────────────────────────────────────────────────────────
@@ -271,7 +277,6 @@ export async function triggerPipeline(pipelineId: string, branch?: string, commi
   });
 }
 
-
 // ─── Pipeline Runs ────────────────────────────────────────────────────────────
 
 /** List all runs for a specific pipeline (pipelineId required by backend) */
@@ -280,19 +285,24 @@ export async function listRunsForPipeline(pipelineId: string, limit = 50) {
 }
 
 /** Get all runs across all pipelines in a project */
-export async function listAllRuns(projectId: string = DEFAULT_PROJECT_ID, limit = 50): Promise<PipelineRun[]> {
+export async function listAllRuns(
+  projectId: string = DEFAULT_PROJECT_ID,
+  limit = 50,
+): Promise<PipelineRun[]> {
   const pipelines = await listPipelines(projectId);
   const allRuns: PipelineRun[] = [];
   await Promise.all(
     (pipelines.data ?? []).map(async (p) => {
       try {
         const runs = await listRunsForPipeline(p.id, limit);
-        (runs.data ?? []).forEach(r => allRuns.push({ ...r, pipelineName: p.name }));
-      } catch { /* skip failed pipeline */ }
-    })
+        (runs.data ?? []).forEach((r) => allRuns.push({ ...r, pipelineName: p.name }));
+      } catch {
+        /* skip failed pipeline */
+      }
+    }),
   );
-  return allRuns.sort((a, b) =>
-    new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime()
+  return allRuns.sort(
+    (a, b) => new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime(),
   );
 }
 
@@ -310,23 +320,33 @@ export async function fetchRunLogs(runId: string): Promise<LogEntry[]> {
   try {
     const json = await apiFetch<{ data: LogEntry[] }>(`/pipeline-runs/${runId}/logs`);
     return json.data ?? [];
-  } catch { return []; }
+  } catch {
+    return [];
+  }
 }
 
 /** Format log entries for terminal display */
 export function formatLogLines(entries: LogEntry[]): string[] {
-  return entries.map(e => {
+  return entries.map((e) => {
     const ts = new Date(e.timestamp).toISOString().slice(11, 19);
-    const lvl = e.level === 'ERROR' ? '\x1b[31mERROR\x1b[0m'
-              : e.level === 'WARN'  ? '\x1b[33mWARN \x1b[0m'
-              : e.level === 'DEBUG' ? '\x1b[36mDEBUG\x1b[0m'
-              :                       '\x1b[32mINFO \x1b[0m';
+    const lvl =
+      e.level === 'ERROR'
+        ? '\x1b[31mERROR\x1b[0m'
+        : e.level === 'WARN'
+          ? '\x1b[33mWARN \x1b[0m'
+          : e.level === 'DEBUG'
+            ? '\x1b[36mDEBUG\x1b[0m'
+            : '\x1b[32mINFO \x1b[0m';
     return `\x1b[90m${ts}\x1b[0m ${lvl} ${e.message}`;
   });
 }
 
 /** Open an SSE EventSource for live log streaming */
-export function openLogStream(runId: string, onLine: (line: string) => void, onClose?: () => void): () => void {
+export function openLogStream(
+  runId: string,
+  onLine: (line: string) => void,
+  onClose?: () => void,
+): () => void {
   const token = getToken() ?? '';
   const url = `${API_BASE}/pipeline-runs/${runId}/logs/stream?token=${encodeURIComponent(token)}`;
   const es = new EventSource(url);
@@ -339,7 +359,10 @@ export function openLogStream(runId: string, onLine: (line: string) => void, onC
       onLine(e.data);
     }
   };
-  es.onerror = () => { es.close(); onClose?.(); };
+  es.onerror = () => {
+    es.close();
+    onClose?.();
+  };
   return () => es.close();
 }
 
@@ -353,7 +376,9 @@ export async function fetchPrometheusMetrics(): Promise<string> {
   try {
     const json = await apiFetch<{ data: string }>('/metrics/prometheus');
     return typeof json.data === 'string' ? json.data : '';
-  } catch { return ''; }
+  } catch {
+    return '';
+  }
 }
 
 export function parsePrometheusMetric(raw: string, name: string): number {
@@ -409,7 +434,7 @@ export async function listDeployments() {
         health: 'healthy',
         url: 'https://staging.stockflow.opspilot.app',
       },
-    ]
+    ],
   };
 }
 
@@ -429,15 +454,33 @@ export async function rollbackDeployment(deploymentId: string) {
 export async function listSecrets() {
   return {
     data: [
-      { id: 'sec_1', key: 'DATABASE_URL', description: 'PostgreSQL Connection String', createdAt: new Date().toISOString() },
-      { id: 'sec_2', key: 'GITHUB_WEBHOOK_SECRET', description: 'HMAC Webhook Verification Secret', createdAt: new Date().toISOString() },
-      { id: 'sec_3', key: 'OPENAI_API_KEY', description: 'AI Engine API Key', createdAt: new Date().toISOString() },
-    ]
+      {
+        id: 'sec_1',
+        key: 'DATABASE_URL',
+        description: 'PostgreSQL Connection String',
+        createdAt: new Date().toISOString(),
+      },
+      {
+        id: 'sec_2',
+        key: 'GITHUB_WEBHOOK_SECRET',
+        description: 'HMAC Webhook Verification Secret',
+        createdAt: new Date().toISOString(),
+      },
+      {
+        id: 'sec_3',
+        key: 'OPENAI_API_KEY',
+        description: 'AI Engine API Key',
+        createdAt: new Date().toISOString(),
+      },
+    ],
   };
 }
 
 export async function createSecret(key: string, value: string, description?: string) {
-  return { success: true, data: { id: `sec_${Date.now()}`, key, description, createdAt: new Date().toISOString() } };
+  return {
+    success: true,
+    data: { id: `sec_${Date.now()}`, key, description, createdAt: new Date().toISOString() },
+  };
 }
 
 export async function deleteSecret(secretId: string) {
