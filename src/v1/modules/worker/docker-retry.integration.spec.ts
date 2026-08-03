@@ -12,10 +12,7 @@ describe('DockerRunnerService Selective Retry Integration Test', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        DockerRunnerService,
-        { provide: LogsService, useValue: mockLogsService },
-      ],
+      providers: [DockerRunnerService, { provide: LogsService, useValue: mockLogsService }],
     }).compile();
 
     service = module.get<DockerRunnerService>(DockerRunnerService);

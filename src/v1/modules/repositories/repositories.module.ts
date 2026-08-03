@@ -23,6 +23,12 @@ import { PipelinesModule } from '../pipelines/pipelines.module';
       useClass: GitHubRepositoryProvider,
     },
   ],
-  exports: [RepositoriesService, RepositoriesRepository, RepositoryScannerService, GitHubAppService, 'IRepositoryProvider'],
+  exports: [
+    RepositoriesService,
+    RepositoriesRepository,
+    RepositoryScannerService,
+    GitHubAppService,
+    'IRepositoryProvider',
+  ],
 })
 export class RepositoriesModule {}

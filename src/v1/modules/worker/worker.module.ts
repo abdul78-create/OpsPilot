@@ -27,7 +27,19 @@ import { DeploymentsModule } from '../deployments/deployments.module';
     LogStreamingModule,
     DeploymentsModule,
   ],
-  providers: [PipelineRunProcessor, JobExecutorService, DockerRunnerService, WorkspaceManagerService, StateMachineService],
-  exports: [BullModule, StateMachineService, JobExecutorService, DockerRunnerService, WorkspaceManagerService],
+  providers: [
+    PipelineRunProcessor,
+    JobExecutorService,
+    DockerRunnerService,
+    WorkspaceManagerService,
+    StateMachineService,
+  ],
+  exports: [
+    BullModule,
+    StateMachineService,
+    JobExecutorService,
+    DockerRunnerService,
+    WorkspaceManagerService,
+  ],
 })
 export class WorkerModule {}

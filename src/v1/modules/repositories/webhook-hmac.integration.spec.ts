@@ -13,9 +13,15 @@ describe('WebhooksController HMAC SHA-256 Signature Verification Integration Tes
 
   const mockEventBus = { publish: jest.fn().mockResolvedValue(undefined) };
   const mockRequestContext = { getCorrelationId: jest.fn().mockReturnValue('corr-123') };
-  const mockScanner = { scanRepository: jest.fn().mockResolvedValue({ language: 'node', framework: 'express', packageManager: 'npm' }) };
+  const mockScanner = {
+    scanRepository: jest
+      .fn()
+      .mockResolvedValue({ language: 'node', framework: 'express', packageManager: 'npm' }),
+  };
   const mockCompiler = { compilePipeline: jest.fn().mockReturnValue({ stages: [] }) };
-  const mockOrchestrator = { dispatchRun: jest.fn().mockResolvedValue({ runId: 'run_test_hmac', jobsEnqueued: 2 }) };
+  const mockOrchestrator = {
+    dispatchRun: jest.fn().mockResolvedValue({ runId: 'run_test_hmac', jobsEnqueued: 2 }),
+  };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -41,7 +47,10 @@ describe('WebhooksController HMAC SHA-256 Signature Verification Integration Tes
 
   describe('Positive Security Test', () => {
     it('should ACCEPT webhooks with a valid HMAC SHA-256 signature matching secret and payload', () => {
-      const payload = { ref: 'refs/heads/main', repository: { html_url: 'https://github.com/abdul78-create/StockFlow' } };
+      const payload = {
+        ref: 'refs/heads/main',
+        repository: { html_url: 'https://github.com/abdul78-create/StockFlow' },
+      };
       const validHeader = computeHmacHeader(payload, webhookSecret);
 
       const isValid = controller.verifyGitHubHmac(payload, validHeader, webhookSecret);
@@ -58,7 +67,8 @@ describe('WebhooksController HMAC SHA-256 Signature Verification Integration Tes
 
     it('should REJECT webhooks with an invalid/tampered signature header', () => {
       const payload = { ref: 'refs/heads/main' };
-      const invalidHeader = 'sha256=ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
+      const invalidHeader =
+        'sha256=ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff';
       const isValid = controller.verifyGitHubHmac(payload, invalidHeader, webhookSecret);
       expect(isValid).toBe(false);
     });
@@ -68,7 +78,11 @@ describe('WebhooksController HMAC SHA-256 Signature Verification Integration Tes
       const validHeaderForOriginal = computeHmacHeader(payloadOriginal, webhookSecret);
 
       const payloadTampered = { ref: 'refs/heads/main', action: 'tampered' };
-      const isValid = controller.verifyGitHubHmac(payloadTampered, validHeaderForOriginal, webhookSecret);
+      const isValid = controller.verifyGitHubHmac(
+        payloadTampered,
+        validHeaderForOriginal,
+        webhookSecret,
+      );
       expect(isValid).toBe(false);
     });
 

@@ -19,7 +19,9 @@ export class MetricsController {
   @Public()
   @Get('prometheus')
   @Header('Content-Type', 'text/plain; version=0.0.4; charset=utf-8')
-  @ApiOperation({ summary: 'Export operational CI/CD system metrics in Prometheus exposition format' })
+  @ApiOperation({
+    summary: 'Export operational CI/CD system metrics in Prometheus exposition format',
+  })
   async getPrometheusMetrics(): Promise<string> {
     return this.metricsService.getPrometheusMetricsText();
   }

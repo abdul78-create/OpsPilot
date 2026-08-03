@@ -20,9 +20,14 @@ export class RepositoryScannerService {
    * detects monorepos / multi-service projects, and returns a strongly typed StackDefinition.
    */
   async scanRepository(repoUrl: string, targetDir: string): Promise<StackDefinition> {
-    const isRemote = repoUrl.startsWith('http://') || repoUrl.startsWith('https://') || repoUrl.startsWith('git@');
+    const isRemote =
+      repoUrl.startsWith('http://') || repoUrl.startsWith('https://') || repoUrl.startsWith('git@');
     const scanDir = isRemote
-      ? path.join(os.tmpdir(), 'opspilot-scans', Buffer.from(repoUrl).toString('hex').substring(0, 12))
+      ? path.join(
+          os.tmpdir(),
+          'opspilot-scans',
+          Buffer.from(repoUrl).toString('hex').substring(0, 12),
+        )
       : targetDir;
 
     this.logger.log(`▸ Scanning repository codebase: ${repoUrl} → ${scanDir}`);
@@ -46,7 +51,10 @@ export class RepositoryScannerService {
     const hasPackageJson = checkFile('package.json');
     const hasBackendPkg = checkFile('backend/package.json');
     const hasFrontendPkg = checkFile('frontend/package.json');
-    const hasDockerfile = checkFile('Dockerfile') || checkFile('backend/Dockerfile') || checkFile('frontend/Dockerfile');
+    const hasDockerfile =
+      checkFile('Dockerfile') ||
+      checkFile('backend/Dockerfile') ||
+      checkFile('frontend/Dockerfile');
     const hasDockerCompose = checkFile('docker-compose.yml') || checkFile('docker-compose.yaml');
     const hasK8s = checkFile('k8s') || checkFile('kubernetes');
     const hasRequirementsTxt = checkFile('requirements.txt');
@@ -64,13 +72,13 @@ export class RepositoryScannerService {
     let runtimeVersion = 'node:20-alpine';
     let buildCommand = 'npm ci --include=dev && npm run build';
     let testCommand = 'npm test -- --ci';
-    let startCommand = 'npm start';
+    const startCommand = 'npm start';
 
     if (isMonorepo) {
       this.logger.log(`✓ Monorepo detected: backend & frontend packages present`);
       language = 'node';
       framework = 'express';
-      
+
       const backendBuild = hasPrisma
         ? 'cd backend && npm ci --include=dev && npx prisma generate && npm run build'
         : 'cd backend && npm ci --include=dev && npm run build';

@@ -1,4 +1,14 @@
-import { Controller, Get, Post, Delete, Body, Param, Res, UseGuards, HttpStatus } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Delete,
+  Body,
+  Param,
+  Res,
+  UseGuards,
+  HttpStatus,
+} from '@nestjs/common';
 import type { Response } from 'express';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
 import { ArtifactsService } from './artifacts.service';
@@ -65,7 +75,8 @@ export class ArtifactsController {
   @ApiParam({ name: 'id', description: 'Artifact UUID' })
   @ApiResponse({ status: HttpStatus.OK, description: 'Binary stream download' })
   async download(@Param('id') artifactId: string, @Res() res: Response) {
-    const { stream, filename, contentType, sizeBytes } = await this.artifactsService.getDownloadStream(artifactId);
+    const { stream, filename, contentType, sizeBytes } =
+      await this.artifactsService.getDownloadStream(artifactId);
     res.setHeader('Content-Type', contentType);
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.setHeader('Content-Length', sizeBytes);

@@ -62,7 +62,9 @@ describe('GitHub App Platform Integration Test Suite', () => {
   });
 
   it('should trigger workflow dispatch event for repository automation', async () => {
-    const result = await service.dispatchWorkflow('abdul78-create', 'StockFlow', 'manual_build', { env: 'staging' });
+    const result = await service.dispatchWorkflow('abdul78-create', 'StockFlow', 'manual_build', {
+      env: 'staging',
+    });
     expect(result.status).toBe('dispatched');
     expect(result.eventType).toBe('manual_build');
   });

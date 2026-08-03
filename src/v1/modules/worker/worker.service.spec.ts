@@ -38,7 +38,6 @@ describe('Worker Module', () => {
       ],
     }).compile();
 
-
     stateMachine = module.get<StateMachineService>(StateMachineService);
     jobExecutor = module.get<JobExecutorService>(JobExecutorService);
   });
@@ -166,8 +165,10 @@ describe('Worker Module', () => {
           durationSeconds: 1,
         });
 
-      const result = await jobExecutor.executeJob(mockJob as never, 'https://github.com/acme-corp/backend-api.git');
-
+      const result = await jobExecutor.executeJob(
+        mockJob as never,
+        'https://github.com/acme-corp/backend-api.git',
+      );
 
       expect(result.status).toBe(JobStatus.SUCCESS);
       expect(mockPrisma.pipelineJob.update).toHaveBeenCalledTimes(2);

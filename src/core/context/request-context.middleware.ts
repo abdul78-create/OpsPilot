@@ -27,7 +27,9 @@ export class RequestContextMiddleware implements NestMiddleware {
 
     // Parse W3C OpenTelemetry traceparent: 00-traceid-spanid-flags
     const traceparentHeader = req.headers['traceparent'];
-    const rawTraceparent = Array.isArray(traceparentHeader) ? traceparentHeader[0] : traceparentHeader;
+    const rawTraceparent = Array.isArray(traceparentHeader)
+      ? traceparentHeader[0]
+      : traceparentHeader;
     let traceId = randomUUID().replace(/-/g, '');
     let spanId = randomUUID().replace(/-/g, '').slice(0, 16);
 

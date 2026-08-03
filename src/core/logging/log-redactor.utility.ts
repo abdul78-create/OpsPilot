@@ -3,11 +3,13 @@
  * Masks sensitive credentials, JWT tokens, passwords, database connection strings, and secret keys.
  */
 export class LogRedactorUtility {
-  private static SENSITIVE_KEY_REGEX = /(password|secret|token|privatekey|authorization|bearer|apikey|passwd|connectionstring)/i;
+  private static SENSITIVE_KEY_REGEX =
+    /(password|secret|token|privatekey|authorization|bearer|apikey|passwd|connectionstring)/i;
 
   private static BEARER_REGEX = /Bearer\s+[A-Za-z0-9\-_=]+\.[A-Za-z0-9\-_=]+\.?[A-Za-z0-9\-_=]*/gi;
   private static DB_URL_REGEX = /(postgres|postgresql|mongodb|mysql|redis):\/\/([^:]+):([^@]+)@/gi;
-  private static SECRET_KV_REGEX = /"(password|secret|token|privateKey|apiKey|clientSecret)":\s*"[^"]+"/gi;
+  private static SECRET_KV_REGEX =
+    /"(password|secret|token|privateKey|apiKey|clientSecret)":\s*"[^"]+"/gi;
 
   /**
    * Redacts sensitive strings containing JWT tokens, credentials, and connection strings.

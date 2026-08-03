@@ -60,13 +60,14 @@ describe('DeploymentsService', () => {
         { provide: PrismaService, useValue: mockPrisma },
         { provide: TransactionManager, useValue: mockTransactionManager },
         { provide: ApprovalEngineService, useValue: mockApprovalEngine },
-        { provide: DeploymentRunnerService, useValue: { executeDeployment: jest.fn(), executeRollback: jest.fn() } },
+        {
+          provide: DeploymentRunnerService,
+          useValue: { executeDeployment: jest.fn(), executeRollback: jest.fn() },
+        },
         { provide: EventBusService, useValue: mockEventBus },
         { provide: RequestContextService, useValue: mockRequestContext },
       ],
     }).compile();
-
-
 
     service = module.get<DeploymentsService>(DeploymentsService);
   });

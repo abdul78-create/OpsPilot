@@ -68,11 +68,7 @@ export class PipelineOrchestratorService {
 
     // ── 3. Ensure pipeline definition exists per repo URL ────────────────────
     // Slug is a safe hash of the URL to stay within unique constraint
-    const pipelineSlug = crypto
-      .createHash('md5')
-      .update(repoUrl)
-      .digest('hex')
-      .slice(0, 32);
+    const pipelineSlug = crypto.createHash('md5').update(repoUrl).digest('hex').slice(0, 32);
 
     const pipelineDef = await this.prisma.pipelineDefinition.upsert({
       where: { projectId_slug: { projectId: project.id, slug: pipelineSlug } },

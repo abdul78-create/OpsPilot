@@ -111,15 +111,21 @@ export class ArtifactsService {
     return deleted;
   }
 
-  async getDownloadStream(artifactId: string): Promise<{ stream: fs.ReadStream; filename: string; contentType: string; sizeBytes: number }> {
+  async getDownloadStream(
+    artifactId: string,
+  ): Promise<{ stream: fs.ReadStream; filename: string; contentType: string; sizeBytes: number }> {
     const artifact = await this.findById(artifactId);
 
     if (artifact.status !== ArtifactStatus.AVAILABLE) {
-      throw new NotFoundException(`Artifact '${artifactId}' is no longer available (status: ${artifact.status})`);
+      throw new NotFoundException(
+        `Artifact '${artifactId}' is no longer available (status: ${artifact.status})`,
+      );
     }
 
     if (!fs.existsSync(artifact.storageLocation)) {
-      throw new NotFoundException(`Artifact file not found at storage location '${artifact.storageLocation}'`);
+      throw new NotFoundException(
+        `Artifact file not found at storage location '${artifact.storageLocation}'`,
+      );
     }
 
     const filename = path.basename(artifact.storageLocation);
@@ -129,7 +135,10 @@ export class ArtifactsService {
     return {
       stream,
       filename,
-      contentType: filename.endsWith('.tar.gz') || filename.endsWith('.tgz') ? 'application/gzip' : 'application/octet-stream',
+      contentType:
+        filename.endsWith('.tar.gz') || filename.endsWith('.tgz')
+          ? 'application/gzip'
+          : 'application/octet-stream',
       sizeBytes: stats.size,
     };
   }

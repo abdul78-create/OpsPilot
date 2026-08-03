@@ -22,7 +22,12 @@ export class LogsService {
     jobId?: string,
   ): Promise<PipelineRunLog> {
     const redactedMessage = LogRedactorUtility.redactString(message);
-    const logEntry = await this.logsRepository.appendLog(pipelineRunId, level, redactedMessage, jobId);
+    const logEntry = await this.logsRepository.appendLog(
+      pipelineRunId,
+      level,
+      redactedMessage,
+      jobId,
+    );
 
     this.logStreamingService.emit({
       runId: pipelineRunId,

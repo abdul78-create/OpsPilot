@@ -56,12 +56,7 @@ export class MetricsService {
     const freeMem = os.freemem();
     const totalMem = os.totalmem();
 
-    const [
-      successfulRuns,
-      failedRuns,
-      runningRuns,
-      queuedRuns,
-    ] = await Promise.all([
+    const [successfulRuns, failedRuns, runningRuns, queuedRuns] = await Promise.all([
       this.prisma.pipelineRun.count({ where: { status: 'SUCCESS', deletedAt: null } }),
       this.prisma.pipelineRun.count({ where: { status: 'FAILED', deletedAt: null } }),
       this.prisma.pipelineRun.count({ where: { status: 'RUNNING', deletedAt: null } }),

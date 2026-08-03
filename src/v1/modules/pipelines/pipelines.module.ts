@@ -14,7 +14,17 @@ import { PipelineOrchestratorService } from './services/pipeline-orchestrator.se
     }),
   ],
   controllers: [PipelinesController],
-  providers: [PipelinesService, PipelinesRepository, WorkflowCompilerService, PipelineOrchestratorService],
-  exports: [PipelinesService, PipelinesRepository, WorkflowCompilerService, PipelineOrchestratorService],
+  providers: [
+    PipelinesService,
+    PipelinesRepository,
+    WorkflowCompilerService,
+    PipelineOrchestratorService,
+  ],
+  exports: [
+    PipelinesService,
+    PipelinesRepository,
+    WorkflowCompilerService,
+    PipelineOrchestratorService,
+  ],
 })
 export class PipelinesModule {}

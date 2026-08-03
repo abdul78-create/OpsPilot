@@ -1,4 +1,14 @@
-import { Controller, Get, Post, Param, Sse, UseGuards, HttpStatus, NotFoundException, MessageEvent } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Param,
+  Sse,
+  UseGuards,
+  HttpStatus,
+  NotFoundException,
+  MessageEvent,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
 import { Observable } from 'rxjs';
 import { LogsService } from './logs.service';

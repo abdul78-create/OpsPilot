@@ -21,14 +21,14 @@ describe('MetricsController Prometheus Operational Metrics Export Integration Te
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [MetricsController],
-      providers: [
-        MetricsService,
-        { provide: PrismaService, useValue: mockPrisma },
-      ],
+      providers: [MetricsService, { provide: PrismaService, useValue: mockPrisma }],
     })
-      .overrideGuard(JwtAuthGuard).useValue({ canActivate: () => true })
-      .overrideGuard(TenantGuard).useValue({ canActivate: () => true })
-      .overrideGuard(PermissionsGuard).useValue({ canActivate: () => true })
+      .overrideGuard(JwtAuthGuard)
+      .useValue({ canActivate: () => true })
+      .overrideGuard(TenantGuard)
+      .useValue({ canActivate: () => true })
+      .overrideGuard(PermissionsGuard)
+      .useValue({ canActivate: () => true })
       .compile();
 
     controller = module.get<MetricsController>(MetricsController);

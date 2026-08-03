@@ -12,10 +12,7 @@ export class WorkflowCompilerService {
   /**
    * Compiles StackDefinition & raw pipeline configuration into a validated ExecutionGraph
    */
-  compilePipeline(
-    stack: StackDefinition,
-    pipelineId: string = 'pipe_v1',
-  ): ExecutionGraph {
+  compilePipeline(stack: StackDefinition, pipelineId: string = 'pipe_v1'): ExecutionGraph {
     const stages: ExecutionStage[] = [
       {
         id: 'stg_1_clone',
@@ -59,7 +56,9 @@ export class WorkflowCompilerService {
         name: 'docker-build-image',
         stage: 'deploy',
         image: 'docker:dind',
-        commands: [`docker build -t acme-backend:latest -f ${stack.dockerfilePath || 'Dockerfile'} .`],
+        commands: [
+          `docker build -t acme-backend:latest -f ${stack.dockerfilePath || 'Dockerfile'} .`,
+        ],
         dependsOn: stack.capabilities.tests ? ['run-test-suite'] : ['install-and-build'],
         timeoutSeconds: 600,
         maxRetries: 0,
@@ -68,7 +67,9 @@ export class WorkflowCompilerService {
 
     const executionPlan = stages.map((s) => s.name);
 
-    this.logger.log(`Compiled ExecutionGraph for '${pipelineId}' [${stages.length} stages]: [${executionPlan.join(' → ')}]`);
+    this.logger.log(
+      `Compiled ExecutionGraph for '${pipelineId}' [${stages.length} stages]: [${executionPlan.join(' → ')}]`,
+    );
 
     return {
       valid: true,

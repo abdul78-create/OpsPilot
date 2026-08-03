@@ -28,7 +28,14 @@ export class DockerRunnerService {
     const cmdStr = options.command;
     const volumeName = process.env.DOCKER_VOLUME_NAME || 'opspilot_workspaces_data';
     const volumeArgs = options.workspacePath
-      ? ['--security-opt', 'seccomp=unconfined', '-v', `${volumeName}:/opspilot-workspaces`, '-w', options.workspacePath]
+      ? [
+          '--security-opt',
+          'seccomp=unconfined',
+          '-v',
+          `${volumeName}:/opspilot-workspaces`,
+          '-w',
+          options.workspacePath,
+        ]
       : [];
 
     const fullDockerCmd = `docker run --rm ${volumeArgs.join(' ')} ${image} sh -c "${cmdStr}"`;
@@ -138,18 +145,24 @@ export class DockerRunnerService {
 
         // Check if error is transient before retrying
         if (!this.isTransientError(lastResult.exitCode, '')) {
-          this.logger.log(`▸ Non-transient build/test failure (Exit code ${lastResult.exitCode}). Skipping retries.`);
+          this.logger.log(
+            `▸ Non-transient build/test failure (Exit code ${lastResult.exitCode}). Skipping retries.`,
+          );
           return lastResult;
         }
 
-        this.logger.warn(`▸ Transient container error detected (Attempt ${attempt}/${maxRetries}). Retrying...`);
+        this.logger.warn(
+          `▸ Transient container error detected (Attempt ${attempt}/${maxRetries}). Retrying...`,
+        );
         await new Promise((r) => setTimeout(r, attempt * 500));
       } catch (err) {
         const errMsg = (err as Error).message;
         if (!this.isTransientError(125, errMsg) || attempt === maxRetries) {
           throw err;
         }
-        this.logger.warn(`▸ Transient spawn error: ${errMsg} (Attempt ${attempt}/${maxRetries}). Retrying...`);
+        this.logger.warn(
+          `▸ Transient spawn error: ${errMsg} (Attempt ${attempt}/${maxRetries}). Retrying...`,
+        );
         await new Promise((r) => setTimeout(r, attempt * 500));
       }
     }

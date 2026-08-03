@@ -1,4 +1,14 @@
-import { Controller, Post, Param, Body, Headers, HttpStatus, HttpCode, UnauthorizedException, ServiceUnavailableException } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Param,
+  Body,
+  Headers,
+  HttpStatus,
+  HttpCode,
+  UnauthorizedException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import * as crypto from 'crypto';
 import Redis from 'ioredis';
@@ -71,15 +81,20 @@ export class WebhooksController {
       return true; // Duplicate delivery
     } catch (err) {
       // Production Fallback Mode
-      throw new ServiceUnavailableException('Distributed webhook store unavailable. Please retry delivery.');
+      throw new ServiceUnavailableException(
+        'Distributed webhook store unavailable. Please retry delivery.',
+      );
     }
   }
-
 
   /**
    * Constant-time HMAC SHA-256 signature verification for GitHub Webhook payloads.
    */
-  verifyGitHubHmac(payload: Record<string, unknown>, signatureHeader: string | undefined, secret: string): boolean {
+  verifyGitHubHmac(
+    payload: Record<string, unknown>,
+    signatureHeader: string | undefined,
+    secret: string,
+  ): boolean {
     if (!signatureHeader || !signatureHeader.startsWith('sha256=')) {
       return false;
     }
@@ -209,7 +224,13 @@ export class WebhooksController {
         const runId = `run_${Date.now()}`;
         const stack = await this.scanner.scanRepository(repositoryUrl, process.cwd());
         const graph = this.compiler.compilePipeline(stack, runId);
-        const dispatch = await this.orchestrator.dispatchRun(runId, graph, repositoryUrl, commitSha, branchName);
+        const dispatch = await this.orchestrator.dispatchRun(
+          runId,
+          graph,
+          repositoryUrl,
+          commitSha,
+          branchName,
+        );
 
         return {
           status: 'success',
@@ -243,9 +264,7 @@ export class WebhooksController {
         installationId: installId,
         appSlug: 'opspilot-ci-cd',
         targetType: 'Organization',
-        repositoriesAccessible: [
-          'https://github.com/abdul78-create/StockFlow',
-        ],
+        repositoriesAccessible: ['https://github.com/abdul78-create/StockFlow'],
         installedAt: new Date().toISOString(),
       },
     };

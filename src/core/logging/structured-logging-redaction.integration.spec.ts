@@ -32,14 +32,16 @@ describe('Structured Logging & Log Redaction Integration Test Suite', () => {
 
   describe('Log Redactor Utility', () => {
     it('should REDACT Bearer JWT tokens from raw log strings', () => {
-      const input = 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
+      const input =
+        'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
       const output = LogRedactorUtility.redactString(input);
       expect(output).toContain('Bearer [REDACTED_JWT_TOKEN]');
       expect(output).not.toContain('eyJhbGciOiJ');
     });
 
     it('should REDACT database connection credentials', () => {
-      const input = 'Connecting to postgres://dbuser:super_secret_password_123@postgres:5432/opspilot';
+      const input =
+        'Connecting to postgres://dbuser:super_secret_password_123@postgres:5432/opspilot';
       const output = LogRedactorUtility.redactString(input);
       expect(output).toContain('postgres://dbuser:[REDACTED]@postgres:5432/opspilot');
       expect(output).not.toContain('super_secret_password_123');

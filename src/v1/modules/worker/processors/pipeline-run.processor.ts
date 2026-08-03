@@ -49,7 +49,9 @@ export class PipelineRunProcessor extends WorkerHost implements OnApplicationBoo
         return;
       }
 
-      this.logger.warn(`⚠️ Detected ${orphanedRuns.length} orphaned RUNNING pipeline runs from prior process restart.`);
+      this.logger.warn(
+        `⚠️ Detected ${orphanedRuns.length} orphaned RUNNING pipeline runs from prior process restart.`,
+      );
 
       for (const run of orphanedRuns) {
         const finishedAt = new Date();
@@ -69,7 +71,9 @@ export class PipelineRunProcessor extends WorkerHost implements OnApplicationBoo
         // Clean up orphaned workspace directories
         await this.workspaceManager.cleanupWorkspace(run.id);
 
-        this.logger.log(`✓ Reconciled orphaned run '${run.id}': Status marked FAILED (Worker Crash Recovery) & Workspace Purged.`);
+        this.logger.log(
+          `✓ Reconciled orphaned run '${run.id}': Status marked FAILED (Worker Crash Recovery) & Workspace Purged.`,
+        );
       }
     } catch (err) {
       this.logger.error(`Worker startup reconciliation warning: ${(err as Error).message}`);
@@ -233,7 +237,9 @@ export class PipelineRunProcessor extends WorkerHost implements OnApplicationBoo
         },
       });
 
-      this.logger.log(`▸ Triggering auto-deployment for Run '${pipelineRunId}' → Environment '${env.name}' (Deployment ID: ${deployment.id})`);
+      this.logger.log(
+        `▸ Triggering auto-deployment for Run '${pipelineRunId}' → Environment '${env.name}' (Deployment ID: ${deployment.id})`,
+      );
 
       if (this.deploymentRunner) {
         await this.deploymentRunner.executeDeployment(deployment.id);

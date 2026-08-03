@@ -9,7 +9,17 @@ import { LogStreamingModule } from '../log-streaming/log-streaming.module';
 @Module({
   imports: [LogStreamingModule],
   controllers: [DeploymentsController],
-  providers: [DeploymentsService, DeploymentsRepository, ApprovalEngineService, DeploymentRunnerService],
-  exports: [DeploymentsService, DeploymentsRepository, ApprovalEngineService, DeploymentRunnerService],
+  providers: [
+    DeploymentsService,
+    DeploymentsRepository,
+    ApprovalEngineService,
+    DeploymentRunnerService,
+  ],
+  exports: [
+    DeploymentsService,
+    DeploymentsRepository,
+    ApprovalEngineService,
+    DeploymentRunnerService,
+  ],
 })
 export class DeploymentsModule {}

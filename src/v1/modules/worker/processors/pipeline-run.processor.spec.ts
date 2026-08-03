@@ -9,7 +9,6 @@ import { LogsService } from '../../log-streaming/logs.service';
 import { DeploymentRunnerService } from '../../deployments/services/deployment-runner.service';
 import { WorkspaceManagerService } from '../services/workspace-manager.service';
 
-
 describe('PipelineRunProcessor & DockerRunner', () => {
   let processor: PipelineRunProcessor;
 
@@ -59,7 +58,6 @@ describe('PipelineRunProcessor & DockerRunner', () => {
         },
       ],
     }).compile();
-
 
     processor = module.get<PipelineRunProcessor>(PipelineRunProcessor);
   });
