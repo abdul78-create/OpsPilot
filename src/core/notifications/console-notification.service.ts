@@ -24,4 +24,8 @@ export class ConsoleNotificationService implements INotificationService {
   async sendPasswordReset(toEmail: string, resetUrl: string): Promise<void> {
     this.logger.log(`[PASSWORD RESET EMAIL] To: ${toEmail} | Reset URL: ${resetUrl}`);
   }
+
+  async sendEmailVerification(toEmail: string, verificationUrl: string): Promise<void> {
+    this.logger.log(`[EMAIL VERIFICATION] To: ${toEmail} | Verification URL: ${verificationUrl}`);
+  }
 }

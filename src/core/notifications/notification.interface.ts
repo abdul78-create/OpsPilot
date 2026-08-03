@@ -17,4 +17,5 @@ export interface INotificationService {
   sendEmail(payload: SendEmailPayload): Promise<void>;
   sendInvitation(payload: SendInvitationPayload): Promise<void>;
   sendPasswordReset(toEmail: string, resetUrl: string): Promise<void>;
+  sendEmailVerification(toEmail: string, verificationUrl: string): Promise<void>;
 }

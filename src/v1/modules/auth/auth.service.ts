@@ -3,18 +3,33 @@ import {
   UnauthorizedException,
   ConflictException,
   ForbiddenException,
+  BadRequestException,
   Logger,
+  Inject,
 } from '@nestjs/common';
+import { createHash, randomBytes } from 'crypto';
 import { PrismaService } from '../../../core/database/prisma.service';
 import { HashService } from '../../../core/security/hash.service';
 import { TokenService } from '../../../core/security/token.service';
 import { RequestContextService } from '../../../core/context/request-context.service';
 import { EventBusService } from '../../../core/events/event-bus.service';
+import { INotificationService } from '../../../core/notifications/notification.interface';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { AuthResponseDto } from './dto/auth-response.dto';
 import { MESSAGES } from '@shared/constants/messages.constants';
+
+const EMAIL_VERIFICATION_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+const PASSWORD_RESET_TTL_MS = 60 * 60 * 1000; // 1 hour
+
+function generateSecureToken(): string {
+  return randomBytes(32).toString('hex');
+}
+
+function sha256(token: string): string {
+  return createHash('sha256').update(token).digest('hex');
+}
 
 @Injectable()
 export class AuthService {
@@ -26,9 +41,14 @@ export class AuthService {
     private readonly tokenService: TokenService,
     private readonly contextService: RequestContextService,
     private readonly eventBus: EventBusService,
+    @Inject('INotificationService')
+    private readonly notificationService: INotificationService,
   ) {}
 
-  async register(dto: RegisterDto): Promise<AuthResponseDto> {
+  // ─────────────────────────────────────────────
+  // REGISTER
+  // ─────────────────────────────────────────────
+  async register(dto: RegisterDto): Promise<{ message: string }> {
     const existingUser = await this.prisma.user.findFirst({
       where: { email: dto.email, deletedAt: null },
     });
@@ -44,6 +64,7 @@ export class AuthService {
         email: dto.email,
         passwordHash,
         name: dto.name,
+        isVerified: false,
       },
     });
 
@@ -58,9 +79,32 @@ export class AuthService {
       payload: { userId: user.id, email: user.email },
     });
 
-    return this.issueAuthTokens(user.id, user.email, user.role, user.isSuperAdmin, user.name);
+    // Generate email verification token
+    const rawToken = generateSecureToken();
+    const tokenHash = sha256(rawToken);
+
+    await this.prisma.emailVerification.create({
+      data: {
+        userId: user.id,
+        email: user.email,
+        tokenHash,
+        expiresAt: new Date(Date.now() + EMAIL_VERIFICATION_TTL_MS),
+      },
+    });
+
+    const frontendUrl = process.env.FRONTEND_URL ?? 'http://localhost:3001';
+    const verificationUrl = `${frontendUrl}/verify-email?token=${rawToken}`;
+
+    await this.notificationService.sendEmailVerification(user.email, verificationUrl);
+
+    this.logger.log(`Verification email dispatched for user ${user.id}`);
+
+    return { message: 'Registration successful. Please check your email to verify your account.' };
   }
 
+  // ─────────────────────────────────────────────
+  // LOGIN
+  // ─────────────────────────────────────────────
   async login(dto: LoginDto): Promise<AuthResponseDto> {
     const user = await this.prisma.user.findFirst({
       where: { email: dto.email, deletedAt: null },
@@ -74,6 +118,12 @@ export class AuthService {
 
     if (!isPasswordValid) {
       throw new UnauthorizedException('Invalid email or password');
+    }
+
+    if (!user.isVerified) {
+      throw new UnauthorizedException(
+        'Email verification required. Please check your inbox and verify your email before signing in.',
+      );
     }
 
     const session = await this.prisma.session.create({
@@ -110,6 +160,147 @@ export class AuthService {
     );
   }
 
+  // ─────────────────────────────────────────────
+  // VERIFY EMAIL
+  // ─────────────────────────────────────────────
+  async verifyEmail(token: string): Promise<AuthResponseDto> {
+    const tokenHash = sha256(token);
+
+    const record = await this.prisma.emailVerification.findUnique({
+      where: { tokenHash },
+      include: { user: true },
+    });
+
+    if (!record) {
+      throw new BadRequestException('Invalid or expired email verification link.');
+    }
+
+    if (new Date() > record.expiresAt) {
+      await this.prisma.emailVerification.delete({ where: { tokenHash } });
+      throw new BadRequestException(
+        'This verification link has expired. Please register again or request a new one.',
+      );
+    }
+
+    // Mark the user as verified
+    const user = await this.prisma.user.update({
+      where: { id: record.userId },
+      data: { isVerified: true },
+    });
+
+    // Clean up the verification record
+    await this.prisma.emailVerification.delete({ where: { tokenHash } });
+
+    // Create a session and issue tokens so the user is logged in immediately
+    const session = await this.prisma.session.create({
+      data: {
+        userId: user.id,
+        ipAddress: this.contextService.getStore()?.ipAddress,
+        userAgent: this.contextService.getUserAgent(),
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      },
+    });
+
+    this.logger.log(`Email verified and session created for user ${user.id}`);
+
+    return this.issueAuthTokens(
+      user.id,
+      user.email,
+      user.role,
+      user.isSuperAdmin,
+      user.name,
+      session.id,
+    );
+  }
+
+  // ─────────────────────────────────────────────
+  // FORGOT PASSWORD
+  // ─────────────────────────────────────────────
+  async forgotPassword(email: string): Promise<{ message: string }> {
+    const SAFE_MESSAGE =
+      'If that email is registered, you will receive a password reset link shortly.';
+
+    const user = await this.prisma.user.findFirst({
+      where: { email, deletedAt: null },
+    });
+
+    // Return same safe message even when user doesn't exist (prevents user enumeration)
+    if (!user) {
+      return { message: SAFE_MESSAGE };
+    }
+
+    // Invalidate any existing password reset tokens for this user
+    await this.prisma.passwordReset.deleteMany({ where: { userId: user.id } });
+
+    const rawToken = generateSecureToken();
+    const tokenHash = sha256(rawToken);
+
+    await this.prisma.passwordReset.create({
+      data: {
+        userId: user.id,
+        email: user.email,
+        tokenHash,
+        expiresAt: new Date(Date.now() + PASSWORD_RESET_TTL_MS),
+      },
+    });
+
+    const frontendUrl = process.env.FRONTEND_URL ?? 'http://localhost:3001';
+    const resetUrl = `${frontendUrl}/reset-password?token=${rawToken}`;
+
+    await this.notificationService.sendPasswordReset(user.email, resetUrl);
+
+    this.logger.log(`Password reset email dispatched for user ${user.id}`);
+
+    return { message: SAFE_MESSAGE };
+  }
+
+  // ─────────────────────────────────────────────
+  // RESET PASSWORD
+  // ─────────────────────────────────────────────
+  async resetPassword(token: string, newPassword: string): Promise<{ message: string }> {
+    const tokenHash = sha256(token);
+
+    const record = await this.prisma.passwordReset.findUnique({
+      where: { tokenHash },
+      include: { user: true },
+    });
+
+    if (!record) {
+      throw new BadRequestException('Invalid or expired password reset link.');
+    }
+
+    if (new Date() > record.expiresAt) {
+      await this.prisma.passwordReset.delete({ where: { tokenHash } });
+      throw new BadRequestException(
+        'This password reset link has expired. Please request a new one.',
+      );
+    }
+
+    const newPasswordHash = await this.hashService.hashPassword(newPassword);
+
+    // Update password
+    await this.prisma.user.update({
+      where: { id: record.userId },
+      data: { passwordHash: newPasswordHash },
+    });
+
+    // Revoke all active refresh tokens for security (force re-login)
+    await this.prisma.refreshToken.updateMany({
+      where: { userId: record.userId, isRevoked: false },
+      data: { isRevoked: true, revokedAt: new Date() },
+    });
+
+    // Clean up reset record
+    await this.prisma.passwordReset.delete({ where: { tokenHash } });
+
+    this.logger.log(`Password reset completed for user ${record.userId}`);
+
+    return { message: 'Password updated successfully. Please sign in with your new password.' };
+  }
+
+  // ─────────────────────────────────────────────
+  // REFRESH TOKENS
+  // ─────────────────────────────────────────────
   async refreshTokens(dto: RefreshTokenDto): Promise<AuthResponseDto> {
     const tokenHash = this.hashService.hashSha256(dto.refreshToken);
 
@@ -196,6 +387,9 @@ export class AuthService {
     };
   }
 
+  // ─────────────────────────────────────────────
+  // LOGOUT
+  // ─────────────────────────────────────────────
   async logout(userId: string): Promise<void> {
     await this.prisma.refreshToken.updateMany({
       where: { userId, isRevoked: false },
@@ -203,6 +397,9 @@ export class AuthService {
     });
   }
 
+  // ─────────────────────────────────────────────
+  // PRIVATE HELPERS
+  // ─────────────────────────────────────────────
   private async issueAuthTokens(
     userId: string,
     email: string,

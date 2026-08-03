@@ -4,14 +4,6 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { Eye, EyeOff, Mail, Lock, ArrowRight, CheckCircle2 } from 'lucide-react';
 
-function GithubIcon({ size = 16 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
-      <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
-    </svg>
-  );
-}
-
 const FEATURES_LIST = [
   'Automated CI/CD pipeline from first push',
   'Isolated Docker build environments',
@@ -21,23 +13,12 @@ const FEATURES_LIST = [
   'Auto-rollback on failed health checks',
 ];
 
-import { useToast } from '@/components/ui/Toast';
-
 export default function LoginPage() {
-  const { toast } = useToast();
   const [showPass, setShowPass] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-
-  const handleGithubMock = () => {
-    toast({
-      kind: 'info',
-      title: 'GitHub SSO (Demo)',
-      message: 'GitHub OAuth requires setting up client credentials. Please use the demo credentials below to log in.',
-    });
-  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,7 +32,7 @@ export default function LoginPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
-      
+
       let data: any = {};
       try {
         data = await res.json();
@@ -60,16 +41,23 @@ export default function LoginPage() {
       }
 
       if (!res.ok) {
-        setError(data.message || `HTTP ${res.status}: Failed to authenticate with backend API`);
+        const msg = data.message || `HTTP ${res.status}: Authentication failed`;
+        // Surface unverified email as a special callout
+        if (res.status === 401 && msg.toLowerCase().includes('verif')) {
+          setError('Please verify your email before signing in. Check your inbox for the verification link.');
+        } else {
+          setError(msg);
+        }
         return;
       }
+
       if (typeof window !== 'undefined') {
         localStorage.setItem('opspilot_token', data.data?.tokens?.accessToken || data.tokens?.accessToken || '');
         localStorage.setItem('opspilot_user', JSON.stringify(data.data?.user || data.user || {}));
       }
       window.location.href = '/dashboard';
-    } catch (err) {
-      setError('Network connection error. Ensure the backend engine is running and CORS is allowed.');
+    } catch {
+      setError('Network connection error. Ensure the backend is reachable.');
     } finally {
       setLoading(false);
     }
@@ -152,25 +140,9 @@ export default function LoginPage() {
             <p className="text-sm text-zinc-500">Sign in to your workspace</p>
           </div>
 
-          {/* GitHub SSO Button */}
-          <button
-            type="button"
-            onClick={handleGithubMock}
-            className="w-full flex items-center justify-center gap-2.5 py-2.5 rounded-xl bg-[#18181B] hover:bg-[#27272A] border border-[#27272A] hover:border-[#3F3F46] text-zinc-200 text-sm font-semibold transition-all focus:outline-none focus:ring-2 focus:ring-violet-500/50"
-          >
-            <GithubIcon size={16} />
-            Continue with GitHub (Demo)
-          </button>
-
-          <div className="flex items-center gap-3">
-            <div className="flex-1 h-px bg-[#27272A]" />
-            <span className="text-xs text-zinc-600">or continue with email</span>
-            <div className="flex-1 h-px bg-[#27272A]" />
-          </div>
-
           {/* Error */}
           {error && (
-            <div className="px-4 py-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-xs">
+            <div className="px-4 py-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-xs leading-relaxed">
               {error}
             </div>
           )}
@@ -182,6 +154,7 @@ export default function LoginPage() {
               <div className="relative">
                 <Mail size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600" />
                 <input
+                  id="login-email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -195,11 +168,14 @@ export default function LoginPage() {
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <label className="text-xs font-medium text-zinc-400">Password</label>
-                <a href="#" className="text-[11px] text-violet-400 hover:text-violet-300 transition-colors">Forgot password?</a>
+                <Link href="/forgot-password" className="text-[11px] text-violet-400 hover:text-violet-300 transition-colors">
+                  Forgot password?
+                </Link>
               </div>
               <div className="relative">
                 <Lock size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600" />
                 <input
+                  id="login-password"
                   type={showPass ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -223,6 +199,7 @@ export default function LoginPage() {
             </div>
 
             <button
+              id="login-submit"
               type="submit"
               disabled={loading}
               className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold text-sm transition-all hover:-translate-y-0.5 shadow-lg hover:shadow-violet-500/20"
@@ -241,11 +218,6 @@ export default function LoginPage() {
               Create one free
             </Link>
           </p>
-
-          {/* Demo hint */}
-          <div className="p-3 rounded-lg bg-[#111113] border border-[#27272A] text-[11px] text-zinc-500 text-center">
-            Demo: <code className="text-zinc-300">admin@opspilot.io</code> / <code className="text-zinc-300">admin123</code>
-          </div>
         </div>
       </div>
     </div>

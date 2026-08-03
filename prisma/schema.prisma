@@ -179,14 +179,18 @@ model User {
   avatarUrl     String?
   role          Role           @default(USER)
   isSuperAdmin  Boolean        @default(false)
+  isVerified    Boolean        @default(false)
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   deletedAt     DateTime?
 
-  memberships   Member[]
-  sessions      Session[]
-  refreshTokens RefreshToken[]
-  invitations   Invitation[]   @relation("InvitedBy")
+  memberships        Member[]
+  sessions           Session[]
+  refreshTokens      RefreshToken[]
+  invitations        Invitation[]        @relation("InvitedBy")
+  emailVerifications EmailVerification[]
+  passwordResets     PasswordReset[]
+  oauthAccounts      OAuthAccount[]
 
   @@map("users")
 }
@@ -576,4 +580,46 @@ model AiAnalysisReport {
   @@index([organizationId, createdAt])
   @@index([targetId])
   @@map("ai_analysis_reports")
+}
+
+model EmailVerification {
+  id        String   @id @default(uuid())
+  userId    String
+  email     String
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([email])
+  @@map("email_verifications")
+}
+
+model PasswordReset {
+  id        String   @id @default(uuid())
+  userId    String
+  email     String
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([email])
+  @@map("password_resets")
+}
+
+model OAuthAccount {
+  id         String   @id @default(uuid())
+  userId     String
+  provider   String
+  providerId String
+  createdAt  DateTime @default(now())
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerId])
+  @@index([userId])
+  @@map("oauth_accounts")
 }

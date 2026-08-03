@@ -5,6 +5,12 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { AuthResponseDto } from './dto/auth-response.dto';
+import {
+  VerifyEmailDto,
+  ForgotPasswordDto,
+  ResetPasswordDto,
+  MessageResponseDto,
+} from './dto/auth-flow.dto';
 import { Public } from '../../../core/security/decorators/public.decorator';
 import { CurrentUser } from '../../../core/security/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../../../core/security/guards/jwt-auth.guard';
@@ -18,10 +24,11 @@ export class AuthController {
 
   @Public()
   @Post('register')
-  @ApiOperation({ summary: 'Register a new user account' })
-  @ApiResponse({ status: HttpStatus.CREATED, type: AuthResponseDto })
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Register a new user account and dispatch verification email' })
+  @ApiResponse({ status: HttpStatus.CREATED, type: MessageResponseDto })
   @ApiResponse({ status: HttpStatus.CONFLICT, description: 'Email already exists' })
-  async register(@Body() dto: RegisterDto): Promise<AuthResponseDto> {
+  async register(@Body() dto: RegisterDto): Promise<MessageResponseDto> {
     return this.authService.register(dto);
   }
 
@@ -30,9 +37,41 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Authenticate user credentials' })
   @ApiResponse({ status: HttpStatus.OK, type: AuthResponseDto })
-  @ApiResponse({ status: HttpStatus.UNAUTHORIZED, description: 'Invalid credentials' })
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
+    description: 'Invalid credentials or unverified email',
+  })
   async login(@Body() dto: LoginDto): Promise<AuthResponseDto> {
     return this.authService.login(dto);
+  }
+
+  @Public()
+  @Post('verify-email')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Verify email address using one-time token and issue session tokens' })
+  @ApiResponse({ status: HttpStatus.OK, type: AuthResponseDto })
+  @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Invalid or expired token' })
+  async verifyEmail(@Body() dto: VerifyEmailDto): Promise<AuthResponseDto> {
+    return this.authService.verifyEmail(dto.token);
+  }
+
+  @Public()
+  @Post('forgot-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Request a password reset link sent to registered email' })
+  @ApiResponse({ status: HttpStatus.OK, type: MessageResponseDto })
+  async forgotPassword(@Body() dto: ForgotPasswordDto): Promise<MessageResponseDto> {
+    return this.authService.forgotPassword(dto.email);
+  }
+
+  @Public()
+  @Post('reset-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Reset password using one-time token from email' })
+  @ApiResponse({ status: HttpStatus.OK, type: MessageResponseDto })
+  @ApiResponse({ status: HttpStatus.BAD_REQUEST, description: 'Invalid or expired token' })
+  async resetPassword(@Body() dto: ResetPasswordDto): Promise<MessageResponseDto> {
+    return this.authService.resetPassword(dto.token, dto.newPassword);
   }
 
   @Public()
