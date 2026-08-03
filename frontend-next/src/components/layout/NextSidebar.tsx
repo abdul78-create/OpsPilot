@@ -68,7 +68,7 @@ export function NextSidebar({ collapsed = false, onToggle }: NextSidebarProps) {
 
   React.useEffect(() => {
     if (typeof window !== 'undefined') {
-      const userData = localStorage.getItem('user');
+      const userData = localStorage.getItem('opspilot_user');
       if (userData) {
         try {
           const parsed = JSON.parse(userData);
@@ -88,8 +88,8 @@ export function NextSidebar({ collapsed = false, onToggle }: NextSidebarProps) {
 
   const handleLogout = () => {
     if (typeof window !== 'undefined') {
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('user');
+      localStorage.removeItem('opspilot_token');
+      localStorage.removeItem('opspilot_user');
     }
     toast({ kind: 'info', title: 'Logged out successfully' });
     router.push('/login');

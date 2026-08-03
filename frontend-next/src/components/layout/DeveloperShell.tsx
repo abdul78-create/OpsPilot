@@ -78,8 +78,8 @@ export function DeveloperShell({ children }: DeveloperShellProps) {
   // Authentication check
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const token = localStorage.getItem('access_token');
-      const userData = localStorage.getItem('user');
+      const token = localStorage.getItem('opspilot_token');
+      const userData = localStorage.getItem('opspilot_user');
 
       if (!token) {
         router.push('/login');

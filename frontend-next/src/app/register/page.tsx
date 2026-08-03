@@ -81,18 +81,25 @@ export default function RegisterPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: form.email, password: form.password, name: form.name }),
       });
-      const data = await res.json();
+      
+      let data: any = {};
+      try {
+        data = await res.json();
+      } catch {
+        // Fallback for HTML/text error pages (e.g. Nginx 502/504 gateways)
+      }
+
       if (!res.ok) {
-        setError(data.message || 'Registration failed. Try a different email.');
+        setError(data.message || `HTTP ${res.status}: Registration failed. Try a different email.`);
         return;
       }
       if (typeof window !== 'undefined') {
-        localStorage.setItem('access_token', data.data?.tokens?.accessToken || '');
-        localStorage.setItem('user', JSON.stringify(data.data?.user || {}));
+        localStorage.setItem('opspilot_token', data.data?.tokens?.accessToken || data.tokens?.accessToken || '');
+        localStorage.setItem('opspilot_user', JSON.stringify(data.data?.user || data.user || {}));
       }
-      window.location.href = '/';
+      window.location.href = '/dashboard';
     } catch {
-      setError('Network error. Ensure the backend is running.');
+      setError('Network connection error. Ensure the backend engine is running and CORS is allowed.');
     } finally {
       setLoading(false);
     }
