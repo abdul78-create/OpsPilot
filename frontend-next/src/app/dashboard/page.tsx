@@ -166,6 +166,7 @@ export default function DashboardPage() {
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [scanOpen, setScanOpen] = useState(false);
+  const [userName, setUserName] = useState('Abdul');
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
@@ -173,6 +174,21 @@ export default function DashboardPage() {
   useEffect(() => {
     const load = async () => {
       try {
+        if (typeof window !== 'undefined') {
+          const userData = localStorage.getItem('opspilot_user');
+          if (userData) {
+            try {
+              const parsed = JSON.parse(userData);
+              if (parsed.name) {
+                const firstName = parsed.name.split(' ')[0];
+                setUserName(firstName);
+              }
+            } catch {
+              // Ignore
+            }
+          }
+        }
+
         const [healthRes, runsRes] = await Promise.all([
           fetchSystemHealth().catch(() => null),
           listAllRuns().catch(() => null),
@@ -208,7 +224,7 @@ export default function DashboardPage() {
         <div className="flex items-start justify-between animate-fade-in">
           <div>
             <h1 className="text-2xl font-bold text-white mb-1">
-              {greeting}, Abdul 👋
+              {greeting}, {userName} 👋
             </h1>
             <p className="text-sm text-zinc-500">
               {activeRuns > 0
