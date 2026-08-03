@@ -33,7 +33,7 @@ export class JobExecutorService {
     this.stateMachine.assertValidJobTransition(job.status, JobStatus.RUNNING);
 
     const startedAt = new Date();
-    const running = await this.prisma.pipelineJob.update({
+    await this.prisma.pipelineJob.update({
       where: { id: job.id },
       data: { status: JobStatus.RUNNING, startedAt },
     });
@@ -97,18 +97,25 @@ export class JobExecutorService {
       // Step 2: Execute build command inside isolated Docker container
       let stepCmd = 'echo "Step execution complete"';
       if (job.stage === 'build') {
-        const hasBackend = workspacePath && fs.existsSync(path.join(workspacePath, 'backend', 'package.json'));
-        const hasFrontend = workspacePath && fs.existsSync(path.join(workspacePath, 'frontend', 'package.json'));
-        const hasPrisma = workspacePath && (fs.existsSync(path.join(workspacePath, 'backend', 'prisma')) || fs.existsSync(path.join(workspacePath, 'prisma')));
+        const hasBackend =
+          workspacePath && fs.existsSync(path.join(workspacePath, 'backend', 'package.json'));
+        const hasFrontend =
+          workspacePath && fs.existsSync(path.join(workspacePath, 'frontend', 'package.json'));
+        const hasPrisma =
+          workspacePath &&
+          (fs.existsSync(path.join(workspacePath, 'backend', 'prisma')) ||
+            fs.existsSync(path.join(workspacePath, 'prisma')));
 
         if (hasBackend && hasFrontend) {
           const backendBuild = hasPrisma
             ? 'cd backend && (npm ci --include=dev --ignore-scripts || npm install || true) && (node node_modules/prisma/build/index.js generate || npx prisma generate || true) && (node node_modules/typescript/bin/tsc || npx tsc || true)'
             : 'cd backend && (npm ci --include=dev --ignore-scripts || npm install || true) && (node node_modules/typescript/bin/tsc || npx tsc || true)';
-          const frontendBuild = 'cd frontend && (npm ci --include=dev --ignore-scripts || npm install || true) && (node node_modules/typescript/bin/tsc || true) && (node node_modules/vite/bin/vite.js build || npx vite build || true)';
+          const frontendBuild =
+            'cd frontend && (npm ci --include=dev --ignore-scripts || npm install || true) && (node node_modules/typescript/bin/tsc || true) && (node node_modules/vite/bin/vite.js build || npx vite build || true)';
           stepCmd = `(${backendBuild}) && (${frontendBuild})`;
         } else if (workspacePath && fs.existsSync(path.join(workspacePath, 'package-lock.json'))) {
-          stepCmd = '(npm ci --include=dev --ignore-scripts || npm install || true) && (npm run build || npx tsc || true)';
+          stepCmd =
+            '(npm ci --include=dev --ignore-scripts || npm install || true) && (npm run build || npx tsc || true)';
         } else if (workspacePath && fs.existsSync(path.join(workspacePath, 'package.json'))) {
           stepCmd = '(npm install || true) && (npm run build || npx tsc || true)';
         } else {
@@ -119,8 +126,6 @@ export class JobExecutorService {
       } else if (job.stage === 'deploy') {
         stepCmd = 'echo "Deployment stage complete — container image registered"';
       }
-
-
 
       const { exitCode } = await this.dockerRunner.runStep({
         pipelineRunId: job.pipelineRunId,
@@ -179,7 +184,7 @@ export class JobExecutorService {
 
       this.stateMachine.assertValidJobTransition(JobStatus.RUNNING, JobStatus.FAILED);
 
-      const failed = await this.prisma.pipelineJob.update({
+      await this.prisma.pipelineJob.update({
         where: { id: job.id },
         data: { status: JobStatus.FAILED, finishedAt, durationSeconds },
       });
@@ -219,7 +224,11 @@ export class JobExecutorService {
    * Packages workspace build output into a SHA-256 verified tar.gz archive
    * and persists an Artifact DB record for customer download.
    */
-  private async generateArtifactArchive(pipelineRunId: string, jobId: string, workspacePath: string): Promise<void> {
+  private async generateArtifactArchive(
+    pipelineRunId: string,
+    jobId: string,
+    workspacePath: string,
+  ): Promise<void> {
     try {
       const artifactsDir = process.env.ARTIFACTS_BASE_DIR || '/opspilot-artifacts';
       if (!fs.existsSync(artifactsDir)) {
@@ -230,7 +239,9 @@ export class JobExecutorService {
       const archivePath = path.join(artifactsDir, archiveFileName);
 
       // Create tar.gz archive from workspace output
-      execSync(`tar -czf "${archivePath}" -C "${workspacePath}" . 2>/dev/null || tar -czf "${archivePath}" -C "${workspacePath}" backend frontend`);
+      execSync(
+        `tar -czf "${archivePath}" -C "${workspacePath}" . 2>/dev/null || tar -czf "${archivePath}" -C "${workspacePath}" backend frontend`,
+      );
 
       if (fs.existsSync(archivePath)) {
         const fileBuffer = fs.readFileSync(archivePath);

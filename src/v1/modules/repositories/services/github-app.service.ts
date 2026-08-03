@@ -1,4 +1,4 @@
-import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as crypto from 'crypto';
@@ -38,12 +38,13 @@ export class GitHubAppService {
    */
   generateAppJwt(): string {
     const appId = this.configService.get<string>('GITHUB_APP_ID') || '100001';
-    const privateKey = this.configService.get<string>('GITHUB_APP_PRIVATE_KEY') || 'mock_private_key';
+    const privateKey =
+      this.configService.get<string>('GITHUB_APP_PRIVATE_KEY') || 'mock_private_key';
 
     const now = Math.floor(Date.now() / 1000);
     const payload = {
       iat: now - 60,
-      exp: now + (10 * 60),
+      exp: now + 10 * 60,
       iss: appId,
     };
 
@@ -81,11 +82,13 @@ export class GitHubAppService {
       };
     }
 
-    this.logger.log(`▸ Rotating GitHub App installation access token for Installation '${installationId}'...`);
+    this.logger.log(
+      `▸ Rotating GitHub App installation access token for Installation '${installationId}'...`,
+    );
 
     // Mock/fallback token generation for environments without live GitHub credentials
     const token = `ghs_rot_${crypto.randomBytes(16).toString('hex')}`;
-    const expiresAtMs = now + (60 * 60 * 1000); // 1 Hour TTL
+    const expiresAtMs = now + 60 * 60 * 1000; // 1 Hour TTL
 
     this.tokenCache.set(installationId, { token, expiresAtMs });
 
@@ -103,15 +106,27 @@ export class GitHubAppService {
     this.logger.log(`▸ Fetching GitHub branches for '${owner}/${repo}'`);
     return [
       { name: 'main', commitSha: 'e6f8b1a9c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8', isProtected: true },
-      { name: 'staging', commitSha: 'a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0', isProtected: false },
-      { name: 'development', commitSha: 'f8e7d6c5b4a3f2e1d0c9b8a7f6e5d4c3b2a1f0e9', isProtected: false },
+      {
+        name: 'staging',
+        commitSha: 'a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0',
+        isProtected: false,
+      },
+      {
+        name: 'development',
+        commitSha: 'f8e7d6c5b4a3f2e1d0c9b8a7f6e5d4c3b2a1f0e9',
+        isProtected: false,
+      },
     ];
   }
 
   /**
    * Lists commit history for a repository branch.
    */
-  async listCommits(owner: string, repo: string, branch: string = 'main'): Promise<GitHubCommitInfo[]> {
+  async listCommits(
+    owner: string,
+    repo: string,
+    branch: string = 'main',
+  ): Promise<GitHubCommitInfo[]> {
     this.logger.log(`▸ Fetching GitHub commit history for '${owner}/${repo}' (branch: ${branch})`);
     return [
       {
@@ -138,9 +153,11 @@ export class GitHubAppService {
     owner: string,
     repo: string,
     eventType: string,
-    clientPayload?: Record<string, unknown>,
+    _clientPayload?: Record<string, unknown>,
   ): Promise<{ status: string; eventType: string; dispatchedAt: string }> {
-    this.logger.log(`▸ Dispatching GitHub repository_dispatch event '${eventType}' for '${owner}/${repo}'`);
+    this.logger.log(
+      `▸ Dispatching GitHub repository_dispatch event '${eventType}' for '${owner}/${repo}'`,
+    );
     return {
       status: 'dispatched',
       eventType,

@@ -1,6 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { WorkspaceManagerService } from './workspace-manager.service';
-import * as fs from 'fs';
 
 describe('WorkspaceManagerService', () => {
   let service: WorkspaceManagerService;
@@ -19,7 +18,11 @@ describe('WorkspaceManagerService', () => {
   });
 
   it('should prepare workspace directory lease for pipeline run', async () => {
-    const lease = await service.prepareWorkspace('test_run_123', 'https://github.com/acme-corp/backend-api.git', 'main');
+    const lease = await service.prepareWorkspace(
+      'test_run_123',
+      'https://github.com/acme-corp/backend-api.git',
+      'main',
+    );
 
     expect(lease).toBeDefined();
     expect(lease.pipelineRunId).toBe('test_run_123');

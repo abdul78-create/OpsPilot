@@ -1,4 +1,4 @@
-import { Injectable, LoggerService, LogLevel as NestLogLevel } from '@nestjs/common';
+import { Injectable, LoggerService } from '@nestjs/common';
 import { RequestContextService } from '../context/request-context.service';
 import { LogRedactorUtility } from './log-redactor.utility';
 

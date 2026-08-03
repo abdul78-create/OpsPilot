@@ -135,7 +135,7 @@ export class RepositoriesController {
     @Param('projectId') projectId: string,
     @Param('id') repositoryConnectionId: string,
   ) {
-    const repo = await this.repositoriesService.findById(projectId, repositoryConnectionId);
+    await this.repositoriesService.findById(projectId, repositoryConnectionId);
     const branches = await this.githubAppService.listBranches('abdul78-create', 'StockFlow');
     return {
       message: 'Repository branches retrieved successfully',
@@ -152,7 +152,7 @@ export class RepositoriesController {
     @Param('projectId') projectId: string,
     @Param('id') repositoryConnectionId: string,
   ) {
-    const repo = await this.repositoriesService.findById(projectId, repositoryConnectionId);
+    await this.repositoriesService.findById(projectId, repositoryConnectionId);
     const commits = await this.githubAppService.listCommits('abdul78-create', 'StockFlow', 'main');
     return {
       message: 'Repository commits retrieved successfully',
@@ -170,7 +170,7 @@ export class RepositoriesController {
     @Param('id') repositoryConnectionId: string,
     @Body() body: { eventType?: string; payload?: Record<string, unknown> },
   ) {
-    const repo = await this.repositoriesService.findById(projectId, repositoryConnectionId);
+    await this.repositoriesService.findById(projectId, repositoryConnectionId);
     const result = await this.githubAppService.dispatchWorkflow(
       'abdul78-create',
       'StockFlow',

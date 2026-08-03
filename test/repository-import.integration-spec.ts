@@ -2,7 +2,6 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { RepositoryScannerService } from '../src/v1/modules/repositories/services/repository-scanner.service';
 import { WorkflowCompilerService } from '../src/v1/modules/pipelines/workflow-compiler.service';
 import * as path from 'path';
-import * as fs from 'fs';
 
 describe('RepositoryImportIntegration', () => {
   let scanner: RepositoryScannerService;

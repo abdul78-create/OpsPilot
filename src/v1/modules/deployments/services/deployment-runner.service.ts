@@ -82,11 +82,21 @@ export class DeploymentRunnerService {
     });
 
     if (activeDeployment) {
-      await this.log(runId, LogLevel.WARN, `🔒 Deployment Mutex Locked: Environment '${deployment.environment.name}' is currently locked by active deployment '${activeDeployment.id}'. Aborting concurrent race condition.`);
-      throw new Error(`Environment '${deployment.environment.name}' is locked by active deployment '${activeDeployment.id}'`);
+      await this.log(
+        runId,
+        LogLevel.WARN,
+        `🔒 Deployment Mutex Locked: Environment '${deployment.environment.name}' is currently locked by active deployment '${activeDeployment.id}'. Aborting concurrent race condition.`,
+      );
+      throw new Error(
+        `Environment '${deployment.environment.name}' is locked by active deployment '${activeDeployment.id}'`,
+      );
     }
 
-    await this.log(runId, LogLevel.INFO, `▸ Starting deployment '${deployment.id}' (Version: ${deployment.releaseVersion}) → Environment: ${deployment.environment.name}`);
+    await this.log(
+      runId,
+      LogLevel.INFO,
+      `▸ Starting deployment '${deployment.id}' (Version: ${deployment.releaseVersion}) → Environment: ${deployment.environment.name}`,
+    );
 
     // Update status to IN_PROGRESS (Acquire Lock)
     await this.prisma.deployment.update({
@@ -96,7 +106,7 @@ export class DeploymentRunnerService {
 
     try {
       // Find associated Artifact
-      let artifact = deployment.artifactId
+      const artifact = deployment.artifactId
         ? await this.prisma.artifact.findUnique({ where: { id: deployment.artifactId } })
         : deployment.pipelineRun.artifacts[0];
 
@@ -104,7 +114,11 @@ export class DeploymentRunnerService {
         throw new Error(`No available build artifact found for Pipeline Run '${runId}'`);
       }
 
-      await this.log(runId, LogLevel.INFO, `▸ Deploying artifact '${artifact.name}' (SHA-256: ${artifact.checksum.substring(0, 12)}...)`);
+      await this.log(
+        runId,
+        LogLevel.INFO,
+        `▸ Deploying artifact '${artifact.name}' (SHA-256: ${artifact.checksum.substring(0, 12)}...)`,
+      );
 
       if (!fs.existsSync(artifact.storageLocation)) {
         throw new Error(`Artifact archive file missing at '${artifact.storageLocation}'`);
@@ -118,9 +132,15 @@ export class DeploymentRunnerService {
       }
       fs.mkdirSync(deployDir, { recursive: true });
 
-      execSync(`tar -xzf "${artifact.storageLocation}" -C "${deployDir}" 2>/dev/null || unzip -q "${artifact.storageLocation}" -d "${deployDir}" 2>/dev/null || cp "${artifact.storageLocation}" "${deployDir}/"`);
+      execSync(
+        `tar -xzf "${artifact.storageLocation}" -C "${deployDir}" 2>/dev/null || unzip -q "${artifact.storageLocation}" -d "${deployDir}" 2>/dev/null || cp "${artifact.storageLocation}" "${deployDir}/"`,
+      );
 
-      await this.log(runId, LogLevel.INFO, `✓ Artifact unpacked to runtime directory: ${deployDir}`);
+      await this.log(
+        runId,
+        LogLevel.INFO,
+        `✓ Artifact unpacked to runtime directory: ${deployDir}`,
+      );
 
       // Create live target runtime server script inside deployDir
       const targetVersion = deployment.releaseVersion;
@@ -154,13 +174,25 @@ server.listen(8080, '0.0.0.0', () => {
       let containerId = 'local_proc';
       try {
         containerId = execSync(containerCmd).toString().trim().substring(0, 12);
-        await this.log(runId, LogLevel.INFO, `✓ Live container launched: ${containerName} (ID: ${containerId}) → Target Port: 8080`);
+        await this.log(
+          runId,
+          LogLevel.INFO,
+          `✓ Live container launched: ${containerName} (ID: ${containerId}) → Target Port: 8080`,
+        );
       } catch (err) {
-        await this.log(runId, LogLevel.WARN, `Container launch fallback: ${(err as Error).message}`);
+        await this.log(
+          runId,
+          LogLevel.WARN,
+          `Container launch fallback: ${(err as Error).message}`,
+        );
       }
 
       // Perform Automated HTTP Health Verification over network using native HTTP client
-      await this.log(runId, LogLevel.INFO, `▸ Performing HTTP Health Verification against GET http://opspilot_app_target:8080/health...`);
+      await this.log(
+        runId,
+        LogLevel.INFO,
+        `▸ Performing HTTP Health Verification against GET http://opspilot_app_target:8080/health...`,
+      );
 
       let healthResponseText = '';
       let healthStatusCode = 0;
@@ -177,10 +209,16 @@ server.listen(8080, '0.0.0.0', () => {
       }
 
       if (healthStatusCode !== 200) {
-        throw new Error(`Health check failed with status ${healthStatusCode}: ${healthResponseText || 'No response'}`);
+        throw new Error(
+          `Health check failed with status ${healthStatusCode}: ${healthResponseText || 'No response'}`,
+        );
       }
 
-      await this.log(runId, LogLevel.INFO, `✓ HTTP GET http://opspilot_app_target:8080/health → Status 200 OK`);
+      await this.log(
+        runId,
+        LogLevel.INFO,
+        `✓ HTTP GET http://opspilot_app_target:8080/health → Status 200 OK`,
+      );
       await this.log(runId, LogLevel.INFO, `  Response: ${healthResponseText}`);
 
       const healthStatus = `200 OK · Container: ${containerId} · Version: ${targetVersion}`;
@@ -188,7 +226,7 @@ server.listen(8080, '0.0.0.0', () => {
       const finishedAt = new Date();
       const durationSeconds = Math.round((finishedAt.getTime() - startedAt.getTime()) / 1000);
 
-      const updated = await this.prisma.deployment.update({
+      await this.prisma.deployment.update({
         where: { id: deploymentId },
         data: {
           artifactId: artifact.id,
@@ -198,7 +236,11 @@ server.listen(8080, '0.0.0.0', () => {
         },
       });
 
-      await this.log(runId, LogLevel.INFO, `✓ Deployment '${deploymentId}' completed successfully in ${durationSeconds}s · Health: ${healthStatus}`);
+      await this.log(
+        runId,
+        LogLevel.INFO,
+        `✓ Deployment '${deploymentId}' completed successfully in ${durationSeconds}s · Health: ${healthStatus}`,
+      );
 
       await this.eventBus.publish({
         eventId: `evt_${Date.now()}`,

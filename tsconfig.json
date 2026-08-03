@@ -25,6 +25,6 @@
       "@v1/*": ["src/v1/*"]
     }
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "test/**/*"],
   "exclude": ["node_modules", "dist", "frontend", "frontend-next"]
 }

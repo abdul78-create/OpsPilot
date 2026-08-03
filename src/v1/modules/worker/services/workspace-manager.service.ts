@@ -2,7 +2,6 @@ import { Injectable, Logger } from '@nestjs/common';
 import { spawn } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
-import * as os from 'os';
 
 export interface WorkspaceLease {
   pipelineRunId: string;
@@ -22,7 +21,9 @@ export class WorkspaceManagerService {
         fs.mkdirSync(this.baseWorkspaceDir, { recursive: true });
       }
     } catch (err) {
-      this.logger.warn(`Could not create workspace base dir '${this.baseWorkspaceDir}': ${(err as Error).message}`);
+      this.logger.warn(
+        `Could not create workspace base dir '${this.baseWorkspaceDir}': ${(err as Error).message}`,
+      );
     }
   }
 
@@ -39,7 +40,11 @@ export class WorkspaceManagerService {
    * Prepares a workspace volume mount directory and clones the target Git repository into it.
    * Throws if git clone exits with non-zero code.
    */
-  async prepareWorkspace(pipelineRunId: string, repoUrl: string, branch: string = 'main'): Promise<WorkspaceLease> {
+  async prepareWorkspace(
+    pipelineRunId: string,
+    repoUrl: string,
+    branch: string = 'main',
+  ): Promise<WorkspaceLease> {
     const workspacePath = this.getSafeWorkspacePath(pipelineRunId);
 
     // Normalise URL: strip trailing .git suffix for anonymous HTTPS clones
@@ -91,7 +96,9 @@ export class WorkspaceManagerService {
     try {
       await this.runGitClone(['clone', '--depth', '1', '--branch', branch, repoUrl, targetPath]);
     } catch (firstErr) {
-      this.logger.warn(`Primary branch clone ('${branch}') failed, trying default branch: ${(firstErr as Error).message}`);
+      this.logger.warn(
+        `Primary branch clone ('${branch}') failed, trying default branch: ${(firstErr as Error).message}`,
+      );
       // Clean up directory if partial clone created
       if (fs.existsSync(targetPath)) {
         fs.rmSync(targetPath, { recursive: true, force: true });
