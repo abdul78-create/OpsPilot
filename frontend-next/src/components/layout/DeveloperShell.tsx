@@ -66,11 +66,41 @@ export function DeveloperShell({ children }: DeveloperShellProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [_user, setUser] = useState<{ name: string; email: string } | null>(null);
+  const [workspaceName, setWorkspaceName] = useState('Acme Corp');
   
   // State variables for notifications, palette, cheat sheet
   const [notifications, setNotifications] = useState<NotificationItem[]>(SEEDED_NOTIFICATIONS);
   const [notifOpen, setNotifOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+
+  // Authentication check
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem('access_token');
+      const userData = localStorage.getItem('user');
+
+      if (!token) {
+        router.push('/login');
+      } else {
+        if (userData) {
+          try {
+            const parsedUser = JSON.parse(userData);
+            setUser(parsedUser);
+            if (parsedUser.company) {
+              setWorkspaceName(parsedUser.company);
+            } else if (parsedUser.name) {
+              setWorkspaceName(`${parsedUser.name}'s Org`);
+            }
+          } catch {
+            // Ignore
+          }
+        }
+        setLoading(false);
+      }
+    }
+  }, [router]);
   
   const segments = pathname.split('/').filter(Boolean);
   const topSegment = segments[0] ?? '';
@@ -112,7 +142,7 @@ export function DeveloperShell({ children }: DeveloperShellProps) {
       if (lastKey === 'g') {
         if (key === 'd') {
           e.preventDefault();
-          router.push('/');
+          router.push('/dashboard');
         } else if (key === 'p') {
           e.preventDefault();
           router.push('/pipelines');
@@ -148,6 +178,21 @@ export function DeveloperShell({ children }: DeveloperShellProps) {
 
   const unreadCount = notifications.filter((n) => n.unread).length;
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-[#09090B] text-zinc-100 font-sans">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-600 to-blue-600 flex items-center justify-center animate-pulse shadow-lg">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </div>
+          <p className="text-[11px] font-semibold text-zinc-500 tracking-wider uppercase animate-pulse">Loading OpsPilot...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-screen bg-[#09090B] text-zinc-100 font-sans antialiased">
       {/* Global CmdK Command Palette Overlay */}
@@ -165,7 +210,7 @@ export function DeveloperShell({ children }: DeveloperShellProps) {
         <header className="h-14 px-5 border-b border-[#1C1C1F] bg-[#09090B]/80 backdrop-blur-xl flex items-center justify-between sticky top-0 z-30 select-none">
           {/* Breadcrumb */}
           <div className="flex items-center gap-1.5 text-xs font-medium text-zinc-500">
-            <span className="hover:text-zinc-300 transition-colors cursor-pointer">Acme Corp</span>
+            <span className="hover:text-zinc-300 transition-colors cursor-pointer">{workspaceName}</span>
             <ChevronRight size={12} className="text-zinc-700" />
             <span className="text-zinc-200 font-semibold">{pageLabel}</span>
           </div>

@@ -27,7 +27,7 @@ const NAV_SECTIONS = [
   {
     label: 'Platform',
     links: [
-      { to: '/', icon: LayoutDashboard, label: 'Overview', exact: true },
+      { to: '/dashboard', icon: LayoutDashboard, label: 'Overview', exact: true },
       { to: '/pipelines', icon: GitBranch, label: 'Pipelines' },
       { to: '/runs', icon: PlayCircle, label: 'Runs' },
       { to: '/deployments', icon: Rocket, label: 'Deployments' },
@@ -63,6 +63,28 @@ export function NextSidebar({ collapsed = false, onToggle }: NextSidebarProps) {
   const [workspaceMenuOpen, setWorkspaceMenuOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [activeWorkspace, setActiveWorkspace] = useState('Acme Corp');
+  const [userName, setUserName] = useState('Alice Chen');
+  const [userEmail, setUserEmail] = useState('admin@opspilot.ai');
+
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const userData = localStorage.getItem('user');
+      if (userData) {
+        try {
+          const parsed = JSON.parse(userData);
+          if (parsed.name) setUserName(parsed.name);
+          if (parsed.email) setUserEmail(parsed.email);
+          if (parsed.company) {
+            setActiveWorkspace(parsed.company);
+          } else if (parsed.name) {
+            setActiveWorkspace(`${parsed.name}'s Org`);
+          }
+        } catch {
+          // Ignore
+        }
+      }
+    }
+  }, []);
 
   const handleLogout = () => {
     if (typeof window !== 'undefined') {
@@ -95,7 +117,7 @@ export function NextSidebar({ collapsed = false, onToggle }: NextSidebarProps) {
       {/* Brand Header */}
       <div className="h-14 px-3 border-b border-[#1C1C1F] flex items-center justify-between gap-2 shrink-0">
         {!collapsed && (
-          <Link href="/" className="flex items-center gap-2.5 min-w-0 group">
+          <Link href="/dashboard" className="flex items-center gap-2.5 min-w-0 group">
             <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-violet-600 to-blue-600 flex items-center justify-center shrink-0 shadow-lg group-hover:shadow-violet-500/20 transition-shadow">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
                 <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -105,7 +127,7 @@ export function NextSidebar({ collapsed = false, onToggle }: NextSidebarProps) {
           </Link>
         )}
         {collapsed && (
-          <Link href="/" className="mx-auto">
+          <Link href="/dashboard" className="mx-auto">
             <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-violet-600 to-blue-600 flex items-center justify-center shadow-lg">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
                 <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -208,11 +230,11 @@ export function NextSidebar({ collapsed = false, onToggle }: NextSidebarProps) {
         >
           <div className="flex items-center gap-2 min-w-0">
             <div className="w-6 h-6 rounded-full bg-gradient-to-br from-violet-600 to-blue-600 flex items-center justify-center text-white text-[10px] font-bold shrink-0">
-              A
+              {userName.charAt(0).toUpperCase()}
             </div>
             {!collapsed && (
               <div className="min-w-0">
-                <p className="text-xs font-medium text-zinc-200 truncate">Alice Chen</p>
+                <p className="text-xs font-medium text-zinc-200 truncate">{userName}</p>
                 <p className="text-[10px] text-zinc-500 truncate">Admin</p>
               </div>
             )}
@@ -232,8 +254,8 @@ export function NextSidebar({ collapsed = false, onToggle }: NextSidebarProps) {
         {!collapsed && profileMenuOpen && (
           <div className="absolute bottom-12 left-2 right-2 z-50 bg-[#111113] border border-[#27272A] rounded-lg shadow-xl py-1.5 overflow-hidden animate-slide-up">
             <div className="px-2.5 py-1.5 border-b border-[#1C1C1F] mb-1">
-              <p className="text-xs font-semibold text-zinc-200">Alice Chen</p>
-              <p className="text-[10px] text-zinc-500 font-mono truncate">admin@opspilot.ai</p>
+              <p className="text-xs font-semibold text-zinc-200">{userName}</p>
+              <p className="text-[10px] text-zinc-500 font-mono truncate">{userEmail}</p>
             </div>
             
             <button

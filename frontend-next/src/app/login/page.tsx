@@ -45,7 +45,8 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const res = await fetch('/v1/auth/login', {
+      const apiBase = process.env.NEXT_PUBLIC_API_URL || '';
+      const res = await fetch(`${apiBase}/v1/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
