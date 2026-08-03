@@ -33,11 +33,21 @@ async function main() {
         name,
         role: 'ADMIN',
         isSuperAdmin: true,
+        isVerified: true,
       },
     });
     console.log(`✓ User '${email}' created successfully.`);
   } else {
-    console.log(`✓ User '${email}' already exists.`);
+    // Ensure existing admin is verified (migration may have set default false)
+    if (!user.isVerified) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { isVerified: true },
+      });
+      console.log(`✓ Patched isVerified=true for existing user '${email}'.`);
+    } else {
+      console.log(`✓ User '${email}' already exists and is verified.`);
+    }
   }
 
   // 2. Create Default Organization
