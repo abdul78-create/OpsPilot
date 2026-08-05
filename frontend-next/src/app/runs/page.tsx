@@ -8,7 +8,6 @@ import {
   Circle, Filter, Search, GitCommit, GitBranch, ChevronRight, X, Download,
 } from 'lucide-react';
 import { listAllRuns, cancelRun, PipelineRun } from '@/lib/apiClient';
-import { DEMO_RUNS, isDemoMode } from '@/lib/demoData';
 import { useToast } from '@/components/ui/Toast';
 
 /* ── Helpers ───────────────────────────────────── */
@@ -67,27 +66,12 @@ export default function RunsPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
-
-    if (isDemoMode()) {
-      setRuns(DEMO_RUNS as PipelineRun[]);
-      setLoading(false);
-      return;
-    }
-
     try {
       const res = await listAllRuns();
-      if (Array.isArray(res) && res.length > 0) {
-        setRuns(res);
-      } else {
-        setRuns(DEMO_RUNS as PipelineRun[]);
-      }
-    } catch {
-      setRuns(DEMO_RUNS as PipelineRun[]);
-    } finally {
-      setLoading(false);
-    }
+      if (Array.isArray(res)) setRuns(res);
+    } catch { /* silent */ }
+    finally { setLoading(false); }
   }, []);
-
 
   useEffect(() => { load(); }, [load]);
 
@@ -118,167 +102,136 @@ export default function RunsPage() {
     }
   };
 
-  const statusCounts = ALL_STATUSES.reduce((acc, s) => {
-    acc[s] = runs.filter(r => r.status === s).length;
-    return acc;
-  }, {} as Record<RunStatus, number>);
-
   return (
     <DeveloperShell>
-      <div className="p-6 space-y-5 max-w-7xl mx-auto">
+      <div className="flex flex-col h-[calc(100vh-5.5rem)] space-y-3">
+
         {/* Header */}
-        <div className="flex items-start justify-between animate-fade-in">
-          <div>
-            <h1 className="text-xl font-bold text-white mb-1">Pipeline Runs</h1>
-            <p className="text-sm text-zinc-500">
-              {runs.length} total runs · {statusCounts.RUNNING ?? 0} active
-            </p>
+        <div className="h-14 px-4 rounded-xl bg-[#111113] border border-[#27272A] flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-3">
+            <Activity size={16} className="text-violet-400" />
+            <h1 className="text-sm font-bold text-zinc-100">Pipeline Runs</h1>
+            <span className="text-[10px] font-mono text-zinc-500 border border-[#27272A] px-2 py-0.5 rounded-full">
+              {filtered.length} runs
+            </span>
           </div>
-          <button
-            onClick={() => load()}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[#111113] border border-[#27272A] hover:border-[#3F3F46] text-zinc-400 hover:text-zinc-200 text-xs font-medium transition-all"
-          >
-            <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
-            Refresh
-          </button>
+
+          <div className="flex items-center gap-2">
+            <button onClick={load} className="flex items-center gap-1.5 text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors">
+              <RefreshCw size={12} className={loading ? 'animate-spin' : ''} /> Refresh
+            </button>
+          </div>
         </div>
 
-        {/* Status Filter Tabs */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 animate-slide-up delay-75">
-          {(['ALL', ...ALL_STATUSES] as const).map((s) => {
-            const count = s === 'ALL' ? runs.length : statusCounts[s] ?? 0;
-            const active = statusFilter === s;
-            return (
+        {/* Filters */}
+        <div className="flex items-center gap-3 shrink-0">
+          <div className="relative flex-1 max-w-sm">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
+            <input
+              type="text"
+              value={search}
+              onChange={e => { setSearch(e.target.value); setPage(1); }}
+              placeholder="Filter by repo, branch, or commit..."
+              className="w-full pl-9 pr-3 py-1.5 rounded-lg bg-[#111113] border border-[#27272A] text-xs text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-violet-500/50"
+            />
+          </div>
+
+          <div className="flex items-center gap-1 bg-[#111113] border border-[#27272A] rounded-lg p-1">
+            <button
+              onClick={() => { setStatusFilter('ALL'); setPage(1); }}
+              className={`px-2.5 py-1 rounded text-[10px] font-semibold transition-colors ${statusFilter === 'ALL' ? 'bg-[#27272A] text-white' : 'text-zinc-400 hover:text-zinc-200'}`}
+            >
+              ALL
+            </button>
+            {ALL_STATUSES.map(s => (
               <button
                 key={s}
                 onClick={() => { setStatusFilter(s); setPage(1); }}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap border ${
-                  active
-                    ? 'bg-violet-600/15 text-violet-300 border-violet-500/30'
-                    : 'bg-[#111113] text-zinc-500 border-[#27272A] hover:text-zinc-300 hover:border-[#3F3F46]'
-                }`}
+                className={`px-2.5 py-1 rounded text-[10px] font-semibold transition-colors ${statusFilter === s ? 'bg-[#27272A] text-white' : 'text-zinc-400 hover:text-zinc-200'}`}
               >
-                {s === 'ALL' ? <Activity size={11} /> : null}
                 {s}
-                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${active ? 'bg-violet-500/20 text-violet-300' : 'bg-[#18181B] text-zinc-600'}`}>
-                  {count}
-                </span>
               </button>
-            );
-          })}
+            ))}
+          </div>
         </div>
 
-        {/* Search Bar */}
-        <div className="relative animate-slide-up delay-100">
-          <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-600 pointer-events-none" />
-          <input
-            type="text"
-            value={search}
-            onChange={e => { setSearch(e.target.value); setPage(1); }}
-            placeholder="Search by repo, branch, or commit SHA..."
-            className="w-full pl-9 pr-4 py-2.5 bg-[#111113] border border-[#27272A] focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 focus:outline-none rounded-xl text-sm text-zinc-200 placeholder:text-zinc-600 transition-all"
-          />
-        </div>
-
-        {/* Runs Table */}
-        <div className="bg-[#111113] border border-[#27272A] rounded-xl overflow-hidden animate-slide-up delay-150">
-          {/* Table Header */}
-          <div className="grid grid-cols-[140px_1fr_100px_80px_80px_36px] gap-4 px-5 py-3 border-b border-[#1C1C1F] text-[11px] font-semibold text-zinc-600 uppercase tracking-widest">
-            <span>Status</span>
-            <span>Repository</span>
-            <span>Branch</span>
-            <span>Duration</span>
-            <span>Started</span>
-            <span />
+        {/* Table / List */}
+        <div className="flex-1 min-h-0 bg-[#111113] border border-[#27272A] rounded-xl overflow-hidden flex flex-col">
+          <div className="h-9 px-4 border-b border-[#27272A] flex items-center gap-4 text-[10px] font-bold text-zinc-500 uppercase tracking-wider shrink-0 bg-[#18181B]/40">
+            <span className="w-24">Status</span>
+            <span className="w-48">Repository</span>
+            <span className="w-32">Branch</span>
+            <span className="w-24">Commit</span>
+            <span className="w-24 text-right">Duration</span>
+            <span className="flex-1 text-right">Started</span>
+            <span className="w-16"></span>
           </div>
 
-          {loading ? (
-            <div className="divide-y divide-[#1C1C1F]">
-              {Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} className="grid grid-cols-[140px_1fr_100px_80px_80px_36px] gap-4 px-5 py-4 items-center">
-                  <div className="skeleton h-5 w-20 rounded-full" />
-                  <div className="skeleton h-3.5 w-full rounded" />
-                  <div className="skeleton h-3 w-16 rounded" />
-                  <div className="skeleton h-3 w-10 rounded" />
-                  <div className="skeleton h-3 w-14 rounded" />
-                  <div className="skeleton h-3 w-6 rounded" />
-                </div>
-              ))}
-            </div>
-          ) : paginated.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 text-center">
-              <div className="w-12 h-12 rounded-xl bg-[#18181B] flex items-center justify-center mb-4">
-                <Play size={20} className="text-zinc-600" />
+          <div className="flex-1 overflow-y-auto divide-y divide-[#1C1C1F]">
+            {loading ? (
+              <div className="p-4 space-y-3">
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <div key={i} className="flex items-center gap-4">
+                    <div className="skeleton h-5 w-20 rounded-full" />
+                    <div className="skeleton h-4 w-40 rounded" />
+                    <div className="skeleton h-4 w-24 rounded" />
+                    <div className="skeleton h-4 w-16 rounded" />
+                  </div>
+                ))}
               </div>
-              <p className="text-sm font-medium text-zinc-400 mb-1">No runs found</p>
-              <p className="text-xs text-zinc-600">
-                {search ? 'Try a different search term' : 'Trigger a pipeline to see runs here'}
-              </p>
-            </div>
-          ) : (
-            <div className="divide-y divide-[#1C1C1F]">
-              {paginated.map((run) => (
+            ) : paginated.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 text-center">
+                <Activity size={32} className="text-zinc-600 mb-2" />
+                <p className="text-sm font-medium text-zinc-400">No runs match criteria</p>
+              </div>
+            ) : (
+              paginated.map(r => (
                 <div
-                  key={run.id}
-                  onClick={() => router.push(`/runs/${run.id}`)}
-                  className="grid grid-cols-[140px_1fr_100px_80px_80px_36px] gap-4 px-5 py-3.5 items-center hover:bg-[#18181B] cursor-pointer transition-colors group"
+                  key={r.id}
+                  onClick={() => router.push(`/runs/${r.id}`)}
+                  className="h-12 px-4 flex items-center gap-4 text-xs cursor-pointer hover:bg-[#18181B]/35 transition-colors group"
                 >
-                  <StatusPill status={run.status as RunStatus} />
-
-                  <div className="min-w-0">
-                    <p className="text-xs font-semibold text-zinc-200 truncate group-hover:text-white transition-colors">
-                      {shortRepo(run.repositoryUrl)}
-                    </p>
-                    <p className="text-[11px] text-zinc-600 flex items-center gap-1 mt-0.5">
-                      <GitCommit size={10} /> {shortSha(run.commitSha)}
-                    </p>
+                  <div className="w-24">
+                    <StatusPill status={r.status} />
                   </div>
 
-                  <div className="min-w-0">
-                    {run.branch && (
-                      <span className="inline-flex items-center gap-1 text-[11px] text-zinc-500 truncate max-w-full">
-                        <GitBranch size={10} /> {run.branch}
-                      </span>
-                    )}
+                  <div className="w-48 font-medium text-zinc-200 group-hover:text-white truncate">
+                    {shortRepo(r.repositoryUrl)}
                   </div>
 
-                  <span className="text-[11px] text-zinc-500 flex items-center gap-1">
-                    {run.durationSeconds ? (
-                      <><Clock size={11} /> {run.durationSeconds}s</>
-                    ) : '—'}
-                  </span>
+                  <div className="w-32 font-mono text-[11px] text-zinc-400 flex items-center gap-1 truncate">
+                    <GitBranch size={10} className="text-zinc-500 shrink-0" />
+                    <span className="truncate">{r.branch ?? 'main'}</span>
+                  </div>
 
-                  <span className="text-[11px] text-zinc-500">{timeAgo(run.startedAt)}</span>
+                  <div className="w-24 font-mono text-[11px] text-zinc-500 flex items-center gap-1">
+                    <GitCommit size={10} className="text-zinc-600 shrink-0" />
+                    <span>{shortSha(r.commitSha)}</span>
+                  </div>
 
-                  <div className="flex items-center gap-1">
-                    {(run.status === 'RUNNING' || run.status === 'QUEUED') && (
+                  <div className="w-24 text-right font-mono text-[11px] text-zinc-400">
+                    {r.durationSeconds ? `${r.durationSeconds}s` : '—'}
+                  </div>
+
+                  <div className="flex-1 text-right text-[11px] text-zinc-500 font-mono">
+                    {timeAgo(r.startedAt ?? r.createdAt)}
+                  </div>
+
+                  <div className="w-16 flex justify-end">
+                    {r.status === 'RUNNING' && (
                       <button
-                        onClick={(e) => handleCancel(run.id, e)}
-                        disabled={cancelling === run.id}
-                        title="Cancel run"
-                        className="p-1 rounded text-zinc-700 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                        onClick={e => handleCancel(r.id, e)}
+                        disabled={cancelling === r.id}
+                        className="text-[10px] text-red-400 hover:text-red-300 font-semibold px-2 py-0.5 rounded border border-red-500/30 hover:border-red-500/50 transition-colors"
                       >
-                        {cancelling === run.id ? <Loader2 size={12} className="animate-spin" /> : <X size={12} />}
+                        Cancel
                       </button>
                     )}
-                    <ChevronRight size={14} className="text-zinc-700 group-hover:text-zinc-400 transition-colors" />
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-
-          {/* Load More */}
-          {hasMore && (
-            <div className="border-t border-[#1C1C1F] p-3 text-center">
-              <button
-                onClick={() => setPage(p => p + 1)}
-                className="text-xs text-violet-400 hover:text-violet-300 font-medium transition-colors"
-              >
-                Load {Math.min(PAGE_SIZE, filtered.length - paginated.length)} more
-              </button>
-            </div>
-          )}
+              ))
+            )}
+          </div>
         </div>
       </div>
     </DeveloperShell>

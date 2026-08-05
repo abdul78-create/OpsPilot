@@ -9,7 +9,6 @@ import {
 import {
   listPipelines, triggerPipeline, Pipeline,
 } from '@/lib/apiClient';
-import { DEMO_PIPELINES, isDemoMode } from '@/lib/demoData';
 import {
   SkeletonTableRows, EmptyState, StatusPill, SearchInput, Pagination,
 } from '@/components/ui/Primitives';
@@ -39,41 +38,25 @@ export default function PipelinesPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
-
-    if (isDemoMode()) {
-      setPipelines(DEMO_PIPELINES as Pipeline[]);
-      setLoading(false);
-      return;
-    }
-
     try {
       const res = await listPipelines();
-      if (Array.isArray(res.data) && res.data.length > 0) {
-        setPipelines(res.data);
-      } else {
-        setPipelines(DEMO_PIPELINES as Pipeline[]);
-      }
+      setPipelines(res.data ?? []);
     } catch {
-      setPipelines(DEMO_PIPELINES as Pipeline[]);
+      toast({ kind: 'error', title: 'Failed to load pipelines' });
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [toast]);
 
   useEffect(() => { load(); }, [load]);
 
   const handleTrigger = async (p: Pipeline) => {
     setTriggering(p.id);
     try {
-      if (isDemoMode()) {
-        toast({ kind: 'success', title: 'Pipeline triggered (Demo)', message: `Run #run_demo_${Date.now().toString().slice(-4)} queued` });
-        setTimeout(() => router.push('/runs'), 600);
-        return;
-      }
       const res = await triggerPipeline(p.id, p.branch);
       const runId = res.data.id;
       toast({ kind: 'success', title: 'Pipeline triggered', message: `Run #${runId.slice(0, 8)} queued` });
-      router.push(`/runs/${runId}`);
+      router.push(`/runs`);
     } catch {
       toast({ kind: 'error', title: 'Trigger failed', message: 'Check your pipeline config' });
     } finally {

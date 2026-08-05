@@ -8,7 +8,6 @@ import {
   XCircle, AlertTriangle, Loader2, History, ExternalLink,
 } from 'lucide-react';
 import { listDeployments, rollbackDeployment, Deployment } from '@/lib/apiClient';
-import { DEMO_DEPLOYMENTS, isDemoMode } from '@/lib/demoData';
 import { SkeletonTableRows, EmptyState, StatusPill, SearchInput, ConfirmDialog } from '@/components/ui/Primitives';
 import { useToast } from '@/components/ui/Toast';
 
@@ -36,27 +35,15 @@ export default function DeploymentsPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
-
-    if (isDemoMode()) {
-      setDeployments(DEMO_DEPLOYMENTS as Deployment[]);
-      setLoading(false);
-      return;
-    }
-
     try {
       const res = await listDeployments();
-      if (Array.isArray(res.data) && res.data.length > 0) {
-        setDeployments(res.data);
-      } else {
-        setDeployments(DEMO_DEPLOYMENTS as Deployment[]);
-      }
+      setDeployments(res.data ?? []);
     } catch {
-      setDeployments(DEMO_DEPLOYMENTS as Deployment[]);
+      toast({ kind: 'error', title: 'Failed to load deployments' });
     } finally {
       setLoading(false);
     }
-  }, []);
-
+  }, [toast]);
 
   useEffect(() => { load(); const iv = setInterval(load, 30000); return () => clearInterval(iv); }, [load]);
 
@@ -84,7 +71,6 @@ export default function DeploymentsPage() {
     deployments: filtered.filter(d => (d.environment ?? '').toLowerCase() === env),
   })).filter(g => g.deployments.length > 0);
 
-  // Add any environments not in the order list
   const knownEnvs = new Set(ENV_ORDER);
   const otherEnvs = [...new Set(filtered.map(d => d.environment ?? 'unknown').filter(e => !knownEnvs.has(e)))];
   otherEnvs.forEach(env => byEnv.push({ env, deployments: filtered.filter(d => (d.environment ?? 'unknown') === env) }));
@@ -118,93 +104,69 @@ export default function DeploymentsPage() {
           </button>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-4 gap-3 shrink-0">
-          {[
-            { label: 'Total', value: stats.total, color: 'text-zinc-400' },
-            { label: 'Active', value: stats.active, color: 'text-emerald-400' },
-            { label: 'Failed', value: stats.failed, color: 'text-rose-400' },
-            { label: 'Rolled Back', value: stats.rolledBack, color: 'text-amber-400' },
-          ].map(({ label, value, color }) => (
-            <div key={label} className="bg-[#111113] border border-[#27272A] rounded-xl p-3">
-              <div className="text-[10px] text-zinc-500 uppercase tracking-wider">{label}</div>
-              <div className={`text-2xl font-bold font-mono ${color}`}>{value}</div>
-            </div>
-          ))}
-        </div>
-
         {/* Search */}
         <div className="shrink-0 max-w-sm">
-          <SearchInput value={search} onChange={setSearch} placeholder="Search by environment, version..." />
+          <SearchInput value={search} onChange={setSearch} placeholder="Filter environments or image tags..." />
         </div>
 
-        {/* Deployment groups */}
-        <div className="flex-1 min-h-0 overflow-y-auto space-y-3">
+        {/* List by Environment */}
+        <div className="flex-1 min-h-0 overflow-y-auto space-y-4 pr-1">
           {loading ? (
-            <div className="bg-[#111113] border border-[#27272A] rounded-xl overflow-hidden">
-              <SkeletonTableRows rows={4} cols={5} />
+            <div className="bg-[#111113] border border-[#27272A] rounded-xl p-4">
+              <SkeletonTableRows rows={4} cols={4} />
             </div>
           ) : byEnv.length === 0 ? (
             <div className="bg-[#111113] border border-[#27272A] rounded-xl">
-              <EmptyState
-                icon={<Rocket size={32} />}
-                title="No deployments yet"
-                description="Deployments are created when a pipeline run completes successfully"
-              />
+              <EmptyState icon={<Rocket size={32} />} title="No deployments" description="Trigger a pipeline to deploy your first version" />
             </div>
           ) : (
             byEnv.map(({ env, deployments: envDeps }) => (
               <div key={env} className="bg-[#111113] border border-[#27272A] rounded-xl overflow-hidden">
-                <div className="h-9 px-4 border-b border-[#27272A] flex items-center gap-2 bg-[#18181B]/40">
-                  <Globe size={12} className="text-zinc-500" />
-                  <span className="text-[11px] font-bold text-zinc-300 uppercase tracking-wider">{env}</span>
-                  <span className="text-[10px] text-zinc-600 font-mono">{envDeps.length} deployment{envDeps.length !== 1 ? 's' : ''}</span>
+                <div className="h-10 px-4 bg-[#18181B]/50 border-b border-[#27272A] flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Globe size={13} className="text-violet-400" />
+                    <span className="text-xs font-bold text-zinc-200 capitalize">{env}</span>
+                    <span className="text-[10px] font-mono text-zinc-500">({envDeps.length})</span>
+                  </div>
                 </div>
 
-                {envDeps.map(d => (
-                  <div key={d.id} className="h-16 px-4 border-b border-[#27272A]/50 last:border-0 flex items-center gap-4 text-xs group hover:bg-[#18181B]/20 transition-colors">
-                    <div className="flex-1 min-w-0">
+                <div className="divide-y divide-[#1C1C1F]">
+                  {envDeps.map(dep => (
+                    <div key={dep.id} className="p-4 flex items-center justify-between hover:bg-[#18181B]/30 transition-colors">
+                      <div className="flex items-center gap-4">
+                        <StatusPill status={dep.status?.toLowerCase() ?? 'active'} />
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-zinc-100 font-mono">{dep.version ?? dep.imageTag ?? dep.id}</span>
+                            {dep.url && (
+                              <a href={dep.url} target="_blank" rel="noreferrer" className="text-zinc-500 hover:text-violet-400 transition-colors">
+                                <ExternalLink size={12} />
+                              </a>
+                            )}
+                          </div>
+                          <div className="text-[11px] font-mono text-zinc-500 flex items-center gap-2 mt-0.5">
+                            <span>Tag: {dep.imageTag ?? 'latest'}</span>
+                            <span>·</span>
+                            <span className="flex items-center gap-1"><Clock size={10} /> Deployed {timeAgo(dep.deployedAt)}</span>
+                          </div>
+                        </div>
+                      </div>
+
                       <div className="flex items-center gap-2">
-                        <span className="font-semibold text-zinc-200">{d.version ?? d.imageTag ?? d.id.slice(0, 8)}</span>
-                        {d.url && (
-                          <a href={d.url} target="_blank" rel="noopener noreferrer" className="text-violet-400 hover:text-violet-300" onClick={e => e.stopPropagation()}>
-                            <ExternalLink size={11} />
-                          </a>
+                        {dep.status === 'ACTIVE' && (
+                          <button
+                            onClick={() => setRollbackTarget(dep)}
+                            disabled={rolling === dep.id}
+                            className="flex items-center gap-1.5 text-[11px] font-semibold text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+                          >
+                            {rolling === dep.id ? <Loader2 size={12} className="animate-spin" /> : <RotateCcw size={12} />}
+                            Rollback
+                          </button>
                         )}
                       </div>
-                      {d.imageTag && d.version !== d.imageTag && (
-                        <div className="text-[10px] font-mono text-zinc-500 mt-0.5">{d.imageTag}</div>
-                      )}
                     </div>
-
-                    <div className="w-28 text-right">
-                      <StatusPill status={d.health ?? d.status ?? 'pending'} />
-                    </div>
-
-                    <div className="w-32 text-right font-mono text-[10px] text-zinc-500 flex items-center justify-end gap-1">
-                      <Clock size={10} /> {timeAgo(d.deployedAt)}
-                    </div>
-
-                    <div className="w-36 flex justify-end gap-1.5" onClick={e => e.stopPropagation()}>
-                      {d.pipelineRunId && (
-                        <button
-                          onClick={() => router.push(`/runs/${d.pipelineRunId}`)}
-                          className="flex items-center gap-1 text-[10px] text-zinc-400 hover:text-zinc-200 border border-[#27272A] px-2 py-1 rounded-lg transition-colors"
-                        >
-                          <History size={10} /> Logs
-                        </button>
-                      )}
-                      <button
-                        onClick={() => setRollbackTarget(d)}
-                        disabled={rolling === d.id || d.status === 'ROLLED_BACK'}
-                        className="flex items-center gap-1 text-[10px] font-semibold text-amber-300 hover:text-amber-200 border border-amber-800/40 bg-amber-900/10 px-2 py-1 rounded-lg transition-colors disabled:opacity-30"
-                      >
-                        {rolling === d.id ? <Loader2 size={10} className="animate-spin" /> : <RotateCcw size={10} />}
-                        Rollback
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             ))
           )}
@@ -213,11 +175,11 @@ export default function DeploymentsPage() {
         <ConfirmDialog
           open={!!rollbackTarget}
           title="Confirm Rollback"
-          message={`Are you sure you want to rollback the deployment in environment "${rollbackTarget?.environment}"? This will redeploy the previous stable version.`}
-          confirmLabel="Rollback"
-          danger
+          message={`Rollback ${rollbackTarget?.environment} environment to the previous healthy image version?`}
           onConfirm={handleRollback}
           onCancel={() => setRollbackTarget(null)}
+          confirmLabel="Rollback Environment"
+          danger
         />
       </div>
     </DeveloperShell>

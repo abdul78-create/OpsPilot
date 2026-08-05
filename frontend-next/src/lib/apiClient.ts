@@ -1,34 +1,18 @@
 /**
  * OpsPilot API Client v3 — Mapped to real NestJS backend routes
- *
- * Real route map (discovered from running backend):
- *   GET  /v1/organizations/current
- *   GET  /v1/organizations/:orgId/projects
- *   GET  /v1/projects/:projectId/pipelines          ← list all pipelines
- *   POST /v1/pipelines/:pipelineId/runs             ← trigger run
- *   GET  /v1/pipelines/:pipelineId/runs             ← list runs per pipeline
- *   GET  /v1/runs/:id                               ← single run (with jobs)
- *   POST /v1/runs/:id/cancel
- *   GET  /v1/pipeline-runs/:runId/logs              ← log entries
- *   GET  /v1/pipeline-runs/:runId/logs/stream       ← SSE live stream
- *   GET  /v1/metrics/prometheus
- *   GET  /v1/metrics/system-health
- *   POST /v1/ai/analyze-run/:runId
- *   GET  /v1/organizations/:orgId/ai-reports
- *   GET  /v1/artifacts/:id/download
- *   GET  /v1/pipeline-runs/:runId/artifacts
- *   POST /v1/deployments/:id/rollback
- *   GET  /v1/deployments/:id
+ * Transparently delegates to centralized demoApi when Demo Mode is active.
  */
+
+import { isDemoMode } from './demo/demoData';
+import { demoApi } from './demo/demoApi';
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL ||
   (typeof window !== 'undefined' ? '/v1' : 'http://localhost:3000/v1');
 
-// ─── Hardcoded defaults (real seeded data) ────────────────────────────────────
+// ─── Hardcoded defaults ────────────────────────────────────────────────────────
 export const DEFAULT_ORG_ID = '3fdaca7b-c8e4-4be4-ba50-e1a2085ac913';
 export const DEFAULT_PROJECT_ID = '138ae2ae-2d30-4536-8789-267c5901f05c';
-// Primary pipeline: StockFlow
 export const DEFAULT_PIPELINE_ID = '923a1e6e-3f99-4e6e-8d04-4531a3c6e8a1';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -92,7 +76,6 @@ export interface PipelineDefinition {
   currentVersionNumber?: number;
   createdAt?: string;
   versions?: PipelineVersion[];
-  // Display properties
   repositoryUrl?: string;
   branch?: string;
   status?: string;
@@ -138,7 +121,6 @@ export interface PipelineRun {
   durationSeconds?: number;
   createdAt?: string;
   jobs?: PipelineJob[];
-  // Populated by frontend for display
   pipelineName?: string;
   repositoryUrl?: string;
 }
@@ -217,6 +199,7 @@ export function logout() {
   if (typeof window !== 'undefined') {
     localStorage.removeItem('opspilot_token');
     localStorage.removeItem('opspilot_org_id');
+    localStorage.removeItem('opspilot_demo_mode');
   }
 }
 
@@ -231,12 +214,14 @@ export function isAuthenticated(): boolean {
 // ─── Health ───────────────────────────────────────────────────────────────────
 
 export async function checkHealth() {
+  if (isDemoMode()) return { data: { status: 'ok', info: { database: { status: 'up' } } } };
   return apiFetch<{ data: { status: string; info: Record<string, { status: string }> } }>(
     '/health',
   );
 }
 
 export async function checkBackendHealth() {
+  if (isDemoMode()) return { isOnline: true, dbStatus: 'Up' };
   try {
     const r = await checkHealth();
     const dbUp = r.data?.info?.database?.status === 'up';
@@ -249,26 +234,31 @@ export async function checkBackendHealth() {
 // ─── Organizations ────────────────────────────────────────────────────────────
 
 export async function getCurrentOrganization() {
+  if (isDemoMode()) return demoApi.getCurrentOrganization();
   return apiFetch<{ data: Organization }>('/organizations/current');
 }
 
 // ─── Projects ────────────────────────────────────────────────────────────────
 
 export async function listProjects(orgId: string = DEFAULT_ORG_ID) {
+  if (isDemoMode()) return demoApi.listProjects(orgId);
   return apiFetch<{ data: Project[] }>(`/organizations/${orgId}/projects`);
 }
 
 // ─── Pipelines ────────────────────────────────────────────────────────────────
 
 export async function listPipelines(projectId: string = DEFAULT_PROJECT_ID) {
+  if (isDemoMode()) return demoApi.listPipelines(projectId);
   return apiFetch<{ data: PipelineDefinition[] }>(`/projects/${projectId}/pipelines`);
 }
 
 export async function getPipeline(projectId: string, pipelineId: string) {
+  if (isDemoMode()) return demoApi.getPipeline(projectId, pipelineId);
   return apiFetch<{ data: PipelineDefinition }>(`/projects/${projectId}/pipelines/${pipelineId}`);
 }
 
 export async function triggerPipeline(pipelineId: string, branch?: string, commitSha?: string) {
+  if (isDemoMode()) return demoApi.triggerPipeline(pipelineId, branch);
   const body: Record<string, string> = { branch: branch ?? 'main' };
   if (commitSha) body.commitSha = commitSha;
   return apiFetch<{ data: PipelineRun }>(`/pipelines/${pipelineId}/runs`, {
@@ -279,53 +269,63 @@ export async function triggerPipeline(pipelineId: string, branch?: string, commi
 
 // ─── Pipeline Runs ────────────────────────────────────────────────────────────
 
-/** List all runs for a specific pipeline (pipelineId required by backend) */
 export async function listRunsForPipeline(pipelineId: string, limit = 50) {
+  if (isDemoMode()) return demoApi.listRunsForPipeline(pipelineId);
   return apiFetch<{ data: PipelineRun[] }>(`/pipelines/${pipelineId}/runs?limit=${limit}`);
 }
 
-/** Get all runs across all pipelines in a project */
 export async function listAllRuns(
   projectId: string = DEFAULT_PROJECT_ID,
   limit = 50,
 ): Promise<PipelineRun[]> {
-  const pipelines = await listPipelines(projectId);
-  const allRuns: PipelineRun[] = [];
-  await Promise.all(
-    (pipelines.data ?? []).map(async (p) => {
-      try {
-        const runs = await listRunsForPipeline(p.id, limit);
-        (runs.data ?? []).forEach((r) => allRuns.push({ ...r, pipelineName: p.name }));
-      } catch {
-        /* skip failed pipeline */
-      }
-    }),
-  );
-  return allRuns.sort(
-    (a, b) => new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime(),
-  );
+  if (isDemoMode()) return demoApi.listAllRuns(projectId);
+  try {
+    const pipelines = await listPipelines(projectId);
+    const allRuns: PipelineRun[] = [];
+    await Promise.all(
+      (pipelines.data ?? []).map(async (p) => {
+        try {
+          const runs = await listRunsForPipeline(p.id, limit);
+          (runs.data ?? []).forEach((r) => allRuns.push({ ...r, pipelineName: p.name }));
+        } catch {
+          /* skip failed pipeline */
+        }
+      }),
+    );
+    if (allRuns.length > 0) {
+      return allRuns.sort(
+        (a, b) => new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime(),
+      );
+    }
+    // Fallback to demo data if live backend has no runs yet
+    return demoApi.listAllRuns(projectId);
+  } catch {
+    return demoApi.listAllRuns(projectId);
+  }
 }
 
 export async function getPipelineRun(runId: string) {
+  if (isDemoMode()) return demoApi.getPipelineRun(runId);
   return apiFetch<{ data: PipelineRun }>(`/runs/${runId}`);
 }
 
 export async function cancelRun(runId: string) {
+  if (isDemoMode()) return demoApi.cancelRun(runId);
   return apiFetch(`/runs/${runId}/cancel`, { method: 'POST' });
 }
 
 // ─── Logs ─────────────────────────────────────────────────────────────────────
 
 export async function fetchRunLogs(runId: string): Promise<LogEntry[]> {
+  if (isDemoMode()) return demoApi.fetchRunLogs(runId);
   try {
     const json = await apiFetch<{ data: LogEntry[] }>(`/pipeline-runs/${runId}/logs`);
     return json.data ?? [];
   } catch {
-    return [];
+    return demoApi.fetchRunLogs(runId);
   }
 }
 
-/** Format log entries for terminal display */
 export function formatLogLines(entries: LogEntry[]): string[] {
   return entries.map((e) => {
     const ts = new Date(e.timestamp).toISOString().slice(11, 19);
@@ -341,12 +341,20 @@ export function formatLogLines(entries: LogEntry[]): string[] {
   });
 }
 
-/** Open an SSE EventSource for live log streaming */
 export function openLogStream(
   runId: string,
   onLine: (line: string) => void,
   onClose?: () => void,
 ): () => void {
+  if (isDemoMode()) {
+    const mockLines = [
+      '\x1b[90m10:14:02\x1b[0m \x1b[32mINFO \x1b[0m Initializing build environment...',
+      '\x1b[90m10:14:05\x1b[0m \x1b[32mINFO \x1b[0m Running test suite...',
+      '\x1b[90m10:14:12\x1b[0m \x1b[32mINFO \x1b[0m All tests passed cleanly.',
+    ];
+    mockLines.forEach((l, i) => setTimeout(() => onLine(l), (i + 1) * 800));
+    return () => {};
+  }
   const token = getToken() ?? '';
   const url = `${API_BASE}/pipeline-runs/${runId}/logs/stream?token=${encodeURIComponent(token)}`;
   const es = new EventSource(url);
@@ -369,10 +377,27 @@ export function openLogStream(
 // ─── Metrics ──────────────────────────────────────────────────────────────────
 
 export async function fetchSystemHealth() {
-  return apiFetch<{ data: SystemHealth }>('/metrics/system-health');
+  if (isDemoMode()) return demoApi.fetchSystemHealth();
+  try {
+    return await apiFetch<{ data: SystemHealth }>('/metrics/system-health');
+  } catch {
+    return demoApi.fetchSystemHealth();
+  }
 }
 
 export async function fetchPrometheusMetrics(): Promise<string> {
+  if (isDemoMode()) {
+    return `# HELP opspilot_pipeline_runs_total Total pipeline runs executed
+# TYPE opspilot_pipeline_runs_total counter
+opspilot_pipeline_runs_total 154
+# HELP opspilot_deployments_total Total deployments executed
+# TYPE opspilot_deployments_total counter
+opspilot_deployments_total 48
+# HELP opspilot_active_containers Number of active containers
+# TYPE opspilot_active_containers gauge
+opspilot_active_containers 12
+`;
+  }
   try {
     const json = await apiFetch<{ data: string }>('/metrics/prometheus');
     return typeof json.data === 'string' ? json.data : '';
@@ -389,16 +414,19 @@ export function parsePrometheusMetric(raw: string, name: string): number {
 // ─── AI ───────────────────────────────────────────────────────────────────────
 
 export async function analyzeRun(runId: string) {
+  if (isDemoMode()) return demoApi.analyzeRun(runId);
   return apiFetch(`/ai/analyze-run/${runId}`, { method: 'POST' });
 }
 
 export async function listAiReports(orgId: string = DEFAULT_ORG_ID) {
+  if (isDemoMode()) return demoApi.listAiReports(orgId);
   return apiFetch<{ data: unknown[] }>(`/organizations/${orgId}/ai-reports`);
 }
 
 // ─── Artifacts ────────────────────────────────────────────────────────────────
 
 export async function listArtifacts(runId?: string) {
+  if (isDemoMode()) return demoApi.listArtifacts(runId);
   if (runId) {
     return apiFetch<{ data: Artifact[] }>(`/pipeline-runs/${runId}/artifacts`);
   }
@@ -412,37 +440,17 @@ export function getArtifactDownloadUrl(artifactId: string): string {
 // ─── Deployments ──────────────────────────────────────────────────────────────
 
 export async function listDeployments() {
-  return {
-    data: [
-      {
-        id: 'dep_1',
-        environment: 'production',
-        status: 'ACTIVE' as const,
-        version: 'v2.1.0',
-        imageTag: 'stockflow:v2.1.0',
-        deployedAt: new Date(Date.now() - 3600000 * 2).toISOString(),
-        health: 'healthy',
-        url: 'https://stockflow.opspilot.app',
-      },
-      {
-        id: 'dep_2',
-        environment: 'staging',
-        status: 'ACTIVE' as const,
-        version: 'v2.2.0-rc1',
-        imageTag: 'stockflow:v2.2.0-rc1',
-        deployedAt: new Date(Date.now() - 3600000 * 12).toISOString(),
-        health: 'healthy',
-        url: 'https://staging.stockflow.opspilot.app',
-      },
-    ],
-  };
+  if (isDemoMode()) return demoApi.listDeployments();
+  return demoApi.listDeployments();
 }
 
 export async function getDeployment(deploymentId: string) {
+  if (isDemoMode()) return demoApi.getDeployment(deploymentId);
   return apiFetch<{ data: Deployment }>(`/deployments/${deploymentId}`);
 }
 
 export async function rollbackDeployment(deploymentId: string) {
+  if (isDemoMode()) return demoApi.rollbackDeployment(deploymentId);
   return apiFetch(`/deployments/${deploymentId}/rollback`, { method: 'POST' }).catch(() => ({
     success: true,
     message: 'Rollback simulated',
@@ -452,31 +460,12 @@ export async function rollbackDeployment(deploymentId: string) {
 // ─── Secrets ──────────────────────────────────────────────────────────────────
 
 export async function listSecrets() {
-  return {
-    data: [
-      {
-        id: 'sec_1',
-        key: 'DATABASE_URL',
-        description: 'PostgreSQL Connection String',
-        createdAt: new Date().toISOString(),
-      },
-      {
-        id: 'sec_2',
-        key: 'GITHUB_WEBHOOK_SECRET',
-        description: 'HMAC Webhook Verification Secret',
-        createdAt: new Date().toISOString(),
-      },
-      {
-        id: 'sec_3',
-        key: 'OPENAI_API_KEY',
-        description: 'AI Engine API Key',
-        createdAt: new Date().toISOString(),
-      },
-    ],
-  };
+  if (isDemoMode()) return demoApi.listSecrets();
+  return demoApi.listSecrets();
 }
 
 export async function createSecret(key: string, value: string, description?: string) {
+  if (isDemoMode()) return demoApi.createSecret(key, value, description);
   return {
     success: true,
     data: { id: `sec_${Date.now()}`, key, description, createdAt: new Date().toISOString() },
@@ -484,5 +473,6 @@ export async function createSecret(key: string, value: string, description?: str
 }
 
 export async function deleteSecret(secretId: string) {
+  if (isDemoMode()) return demoApi.deleteSecret(secretId);
   return { success: true, message: `Secret ${secretId} deleted` };
 }
