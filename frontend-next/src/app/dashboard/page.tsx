@@ -4,9 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { DeveloperShellWrapper } from '@/components/layout/DeveloperShell';
 import { RepoScannerModal } from '@/components/builder/RepoScannerModal';
 import { fetchSystemHealth, listAllRuns } from '@/lib/apiClient';
-import {
-  DEMO_SYSTEM_HEALTH, DEMO_RUNS, isDemoMode, disableDemoMode, enableDemoMode,
-} from '@/lib/demoData';
+// Real production backend dashboard
+
 import {
   Activity, Rocket, CheckCircle2, Clock, GitCommit,
   ArrowUpRight, Play, Zap, Plus, TrendingUp, Server,
@@ -193,8 +192,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const load = async () => {
-      const isDemo = isDemoMode();
-      setDemoActive(isDemo);
+      setDemoActive(false);
 
       if (typeof window !== 'undefined') {
         const userData = localStorage.getItem('opspilot_user');
@@ -211,20 +209,6 @@ export default function DashboardPage() {
         }
       }
 
-      // If in Demo Mode, load rich demo data immediately
-      if (isDemo) {
-        setMetrics({
-          totalPipelineRuns: DEMO_SYSTEM_HEALTH.totalPipelineRuns,
-          totalDeployments: DEMO_SYSTEM_HEALTH.totalDeployments,
-          deploymentSuccessRate: DEMO_SYSTEM_HEALTH.deploymentSuccessRate,
-          isOnline: true,
-        });
-        setRuns(DEMO_RUNS as Run[]);
-        setLoading(false);
-        return;
-      }
-
-      // Live mode: fetch real backend endpoints
       try {
         const [healthRes, runsRes] = await Promise.all([
           fetchSystemHealth().catch(() => null),
@@ -238,28 +222,28 @@ export default function DashboardPage() {
             deploymentSuccessRate: healthRes.data.deploymentSuccessRate ?? 0,
             isOnline: true,
           });
-        }
-        if (Array.isArray(runsRes) && runsRes.length > 0) {
-          setRuns(runsRes.slice(0, 10) as Run[]);
         } else {
-          // If fresh database with no runs, fall back to rich demo runs for demonstration
-          setMetrics(prev => prev ?? {
-            totalPipelineRuns: DEMO_SYSTEM_HEALTH.totalPipelineRuns,
-            totalDeployments: DEMO_SYSTEM_HEALTH.totalDeployments,
-            deploymentSuccessRate: DEMO_SYSTEM_HEALTH.deploymentSuccessRate,
+          setMetrics({
+            totalPipelineRuns: 0,
+            totalDeployments: 0,
+            deploymentSuccessRate: 100,
             isOnline: true,
           });
-          setRuns(DEMO_RUNS as Run[]);
+        }
+
+        if (Array.isArray(runsRes)) {
+          setRuns(runsRes.slice(0, 10) as Run[]);
+        } else {
+          setRuns([]);
         }
       } catch {
-        // Fall back to demo data on network error
         setMetrics({
-          totalPipelineRuns: DEMO_SYSTEM_HEALTH.totalPipelineRuns,
-          totalDeployments: DEMO_SYSTEM_HEALTH.totalDeployments,
-          deploymentSuccessRate: DEMO_SYSTEM_HEALTH.deploymentSuccessRate,
-          isOnline: true,
+          totalPipelineRuns: 0,
+          totalDeployments: 0,
+          deploymentSuccessRate: 100,
+          isOnline: false,
         });
-        setRuns(DEMO_RUNS as Run[]);
+        setRuns([]);
       } finally {
         setLoading(false);
       }
@@ -267,44 +251,16 @@ export default function DashboardPage() {
     load();
   }, []);
 
-  const handleToggleDemoMode = () => {
-    if (demoActive) {
-      disableDemoMode();
-      setDemoActive(false);
-      window.location.reload();
-    } else {
-      enableDemoMode();
-      setDemoActive(true);
-      window.location.reload();
-    }
-  };
 
   const chartData = buildChartData(runs);
-  const activeRuns = runs.filter(r => r.status === 'RUNNING').length;
-  const successRate = metrics?.deploymentSuccessRate ?? 98.4;
+
+  const activeRuns = runs.filter((r) => r.status === 'RUNNING').length;
+  const successRate = metrics?.deploymentSuccessRate ?? 100;
 
   return (
     <DeveloperShellWrapper>
       <div className="p-6 space-y-6 max-w-7xl mx-auto">
 
-        {/* ── Demo Mode Active Banner ── */}
-        {demoActive && (
-          <div className="flex items-center justify-between p-3.5 rounded-xl bg-gradient-to-r from-violet-900/30 via-purple-900/20 to-blue-900/30 border border-violet-500/30 text-xs animate-fade-in">
-            <div className="flex items-center gap-2.5">
-              <Sparkles size={16} className="text-violet-400 shrink-0" />
-              <div>
-                <span className="font-bold text-white">Interactive Demo Mode Active</span>
-                <span className="text-zinc-400 ml-2">Displaying realistic pipeline runs, metrics, and deployments.</span>
-              </div>
-            </div>
-            <button
-              onClick={handleToggleDemoMode}
-              className="flex items-center gap-1 px-3 py-1 rounded-lg bg-violet-600/30 hover:bg-violet-600/50 border border-violet-400/30 text-violet-200 font-medium transition-colors"
-            >
-              Exit Demo Mode <X size={13} />
-            </button>
-          </div>
-        )}
 
         {/* ── Greeting Header ── */}
         <div className="flex items-start justify-between animate-fade-in">
@@ -320,14 +276,7 @@ export default function DashboardPage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            {!demoActive && (
-              <button
-                onClick={handleToggleDemoMode}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-violet-900/20 border border-violet-700/40 text-violet-300 text-xs font-semibold hover:bg-violet-800/30 transition-all"
-              >
-                <Sparkles size={13} /> Enable Demo Data
-              </button>
-            )}
+
             <button
               onClick={() => setScanOpen(true)}
               className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#111113] border border-[#27272A] hover:border-[#3F3F46] text-zinc-300 text-sm font-medium transition-all hover:-translate-y-0.5"

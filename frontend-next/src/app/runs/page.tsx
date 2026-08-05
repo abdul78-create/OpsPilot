@@ -5,8 +5,9 @@ import { useRouter } from 'next/navigation';
 import { DeveloperShell } from '@/components/layout/DeveloperShell';
 import {
   Activity, Clock, RefreshCw, Play, CheckCircle2, XCircle, Loader2,
-  Circle, Filter, Search, GitCommit, GitBranch, ChevronRight, X, Download,
+  Circle, Filter, Search, GitCommit, GitBranch, ChevronRight, X, Download, AlertTriangle,
 } from 'lucide-react';
+
 import { listAllRuns, cancelRun, PipelineRun } from '@/lib/apiClient';
 import { useToast } from '@/components/ui/Toast';
 
@@ -28,14 +29,15 @@ function shortRepo(url?: string) {
 }
 
 /* ── Status Pill ───────────────────────────────── */
-type RunStatus = 'SUCCESS' | 'FAILED' | 'RUNNING' | 'QUEUED' | 'CANCELLED';
+type RunStatus = 'SUCCESS' | 'FAILED' | 'RUNNING' | 'QUEUED' | 'CANCELLED' | 'TIMEOUT';
 
 const STATUS_CFG: Record<RunStatus, { color: string; bg: string; border: string; dot: string; icon: React.ElementType }> = {
   SUCCESS:   { color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', dot: 'bg-emerald-400', icon: CheckCircle2 },
   FAILED:    { color: 'text-red-400',     bg: 'bg-red-500/10',     border: 'border-red-500/20',     dot: 'bg-red-400',     icon: XCircle },
-  RUNNING:   { color: 'text-blue-400',    bg: 'bg-blue-500/10',    border: 'border-blue-500/20',    dot: 'bg-blue-400',    icon: Loader2 },
-  QUEUED:    { color: 'text-amber-400',   bg: 'bg-amber-500/10',   border: 'border-amber-500/20',   dot: 'bg-amber-400',   icon: Circle },
-  CANCELLED: { color: 'text-zinc-400',    bg: 'bg-zinc-500/10',    border: 'border-zinc-500/20',    dot: 'bg-zinc-400',    icon: X },
+  RUNNING:   { color: 'text-blue-400',    bg: 'bg-blue-500/10',    border: 'border-blue-500/20',    dot: 'bg-blue-400 animate-pulse', icon: RefreshCw },
+  QUEUED:    { color: 'text-amber-400',   bg: 'bg-amber-500/10',   border: 'border-amber-500/20',   dot: 'bg-amber-400',   icon: Clock },
+  CANCELLED: { color: 'text-zinc-400',    bg: 'bg-zinc-500/10',    border: 'border-zinc-500/20',    dot: 'bg-zinc-400',    icon: AlertTriangle },
+  TIMEOUT:   { color: 'text-orange-400',  bg: 'bg-orange-500/10',  border: 'border-orange-500/20',  dot: 'bg-orange-400',  icon: AlertTriangle },
 };
 
 function StatusPill({ status }: { status: RunStatus }) {

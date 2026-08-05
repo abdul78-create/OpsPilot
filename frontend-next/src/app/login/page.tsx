@@ -2,8 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Eye, EyeOff, Mail, Lock, ArrowRight, CheckCircle2, Sparkles, PlayCircle, KeyRound } from 'lucide-react';
-import { enableDemoMode, disableDemoMode } from '@/lib/demoData';
+import { Eye, EyeOff, Mail, Lock, ArrowRight, CheckCircle2 } from 'lucide-react';
 
 const FEATURES_LIST = [
   'Automated CI/CD pipeline from first push',
@@ -32,7 +31,6 @@ export default function LoginPage() {
     if (oauthError) {
       setError(`OAuth Error: ${oauthError}`);
     } else if (token) {
-      disableDemoMode();
       localStorage.setItem('opspilot_token', token);
       if (userParam) {
         try {
@@ -46,42 +44,21 @@ export default function LoginPage() {
   }, []);
 
   const handleGoogleLogin = () => {
-    disableDemoMode();
     const apiBase =
       process.env.NEXT_PUBLIC_API_URL || 'https://opspilot-backend-nq7l.onrender.com';
     window.location.href = `${apiBase}/v1/auth/google`;
   };
 
   const handleGitHubLogin = () => {
-    disableDemoMode();
     const apiBase =
       process.env.NEXT_PUBLIC_API_URL || 'https://opspilot-backend-nq7l.onrender.com';
     window.location.href = `${apiBase}/v1/auth/github`;
-  };
-
-  const handleInstantDemo = () => {
-    enableDemoMode();
-    window.location.href = '/dashboard';
-  };
-
-  const handleFillDemoCreds = () => {
-    setEmail('demo@opspilot.io');
-    setPassword('demo123');
-    setError('');
   };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
-
-    if (email.toLowerCase().trim() === 'demo@opspilot.io') {
-      enableDemoMode();
-      window.location.href = '/dashboard';
-      return;
-    }
-
-    disableDemoMode();
 
     try {
       const apiBase =
@@ -212,27 +189,6 @@ export default function LoginPage() {
             <p className="text-sm text-zinc-500">Sign in to your workspace</p>
           </div>
 
-          {/* ── One-Click Demo Mode Banner/Button ── */}
-          <button
-            type="button"
-            onClick={handleInstantDemo}
-            className="w-full flex items-center justify-between p-3.5 rounded-xl bg-gradient-to-r from-violet-600/20 via-purple-600/15 to-blue-600/20 border border-violet-500/40 hover:border-violet-400 group transition-all hover:scale-[1.01] shadow-lg shadow-violet-950/20 text-left"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-violet-600/30 border border-violet-400/30 flex items-center justify-center shrink-0">
-                <Sparkles size={18} className="text-violet-300 group-hover:rotate-12 transition-transform" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-white">Interactive Demo Mode</span>
-                  <span className="text-[9px] font-extrabold uppercase tracking-wider bg-violet-500/30 text-violet-300 px-1.5 py-0.5 rounded border border-violet-400/30">Instant</span>
-                </div>
-                <p className="text-[11px] text-zinc-400">Explore populated dashboard & AI RCA without signing up</p>
-              </div>
-            </div>
-            <PlayCircle size={18} className="text-violet-400 group-hover:text-white group-hover:translate-x-0.5 transition-all shrink-0" />
-          </button>
-
           {/* ── Social OAuth Buttons ── */}
           <div className="grid grid-cols-2 gap-3">
             <button
@@ -259,7 +215,7 @@ export default function LoginPage() {
                   d="M12 23c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2.3-6.4-5.2L1.9 16C3.7 19.7 7.5 23 12 23z"
                 />
               </svg>
-              Google
+              Continue with Google
             </button>
 
             <button
@@ -271,7 +227,7 @@ export default function LoginPage() {
               <svg className="w-4 h-4 fill-current text-white shrink-0" viewBox="0 0 24 24">
                 <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z" />
               </svg>
-              GitHub
+              Continue with GitHub
             </button>
           </div>
 
@@ -352,26 +308,6 @@ export default function LoginPage() {
               )}
             </button>
           </form>
-
-          {/* ── Demo Credentials Callout ── */}
-          <div className="p-3.5 rounded-xl bg-[#111113] border border-[#27272A] space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-semibold text-zinc-300 flex items-center gap-1.5">
-                <KeyRound size={13} className="text-amber-400" /> Demo Credentials
-              </span>
-              <button
-                type="button"
-                onClick={handleFillDemoCreds}
-                className="text-[10px] text-violet-400 hover:text-violet-300 underline font-medium transition-colors"
-              >
-                Auto-fill fields
-              </button>
-            </div>
-            <div className="flex items-center justify-between text-xs font-mono bg-[#18181B] px-2.5 py-1.5 rounded border border-[#27272A] text-zinc-300">
-              <span>demo@opspilot.io</span>
-              <span className="text-zinc-500">demo123</span>
-            </div>
-          </div>
 
           <p className="text-xs text-center text-zinc-600">
             Don&apos;t have an account?{' '}

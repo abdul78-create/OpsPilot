@@ -73,8 +73,14 @@ export default function SettingsPage() {
       const res = await getCurrentOrganization();
       setOrg(res.data);
     } catch {
-      // Fallback display
-      setOrg({ id: '3fdaca7b-c8e4-4be4-ba50-e1a2085ac913', name: 'System Webhook Builds', slug: 'system-webhooks', status: 'ACTIVE' });
+      setOrg({
+        id: '3fdaca7b-c8e4-4be4-ba50-e1a2085ac913',
+        name: 'System Webhook Builds',
+        slug: 'system-webhooks',
+        status: 'ACTIVE',
+        createdAt: new Date().toISOString(),
+      });
+
     } finally {
       setLoading(false);
     }
