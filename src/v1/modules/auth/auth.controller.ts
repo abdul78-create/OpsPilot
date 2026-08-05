@@ -26,6 +26,7 @@ import { Public } from '../../../core/security/decorators/public.decorator';
 import { CurrentUser } from '../../../core/security/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../../../core/security/guards/jwt-auth.guard';
 import { GoogleAuthGuard } from './guards/google-auth.guard';
+import { GitHubAuthGuard } from './guards/github-auth.guard';
 import { JwtPayload } from '../../../core/security/token.service';
 
 @ApiTags('Authentication')
@@ -112,6 +113,30 @@ export class AuthController {
   @UseGuards(GoogleAuthGuard)
   @ApiOperation({ summary: 'Google OAuth2 callback endpoint' })
   async googleAuthCallback(@Req() req: any, @Res() res: Response): Promise<void> {
+    const authResult = await this.authService.validateOAuthUser(req.user);
+    const frontendUrl = process.env.FRONTEND_URL ?? 'https://opspilot-frontend-5atm.onrender.com';
+    const redirectUrl = `${frontendUrl}/login?token=${encodeURIComponent(
+      authResult.tokens.accessToken,
+    )}&user=${encodeURIComponent(JSON.stringify(authResult.user))}`;
+    res.redirect(redirectUrl);
+  }
+
+  // ─────────────────────────────────────────────
+  // GITHUB OAUTH ENDPOINTS
+  // ─────────────────────────────────────────────
+  @Public()
+  @Get('github')
+  @UseGuards(GitHubAuthGuard)
+  @ApiOperation({ summary: 'Initiate GitHub OAuth2 authentication flow' })
+  async githubAuth(): Promise<void> {
+    // Handled automatically by Passport GitHub strategy redirect
+  }
+
+  @Public()
+  @Get('github/callback')
+  @UseGuards(GitHubAuthGuard)
+  @ApiOperation({ summary: 'GitHub OAuth2 callback endpoint' })
+  async githubAuthCallback(@Req() req: any, @Res() res: Response): Promise<void> {
     const authResult = await this.authService.validateOAuthUser(req.user);
     const frontendUrl = process.env.FRONTEND_URL ?? 'https://opspilot-frontend-5atm.onrender.com';
     const redirectUrl = `${frontendUrl}/login?token=${encodeURIComponent(
