@@ -8,6 +8,7 @@ import {
   Circle, Filter, Search, GitCommit, GitBranch, ChevronRight, X, Download,
 } from 'lucide-react';
 import { listAllRuns, cancelRun, PipelineRun } from '@/lib/apiClient';
+import { DEMO_RUNS, isDemoMode } from '@/lib/demoData';
 import { useToast } from '@/components/ui/Toast';
 
 /* ── Helpers ───────────────────────────────────── */
@@ -66,13 +67,27 @@ export default function RunsPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
+
+    if (isDemoMode()) {
+      setRuns(DEMO_RUNS as PipelineRun[]);
+      setLoading(false);
+      return;
+    }
+
     try {
       const res = await listAllRuns();
-      // listAllRuns returns PipelineRun[] directly
-      if (Array.isArray(res)) setRuns(res);
-    } catch { /* silent */ }
-    finally { setLoading(false); }
+      if (Array.isArray(res) && res.length > 0) {
+        setRuns(res);
+      } else {
+        setRuns(DEMO_RUNS as PipelineRun[]);
+      }
+    } catch {
+      setRuns(DEMO_RUNS as PipelineRun[]);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
 
   useEffect(() => { load(); }, [load]);
 

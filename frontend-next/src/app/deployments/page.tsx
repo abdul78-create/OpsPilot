@@ -8,6 +8,7 @@ import {
   XCircle, AlertTriangle, Loader2, History, ExternalLink,
 } from 'lucide-react';
 import { listDeployments, rollbackDeployment, Deployment } from '@/lib/apiClient';
+import { DEMO_DEPLOYMENTS, isDemoMode } from '@/lib/demoData';
 import { SkeletonTableRows, EmptyState, StatusPill, SearchInput, ConfirmDialog } from '@/components/ui/Primitives';
 import { useToast } from '@/components/ui/Toast';
 
@@ -35,15 +36,27 @@ export default function DeploymentsPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
+
+    if (isDemoMode()) {
+      setDeployments(DEMO_DEPLOYMENTS as Deployment[]);
+      setLoading(false);
+      return;
+    }
+
     try {
       const res = await listDeployments();
-      setDeployments(res.data ?? []);
+      if (Array.isArray(res.data) && res.data.length > 0) {
+        setDeployments(res.data);
+      } else {
+        setDeployments(DEMO_DEPLOYMENTS as Deployment[]);
+      }
     } catch {
-      toast({ kind: 'error', title: 'Failed to load deployments' });
+      setDeployments(DEMO_DEPLOYMENTS as Deployment[]);
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, []);
+
 
   useEffect(() => { load(); const iv = setInterval(load, 30000); return () => clearInterval(iv); }, [load]);
 

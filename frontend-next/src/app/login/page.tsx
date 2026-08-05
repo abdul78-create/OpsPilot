@@ -2,7 +2,8 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { Eye, EyeOff, Mail, Lock, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, ArrowRight, CheckCircle2, Sparkles, PlayCircle, KeyRound } from 'lucide-react';
+import { enableDemoMode, disableDemoMode } from '@/lib/demoData';
 
 const FEATURES_LIST = [
   'Automated CI/CD pipeline from first push',
@@ -20,10 +21,31 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  const handleInstantDemo = () => {
+    enableDemoMode();
+    window.location.href = '/dashboard';
+  };
+
+  const handleFillDemoCreds = () => {
+    setEmail('demo@opspilot.io');
+    setPassword('demo123');
+    setError('');
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
+
+    // If user enters demo credentials, activate Demo Mode
+    if (email.toLowerCase().trim() === 'demo@opspilot.io') {
+      enableDemoMode();
+      window.location.href = '/dashboard';
+      return;
+    }
+
+    // Standard real login flow
+    disableDemoMode();
 
     try {
       const apiBase = process.env.NEXT_PUBLIC_API_URL || '';
@@ -124,7 +146,7 @@ export default function LoginPage() {
 
       {/* ── Right Panel: Login Form ── */}
       <div className="flex-1 flex items-center justify-center p-8">
-        <div className="w-full max-w-sm space-y-6 animate-fade-in">
+        <div className="w-full max-w-sm space-y-5 animate-fade-in">
           {/* Mobile logo */}
           <div className="lg:hidden flex items-center gap-2 mb-2">
             <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-violet-600 to-blue-600 flex items-center justify-center">
@@ -138,6 +160,33 @@ export default function LoginPage() {
           <div>
             <h1 className="text-2xl font-bold text-white mb-1">Welcome back</h1>
             <p className="text-sm text-zinc-500">Sign in to your workspace</p>
+          </div>
+
+          {/* ── One-Click Demo Mode Banner/Button ── */}
+          <button
+            type="button"
+            onClick={handleInstantDemo}
+            className="w-full flex items-center justify-between p-3.5 rounded-xl bg-gradient-to-r from-violet-600/20 via-purple-600/15 to-blue-600/20 border border-violet-500/40 hover:border-violet-400 group transition-all hover:scale-[1.01] shadow-lg shadow-violet-950/20 text-left"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-violet-600/30 border border-violet-400/30 flex items-center justify-center shrink-0">
+                <Sparkles size={18} className="text-violet-300 group-hover:rotate-12 transition-transform" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-white">Interactive Demo Mode</span>
+                  <span className="text-[9px] font-extrabold uppercase tracking-wider bg-violet-500/30 text-violet-300 px-1.5 py-0.5 rounded border border-violet-400/30">Instant</span>
+                </div>
+                <p className="text-[11px] text-zinc-400">Explore populated dashboard & AI RCA without signing up</p>
+              </div>
+            </div>
+            <PlayCircle size={18} className="text-violet-400 group-hover:text-white group-hover:translate-x-0.5 transition-all shrink-0" />
+          </button>
+
+          <div className="flex items-center gap-3 my-2">
+            <div className="flex-1 h-px bg-[#27272A]" />
+            <span className="text-[11px] text-zinc-600 uppercase tracking-wider">or sign in with credentials</span>
+            <div className="flex-1 h-px bg-[#27272A]" />
           </div>
 
           {/* Error */}
@@ -211,6 +260,26 @@ export default function LoginPage() {
               )}
             </button>
           </form>
+
+          {/* ── Demo Credentials Callout ── */}
+          <div className="p-3.5 rounded-xl bg-[#111113] border border-[#27272A] space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-semibold text-zinc-300 flex items-center gap-1.5">
+                <KeyRound size={13} className="text-amber-400" /> Demo Credentials
+              </span>
+              <button
+                type="button"
+                onClick={handleFillDemoCreds}
+                className="text-[10px] text-violet-400 hover:text-violet-300 underline font-medium transition-colors"
+              >
+                Auto-fill fields
+              </button>
+            </div>
+            <div className="flex items-center justify-between text-xs font-mono bg-[#18181B] px-2.5 py-1.5 rounded border border-[#27272A] text-zinc-300">
+              <span>demo@opspilot.io</span>
+              <span className="text-zinc-500">demo123</span>
+            </div>
+          </div>
 
           <p className="text-xs text-center text-zinc-600">
             Don&apos;t have an account?{' '}

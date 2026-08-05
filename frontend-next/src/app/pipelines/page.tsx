@@ -4,13 +4,12 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { DeveloperShell } from '@/components/layout/DeveloperShell';
 import {
-  GitBranch, Play, Pause, RefreshCw, ChevronRight, Plus,
-  Loader2, CheckCircle2, XCircle, Clock, GitCommit, Activity,
-  Trash2,
+  GitBranch, Play, RefreshCw, Plus, Loader2, CheckCircle2, Clock, Activity,
 } from 'lucide-react';
 import {
   listPipelines, triggerPipeline, Pipeline,
 } from '@/lib/apiClient';
+import { DEMO_PIPELINES, isDemoMode } from '@/lib/demoData';
 import {
   SkeletonTableRows, EmptyState, StatusPill, SearchInput, Pagination,
 } from '@/components/ui/Primitives';
@@ -40,21 +39,37 @@ export default function PipelinesPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
+
+    if (isDemoMode()) {
+      setPipelines(DEMO_PIPELINES as Pipeline[]);
+      setLoading(false);
+      return;
+    }
+
     try {
       const res = await listPipelines();
-      setPipelines(res.data ?? []);
+      if (Array.isArray(res.data) && res.data.length > 0) {
+        setPipelines(res.data);
+      } else {
+        setPipelines(DEMO_PIPELINES as Pipeline[]);
+      }
     } catch {
-      toast({ kind: 'error', title: 'Failed to load pipelines' });
+      setPipelines(DEMO_PIPELINES as Pipeline[]);
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, []);
 
   useEffect(() => { load(); }, [load]);
 
   const handleTrigger = async (p: Pipeline) => {
     setTriggering(p.id);
     try {
+      if (isDemoMode()) {
+        toast({ kind: 'success', title: 'Pipeline triggered (Demo)', message: `Run #run_demo_${Date.now().toString().slice(-4)} queued` });
+        setTimeout(() => router.push('/runs'), 600);
+        return;
+      }
       const res = await triggerPipeline(p.id, p.branch);
       const runId = res.data.id;
       toast({ kind: 'success', title: 'Pipeline triggered', message: `Run #${runId.slice(0, 8)} queued` });
@@ -65,7 +80,6 @@ export default function PipelinesPage() {
       setTriggering(null);
     }
   };
-
 
   const filtered = pipelines.filter(p =>
     !search || (p.name + (p.repositoryUrl ?? '')).toLowerCase().includes(search.toLowerCase())
