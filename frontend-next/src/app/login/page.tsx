@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Eye, EyeOff, Mail, Lock, ArrowRight, CheckCircle2, Sparkles, PlayCircle, KeyRound } from 'lucide-react';
 import { enableDemoMode, disableDemoMode } from '@/lib/demoData';
@@ -21,6 +21,44 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Handle incoming OAuth callback URL params (token & user)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    const userParam = urlParams.get('user');
+    const oauthError = urlParams.get('error');
+
+    if (oauthError) {
+      setError(`OAuth Error: ${oauthError}`);
+    } else if (token) {
+      disableDemoMode();
+      localStorage.setItem('opspilot_token', token);
+      if (userParam) {
+        try {
+          localStorage.setItem('opspilot_user', userParam);
+        } catch {
+          // ignore JSON parse error
+        }
+      }
+      window.location.href = '/dashboard';
+    }
+  }, []);
+
+  const handleGoogleLogin = () => {
+    disableDemoMode();
+    const apiBase =
+      process.env.NEXT_PUBLIC_API_URL || 'https://opspilot-backend-nq7l.onrender.com';
+    window.location.href = `${apiBase}/v1/auth/google`;
+  };
+
+  const handleGitHubLogin = () => {
+    disableDemoMode();
+    const apiBase =
+      process.env.NEXT_PUBLIC_API_URL || 'https://opspilot-backend-nq7l.onrender.com';
+    window.location.href = `${apiBase}/v1/auth/github`;
+  };
+
   const handleInstantDemo = () => {
     enableDemoMode();
     window.location.href = '/dashboard';
@@ -37,18 +75,17 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
 
-    // If user enters demo credentials, activate Demo Mode
     if (email.toLowerCase().trim() === 'demo@opspilot.io') {
       enableDemoMode();
       window.location.href = '/dashboard';
       return;
     }
 
-    // Standard real login flow
     disableDemoMode();
 
     try {
-      const apiBase = process.env.NEXT_PUBLIC_API_URL || '';
+      const apiBase =
+        process.env.NEXT_PUBLIC_API_URL || 'https://opspilot-backend-nq7l.onrender.com';
       const res = await fetch(`${apiBase}/v1/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -59,14 +96,15 @@ export default function LoginPage() {
       try {
         data = await res.json();
       } catch {
-        // Fallback for HTML/text error pages (e.g. Nginx 502/504 gateways)
+        // Fallback
       }
 
       if (!res.ok) {
         const msg = data.message || `HTTP ${res.status}: Authentication failed`;
-        // Surface unverified email as a special callout
         if (res.status === 401 && msg.toLowerCase().includes('verif')) {
-          setError('Please verify your email before signing in. Check your inbox for the verification link.');
+          setError(
+            'Please verify your email before signing in. Check your inbox for the verification link.',
+          );
         } else {
           setError(msg);
         }
@@ -74,8 +112,14 @@ export default function LoginPage() {
       }
 
       if (typeof window !== 'undefined') {
-        localStorage.setItem('opspilot_token', data.data?.tokens?.accessToken || data.tokens?.accessToken || '');
-        localStorage.setItem('opspilot_user', JSON.stringify(data.data?.user || data.user || {}));
+        localStorage.setItem(
+          'opspilot_token',
+          data.data?.tokens?.accessToken || data.tokens?.accessToken || '',
+        );
+        localStorage.setItem(
+          'opspilot_user',
+          JSON.stringify(data.data?.user || data.user || {}),
+        );
       }
       window.location.href = '/dashboard';
     } catch {
@@ -89,31 +133,34 @@ export default function LoginPage() {
     <div className="min-h-screen bg-[#09090B] flex">
       {/* ── Left Panel: Branding ── */}
       <div className="hidden lg:flex w-1/2 flex-col justify-between p-12 relative overflow-hidden border-r border-[#1C1C1F]">
-        {/* Background glow */}
         <div className="absolute inset-0 bg-gradient-to-br from-violet-600/10 via-blue-600/5 to-transparent pointer-events-none" />
         <div className="absolute bottom-0 left-0 w-80 h-80 bg-violet-600/8 rounded-full blur-3xl pointer-events-none" />
 
-        {/* Logo */}
         <div className="relative z-10">
           <Link href="/landing" className="flex items-center gap-2.5 group w-fit">
             <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-600 to-blue-600 flex items-center justify-center shadow-lg">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                <path
+                  d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"
+                  stroke="white"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
               </svg>
             </div>
             <span className="text-base font-bold text-white">OpsPilot</span>
           </Link>
         </div>
 
-        {/* Center Content */}
         <div className="relative z-10 space-y-8">
           <div>
             <h2 className="text-3xl font-bold text-white mb-3 leading-tight">
-              Deploy with confidence.<br/>
+              Deploy with confidence.<br />
               <span className="gradient-text">Every single time.</span>
             </h2>
             <p className="text-zinc-400 text-sm leading-relaxed max-w-xs">
-              Join 2,100+ engineering teams who ship faster with OpsPilot's autonomous CI/CD platform.
+              Join 2,100+ engineering teams who ship faster with OpsPilot&apos;s autonomous CI/CD platform.
             </p>
           </div>
 
@@ -126,7 +173,6 @@ export default function LoginPage() {
             ))}
           </ul>
 
-          {/* Mini pipeline visual */}
           <div className="rounded-xl bg-[#111113] border border-[#27272A] p-4 font-mono text-xs space-y-1">
             <div className="text-zinc-500">$ git push origin main</div>
             <div className="text-violet-400">⚡ Pipeline triggered</div>
@@ -135,7 +181,6 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* Bottom quote */}
         <div className="relative z-10">
           <p className="text-zinc-500 text-xs italic">
             &ldquo;The AI RCA alone saved us 6 hours this month.&rdquo;
@@ -147,11 +192,16 @@ export default function LoginPage() {
       {/* ── Right Panel: Login Form ── */}
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="w-full max-w-sm space-y-5 animate-fade-in">
-          {/* Mobile logo */}
           <div className="lg:hidden flex items-center gap-2 mb-2">
             <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-violet-600 to-blue-600 flex items-center justify-center">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                <path
+                  d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"
+                  stroke="white"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
               </svg>
             </div>
             <span className="text-sm font-bold text-white">OpsPilot</span>
@@ -183,9 +233,51 @@ export default function LoginPage() {
             <PlayCircle size={18} className="text-violet-400 group-hover:text-white group-hover:translate-x-0.5 transition-all shrink-0" />
           </button>
 
+          {/* ── Social OAuth Buttons ── */}
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              id="google-login-btn"
+              type="button"
+              onClick={handleGoogleLogin}
+              className="flex items-center justify-center gap-2.5 py-2.5 px-4 rounded-xl bg-[#111113] hover:bg-[#18181B] border border-[#27272A] hover:border-zinc-700 text-xs font-semibold text-zinc-200 transition-all hover:scale-[1.01]"
+            >
+              <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
+                <path
+                  fill="#EA4335"
+                  d="M12 5c1.6 0 3 .6 4.1 1.6l3.1-3.1C17.3 1.7 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.3 9 5 12 5z"
+                />
+                <path
+                  fill="#4285F4"
+                  d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.8z"
+                />
+                <path
+                  fill="#FBBC05"
+                  d="M5.6 14.8c-.2-.7-.4-1.5-.4-2.3s.2-1.6.4-2.3L1.9 7.3C.7 9.7 0 12.4 0 15.3s.7 5.6 1.9 8l3.7-2.9z"
+                />
+                <path
+                  fill="#34A853"
+                  d="M12 23c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2.3-6.4-5.2L1.9 16C3.7 19.7 7.5 23 12 23z"
+                />
+              </svg>
+              Google
+            </button>
+
+            <button
+              id="github-login-btn"
+              type="button"
+              onClick={handleGitHubLogin}
+              className="flex items-center justify-center gap-2.5 py-2.5 px-4 rounded-xl bg-[#111113] hover:bg-[#18181B] border border-[#27272A] hover:border-zinc-700 text-xs font-semibold text-zinc-200 transition-all hover:scale-[1.01]"
+            >
+              <svg className="w-4 h-4 fill-current text-white shrink-0" viewBox="0 0 24 24">
+                <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z" />
+              </svg>
+              GitHub
+            </button>
+          </div>
+
           <div className="flex items-center gap-3 my-2">
             <div className="flex-1 h-px bg-[#27272A]" />
-            <span className="text-[11px] text-zinc-600 uppercase tracking-wider">or sign in with credentials</span>
+            <span className="text-[11px] text-zinc-600 uppercase tracking-wider">or sign in with email</span>
             <div className="flex-1 h-px bg-[#27272A]" />
           </div>
 
