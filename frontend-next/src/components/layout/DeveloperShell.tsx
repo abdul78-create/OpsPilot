@@ -6,8 +6,10 @@ import { CommandPalette } from '../ui/CommandPalette';
 import { ShortcutCheatSheet } from '../ui/ShortcutCheatSheet';
 import { NotificationCenter, NotificationItem } from '../ui/NotificationCenter';
 import { FloatingAiAssistant } from '../ui/FloatingAiAssistant';
-import { Search, Bell, ShieldCheck, ChevronRight, Zap } from 'lucide-react';
+import { Search, Bell, ChevronRight, Sparkles, X } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
+import { isDemoMode, disableDemoMode } from '@/lib/demo/demoData';
+import { DEMO_NOTIFICATIONS } from '@/lib/demo/demoNotifications';
 
 interface DeveloperShellProps {
   children: React.ReactNode;
@@ -44,22 +46,6 @@ const SEEDED_NOTIFICATIONS: NotificationItem[] = [
     time: '20m ago',
     unread: true,
   },
-  {
-    id: 'n_3',
-    kind: 'connected',
-    title: 'Repository Connected',
-    message: 'Webhook connected for github.com/acme-corp/stockflow.',
-    time: '2h ago',
-    unread: false,
-  },
-  {
-    id: 'n_4',
-    kind: 'secrets',
-    title: 'Secrets Updated',
-    message: 'Variable DATABASE_URL was updated by Alice Chen.',
-    time: '1d ago',
-    unread: false,
-  },
 ];
 
 export function DeveloperShell({ children }: DeveloperShellProps) {
@@ -69,17 +55,26 @@ export function DeveloperShell({ children }: DeveloperShellProps) {
   const [loading, setLoading] = useState(true);
   const [_user, setUser] = useState<{ name: string; email: string } | null>(null);
   const [workspaceName, setWorkspaceName] = useState('Acme Corp');
-  
-  // State variables for notifications, palette, cheat sheet
+
   const [notifications, setNotifications] = useState<NotificationItem[]>(SEEDED_NOTIFICATIONS);
   const [notifOpen, setNotifOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [demoState, setDemoState] = useState(false);
 
   // Authentication check
   useEffect(() => {
     if (typeof window !== 'undefined') {
+      const isDemo = isDemoMode();
+      setDemoState(isDemo);
       const token = localStorage.getItem('opspilot_token');
       const userData = localStorage.getItem('opspilot_user');
+
+      if (isDemo) {
+        setNotifications(DEMO_NOTIFICATIONS);
+        setWorkspaceName('Acme Corp');
+        setLoading(false);
+        return;
+      }
 
       if (!token) {
         router.push('/login');
@@ -101,41 +96,28 @@ export function DeveloperShell({ children }: DeveloperShellProps) {
       }
     }
   }, [router]);
-  
-  const segments = pathname.split('/').filter(Boolean);
-  const topSegment = segments[0] ?? '';
-  const pageLabel = ROUTE_LABELS[topSegment] ?? topSegment.charAt(0).toUpperCase() + topSegment.slice(1);
 
-  // Keyboard shortcut listener
+  // Determine current page title
+  const rawPath = pathname.replace(/^\//, '');
+  const pageLabel = ROUTE_LABELS[rawPath] ?? 'Dashboard';
+
+  // Global Keyboard Shortcuts
   useEffect(() => {
     let lastKey = '';
     let timer: NodeJS.Timeout;
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ignore if user is inside an input/textarea
-      if (
-        document.activeElement?.tagName === 'INPUT' ||
-        document.activeElement?.tagName === 'TEXTAREA' ||
-        document.activeElement?.getAttribute('contenteditable') === 'true'
-      ) {
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes((e.target as HTMLElement).tagName)) {
         return;
       }
 
-      // Check ? for shortcuts cheat sheet
-      if (e.key === '?') {
-        e.preventDefault();
-        setShortcutsOpen((prev) => !prev);
-        return;
-      }
-
-      // Listen for G key sequence
       const key = e.key.toLowerCase();
       if (key === 'g') {
         lastKey = 'g';
         clearTimeout(timer);
         timer = setTimeout(() => {
           lastKey = '';
-        }, 1000); // Reset after 1s
+        }, 1000);
         return;
       }
 
@@ -161,7 +143,6 @@ export function DeveloperShell({ children }: DeveloperShellProps) {
     };
   }, [router]);
 
-  // Notifications manipulation
   const markAsRead = (id: string) => {
     setNotifications((prev) =>
       prev.map((n) => (n.id === id ? { ...n, unread: false } : n))
@@ -206,6 +187,25 @@ export function DeveloperShell({ children }: DeveloperShellProps) {
 
       {/* Main Viewport */}
       <div className="flex-1 flex flex-col min-w-0 relative">
+        {/* Global Demo Banner */}
+        {demoState && (
+          <div className="bg-gradient-to-r from-violet-900/90 via-purple-900/80 to-blue-900/90 border-b border-violet-500/30 px-4 py-2 text-xs flex items-center justify-between text-white shrink-0 z-40">
+            <div className="flex items-center gap-2 font-medium">
+              <Sparkles size={14} className="text-violet-300 animate-pulse" />
+              <span><strong>Interactive Demo Mode Active</strong> — Viewing simulated data for Acme Corp (47 Developers, 128 Repositories)</span>
+            </div>
+            <button
+              onClick={() => {
+                disableDemoMode();
+                window.location.href = '/login';
+              }}
+              className="flex items-center gap-1 bg-violet-600/40 hover:bg-violet-600/60 border border-violet-400/30 text-violet-100 px-2.5 py-0.5 rounded text-[11px] font-semibold transition-colors"
+            >
+              Exit Demo <X size={12} />
+            </button>
+          </div>
+        )}
+
         {/* Top Header */}
         <header className="h-14 px-5 border-b border-[#1C1C1F] bg-[#09090B]/80 backdrop-blur-xl flex items-center justify-between sticky top-0 z-30 select-none">
           {/* Breadcrumb */}
@@ -220,7 +220,6 @@ export function DeveloperShell({ children }: DeveloperShellProps) {
             {/* Search (opens command palette on click) */}
             <button
               onClick={() => {
-                // Dispatch event to toggle command palette
                 const e = new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, metaKey: true });
                 document.dispatchEvent(e);
               }}

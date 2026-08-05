@@ -8,8 +8,10 @@ import {
   DEMO_SECRETS,
   DEMO_ORGANIZATION,
   DEMO_PROJECTS,
-  DEMO_LOGS,
 } from './demoData';
+import { getDemoLogs } from './demoLogs';
+import { getDemoPrometheusMetrics } from './demoMetrics';
+import { getDemoCopilotRca } from './demoCopilot';
 import {
   PipelineRun,
   PipelineDefinition,
@@ -24,7 +26,7 @@ import {
 
 /**
  * Centralized Demo API Service — Mirrors all backend API signatures.
- * Called transparently by apiClient.ts when Demo Mode is active.
+ * Delegates to modular demo sub-services (demoLogs, demoMetrics, demoCopilot).
  */
 export const demoApi = {
   async getCurrentOrganization(): Promise<{ data: Organization }> {
@@ -86,42 +88,15 @@ export const demoApi = {
   },
 
   async fetchRunLogs(runId: string): Promise<LogEntry[]> {
-    const logs = DEMO_LOGS.filter((l) => l.pipelineRunId === runId);
-    if (logs.length > 0) return logs;
-    return [
-      {
-        id: 'l1',
-        pipelineRunId: runId,
-        level: 'INFO',
-        message: 'Initializing build container opspilot-runner:v2...',
-        timestamp: new Date(Date.now() - 30000).toISOString(),
-      },
-      {
-        id: 'l2',
-        pipelineRunId: runId,
-        level: 'INFO',
-        message: 'Cloning repository main branch...',
-        timestamp: new Date(Date.now() - 25000).toISOString(),
-      },
-      {
-        id: 'l3',
-        pipelineRunId: runId,
-        level: 'INFO',
-        message: 'Executing pnpm install --frozen-lockfile',
-        timestamp: new Date(Date.now() - 20000).toISOString(),
-      },
-      {
-        id: 'l4',
-        pipelineRunId: runId,
-        level: 'INFO',
-        message: 'Build completed successfully. 0 TypeScript errors.',
-        timestamp: new Date(Date.now() - 10000).toISOString(),
-      },
-    ];
+    return getDemoLogs(runId);
   },
 
   async fetchSystemHealth(): Promise<{ data: SystemHealth }> {
     return { data: DEMO_SYSTEM_HEALTH };
+  },
+
+  async fetchPrometheusMetrics(): Promise<string> {
+    return getDemoPrometheusMetrics();
   },
 
   async listDeployments(): Promise<{ data: Deployment[] }> {
@@ -147,7 +122,8 @@ export const demoApi = {
   },
 
   async analyzeRun(runId: string): Promise<{ success: boolean; data: unknown }> {
-    return { success: true, data: DEMO_AI_REPORTS[0] };
+    const rca = getDemoCopilotRca(runId);
+    return { success: true, data: rca };
   },
 
   async listArtifacts(runId?: string): Promise<{ data: Artifact[] }> {
