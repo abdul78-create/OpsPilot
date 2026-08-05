@@ -3,8 +3,10 @@
  * Transparently delegates to centralized demoApi when Demo Mode is active.
  */
 
-import { isDemoMode } from './demo/demoData';
+import { demoService } from './demo/demoService';
 import { demoApi } from './demo/demoApi';
+
+const isDemoMode = () => demoService.isEnabled();
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL ||

@@ -9,16 +9,11 @@ import {
   Artifact,
   Secret,
 } from '../apiClient';
+import { demoService, DEMO_USER_PROFILE } from './demoService';
 
-export const DEMO_USER = {
-  id: 'usr_demo_8820',
-  email: 'demo@opspilot.io',
-  name: 'Sarah Chen',
-  role: 'ADMIN',
-  avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150',
-  isSuperAdmin: true,
-  isDemo: true,
-};
+export { demoService };
+
+export const DEMO_USER = DEMO_USER_PROFILE;
 
 export const DEMO_ORGANIZATION: Organization = {
   id: 'org_demo_acme',
@@ -162,36 +157,6 @@ export const DEMO_RUNS: PipelineRun[] = [
     createdAt: new Date(Date.now() - 2 * 60 * 1000).toISOString(),
     pipelineName: 'stockflow-backend',
     repositoryUrl: 'https://github.com/opspilot-org/stockflow-api',
-    jobs: [
-      {
-        id: 'job_1',
-        pipelineRunId: 'run_demo_101',
-        name: 'Lint & Audit',
-        stage: 'test',
-        status: 'SUCCESS',
-        startedAt: new Date(Date.now() - 110000).toISOString(),
-        finishedAt: new Date(Date.now() - 95000).toISOString(),
-        durationSeconds: 15,
-      },
-      {
-        id: 'job_2',
-        pipelineRunId: 'run_demo_101',
-        name: 'Unit & E2E Tests',
-        stage: 'test',
-        status: 'SUCCESS',
-        startedAt: new Date(Date.now() - 95000).toISOString(),
-        finishedAt: new Date(Date.now() - 40000).toISOString(),
-        durationSeconds: 55,
-      },
-      {
-        id: 'job_3',
-        pipelineRunId: 'run_demo_101',
-        name: 'Build Docker Image',
-        stage: 'build',
-        status: 'RUNNING',
-        startedAt: new Date(Date.now() - 40000).toISOString(),
-      },
-    ],
   },
   {
     id: 'run_demo_102',
@@ -208,32 +173,6 @@ export const DEMO_RUNS: PipelineRun[] = [
     createdAt: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
     pipelineName: 'opspilot-ai-service',
     repositoryUrl: 'https://github.com/opspilot-org/ai-analysis-service',
-    jobs: [
-      {
-        id: 'job_21',
-        pipelineRunId: 'run_demo_102',
-        name: 'Pytest Suite',
-        stage: 'test',
-        status: 'SUCCESS',
-        durationSeconds: 14,
-      },
-      {
-        id: 'job_22',
-        pipelineRunId: 'run_demo_102',
-        name: 'Container Scan',
-        stage: 'security',
-        status: 'SUCCESS',
-        durationSeconds: 8,
-      },
-      {
-        id: 'job_23',
-        pipelineRunId: 'run_demo_102',
-        name: 'Deploy Staging',
-        stage: 'deploy',
-        status: 'SUCCESS',
-        durationSeconds: 10,
-      },
-    ],
   },
   {
     id: 'run_demo_103',
@@ -266,24 +205,6 @@ export const DEMO_RUNS: PipelineRun[] = [
     createdAt: new Date(Date.now() - 2 * 3600 * 1000).toISOString(),
     pipelineName: 'payments-worker',
     repositoryUrl: 'https://github.com/opspilot-org/payments-worker',
-    jobs: [
-      {
-        id: 'job_41',
-        pipelineRunId: 'run_demo_104',
-        name: 'Go Test Suite',
-        stage: 'test',
-        status: 'SUCCESS',
-        durationSeconds: 6,
-      },
-      {
-        id: 'job_42',
-        pipelineRunId: 'run_demo_104',
-        name: 'Stripe API Mock Test',
-        stage: 'integration',
-        status: 'FAILED',
-        durationSeconds: 12,
-      },
-    ],
   },
   {
     id: 'run_demo_105',
@@ -300,73 +221,6 @@ export const DEMO_RUNS: PipelineRun[] = [
     createdAt: new Date(Date.now() - 5 * 3600 * 1000).toISOString(),
     pipelineName: 'auth-gateway',
     repositoryUrl: 'https://github.com/opspilot-org/auth-gateway',
-  },
-  {
-    id: 'run_demo_106',
-    pipelineDefinitionId: 'pip_demo_1',
-    status: 'SUCCESS',
-    triggerType: 'WEBHOOK',
-    triggeredBy: 'github-webhook',
-    commitSha: '5b2d8e411c8812f0',
-    branch: 'main',
-    startedAt: new Date(Date.now() - 8 * 3600 * 1000).toISOString(),
-    finishedAt: new Date(Date.now() - 7.9 * 3600 * 1000).toISOString(),
-    durationSeconds: 39,
-    createdAt: new Date(Date.now() - 8 * 3600 * 1000).toISOString(),
-    pipelineName: 'stockflow-backend',
-    repositoryUrl: 'https://github.com/opspilot-org/stockflow-api',
-  },
-  {
-    id: 'run_demo_107',
-    pipelineDefinitionId: 'pip_demo_2',
-    status: 'QUEUED',
-    triggerType: 'SCHEDULED',
-    triggeredBy: 'cron-job',
-    commitSha: '9d1f3b2077182e90',
-    branch: 'staging',
-    queuedAt: new Date(Date.now() - 1 * 60 * 1000).toISOString(),
-    createdAt: new Date(Date.now() - 1 * 60 * 1000).toISOString(),
-    pipelineName: 'opspilot-ai-service',
-    repositoryUrl: 'https://github.com/opspilot-org/ai-analysis-service',
-  },
-];
-
-export const DEMO_LOGS: LogEntry[] = [
-  {
-    id: 'log_1',
-    pipelineRunId: 'run_demo_104',
-    level: 'INFO',
-    message: 'Starting job "Stripe API Mock Test"...',
-    timestamp: new Date(Date.now() - 1.99 * 3600 * 1000).toISOString(),
-  },
-  {
-    id: 'log_2',
-    pipelineRunId: 'run_demo_104',
-    level: 'INFO',
-    message: 'Connecting to Stripe Mock Server at http://localhost:12111',
-    timestamp: new Date(Date.now() - 1.98 * 3600 * 1000).toISOString(),
-  },
-  {
-    id: 'log_3',
-    pipelineRunId: 'run_demo_104',
-    level: 'WARN',
-    message: 'Webhook signature secret STRIPE_WEBHOOK_SECRET missing in test environment',
-    timestamp: new Date(Date.now() - 1.97 * 3600 * 1000).toISOString(),
-  },
-  {
-    id: 'log_4',
-    pipelineRunId: 'run_demo_104',
-    level: 'ERROR',
-    message:
-      'SignatureVerificationException: No valid signature found matching timestamp=1722800000',
-    timestamp: new Date(Date.now() - 1.96 * 3600 * 1000).toISOString(),
-  },
-  {
-    id: 'log_5',
-    pipelineRunId: 'run_demo_104',
-    level: 'ERROR',
-    message: 'Process exited with status 1 — Test suite failed (1 failed, 14 passed)',
-    timestamp: new Date(Date.now() - 1.95 * 3600 * 1000).toISOString(),
   },
 ];
 
@@ -401,17 +255,6 @@ export const DEMO_DEPLOYMENTS: Deployment[] = [
     health: 'healthy',
     url: 'https://staging.stockflow.opspilot.app',
   },
-  {
-    id: 'dep_demo_4',
-    environment: 'preview',
-    status: 'ROLLED_BACK',
-    version: 'v2.5.0-rc1',
-    imageTag: 'stockflow-backend:v2.5.0-rc1',
-    deployedAt: new Date(Date.now() - 18 * 3600 * 1000).toISOString(),
-    rolledBackAt: new Date(Date.now() - 17.5 * 3600 * 1000).toISOString(),
-    health: 'unhealthy',
-    url: 'https://pr-104.preview.opspilot.app',
-  },
 ];
 
 export const DEMO_AI_REPORTS = [
@@ -422,14 +265,12 @@ export const DEMO_AI_REPORTS = [
     type: 'ROOT_CAUSE_ANALYSIS',
     targetId: 'run_demo_104',
     summary: 'Stripe Webhook Signature Verification Failure in Integration Stage',
-    rootCause:
-      'The environment variable STRIPE_WEBHOOK_SECRET is not bound in the integration test container specification, causing SignatureVerificationException during mock event processing.',
-    confidenceScore: 0.96,
+    rootCause: 'Environment variable STRIPE_WEBHOOK_SECRET missing in test environment',
+    confidenceScore: 0.94,
     riskLevel: 'HIGH',
     recommendations: [
-      'Add STRIPE_WEBHOOK_SECRET to project secrets in OpsPilot Secrets Manager.',
-      'Inject secret into integration stage runner via .opspilot.yaml environment bindings.',
-      'Re-run pipeline run #run_demo_104 to verify fix.',
+      'Add STRIPE_WEBHOOK_SECRET to project secrets.',
+      'Inject secret into integration stage runner.',
     ],
     createdAt: new Date(Date.now() - 1.9 * 3600 * 1000).toISOString(),
   },
@@ -438,22 +279,12 @@ export const DEMO_AI_REPORTS = [
 export const DEMO_ARTIFACTS: Artifact[] = [
   {
     id: 'art_demo_1',
-    name: 'stockflow-backend-dist-v2.4.0.tar.gz',
+    name: 'stockflow-backend-v2.4.0.tar.gz',
     pipelineRunId: 'run_demo_102',
     size: 2458900,
     sha256: '9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08',
     mimeType: 'application/gzip',
     createdAt: new Date(Date.now() - 14.5 * 60 * 1000).toISOString(),
-    downloadUrl: '#',
-  },
-  {
-    id: 'art_demo_2',
-    name: 'coverage-report.html',
-    pipelineRunId: 'run_demo_103',
-    size: 489200,
-    sha256: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
-    mimeType: 'text/html',
-    createdAt: new Date(Date.now() - 41.5 * 60 * 1000).toISOString(),
     downloadUrl: '#',
   },
 ];
@@ -462,42 +293,25 @@ export const DEMO_SECRETS: Secret[] = [
   {
     id: 'sec_demo_1',
     key: 'DATABASE_URL',
-    description: 'Production PostgreSQL Connection String (Encrypted with AES-256-GCM)',
+    description: 'PostgreSQL Connection String',
     createdAt: new Date(Date.now() - 90 * 86400000).toISOString(),
   },
   {
     id: 'sec_demo_2',
     key: 'STRIPE_WEBHOOK_SECRET',
-    description: 'Stripe Webhook Signature Validation Key',
+    description: 'Stripe Webhook Signature Secret',
     createdAt: new Date(Date.now() - 45 * 86400000).toISOString(),
-  },
-  {
-    id: 'sec_demo_3',
-    key: 'OPENAI_API_KEY',
-    description: 'AI Engine Vector & Analysis Key',
-    createdAt: new Date(Date.now() - 30 * 86400000).toISOString(),
-  },
-  {
-    id: 'sec_demo_4',
-    key: 'GITHUB_WEBHOOK_SECRET',
-    description: 'HMAC Webhook Ingestion Secret',
-    createdAt: new Date(Date.now() - 60 * 86400000).toISOString(),
   },
 ];
 
 export function isDemoMode(): boolean {
-  if (typeof window === 'undefined') return false;
-  return localStorage.getItem('opspilot_demo_mode') === 'true';
+  return demoService.isEnabled();
 }
 
 export function enableDemoMode(): void {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem('opspilot_token', 'demo_token_sec_key_998877');
-  localStorage.setItem('opspilot_user', JSON.stringify(DEMO_USER));
-  localStorage.setItem('opspilot_demo_mode', 'true');
+  demoService.enable();
 }
 
 export function disableDemoMode(): void {
-  if (typeof window === 'undefined') return;
-  localStorage.removeItem('opspilot_demo_mode');
+  demoService.disable();
 }
