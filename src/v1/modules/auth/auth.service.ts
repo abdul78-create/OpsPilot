@@ -398,6 +398,86 @@ export class AuthService {
   }
 
   // ─────────────────────────────────────────────
+  // OAUTH VALIDATE & PROVISION USER
+  // ─────────────────────────────────────────────
+  async validateOAuthUser(oauthProfile: {
+    provider: string;
+    providerId: string;
+    email: string;
+    name: string;
+    avatarUrl?: string | null;
+  }): Promise<AuthResponseDto> {
+    const { provider, providerId, email, name, avatarUrl } = oauthProfile;
+
+    if (!email) {
+      throw new BadRequestException('OAuth provider did not return an email address');
+    }
+
+    let user = await this.prisma.user.findFirst({
+      where: { email, deletedAt: null },
+    });
+
+    if (!user) {
+      const randomPassword = generateSecureToken();
+      const passwordHash = await this.hashService.hashPassword(randomPassword);
+
+      user = await this.prisma.user.create({
+        data: {
+          email,
+          name,
+          avatarUrl: avatarUrl ?? null,
+          passwordHash,
+          isVerified: true,
+        },
+      });
+
+      this.logger.log(`Provisioned new user ${user.id} via ${provider} OAuth`);
+    } else if (!user.isVerified) {
+      user = await this.prisma.user.update({
+        where: { id: user.id },
+        data: { isVerified: true, avatarUrl: avatarUrl ?? user.avatarUrl },
+      });
+    }
+
+    const existingOAuth = await this.prisma.oAuthAccount.findUnique({
+      where: {
+        provider_providerId: {
+          provider,
+          providerId,
+        },
+      },
+    });
+
+    if (!existingOAuth) {
+      await this.prisma.oAuthAccount.create({
+        data: {
+          userId: user.id,
+          provider,
+          providerId,
+        },
+      });
+    }
+
+    const session = await this.prisma.session.create({
+      data: {
+        userId: user.id,
+        ipAddress: this.contextService.getStore()?.ipAddress ?? '0.0.0.0',
+        userAgent: this.contextService.getUserAgent(),
+        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      },
+    });
+
+    return this.issueAuthTokens(
+      user.id,
+      user.email,
+      user.role,
+      user.isSuperAdmin,
+      user.name,
+      session.id,
+    );
+  }
+
+  // ─────────────────────────────────────────────
   // PRIVATE HELPERS
   // ─────────────────────────────────────────────
   private async issueAuthTokens(

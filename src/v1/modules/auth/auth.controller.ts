@@ -1,5 +1,16 @@
-import { Controller, Post, Get, Body, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Body,
+  UseGuards,
+  HttpCode,
+  HttpStatus,
+  Req,
+  Res,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { Response } from 'express';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -14,6 +25,7 @@ import {
 import { Public } from '../../../core/security/decorators/public.decorator';
 import { CurrentUser } from '../../../core/security/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../../../core/security/guards/jwt-auth.guard';
+import { GoogleAuthGuard } from './guards/google-auth.guard';
 import { JwtPayload } from '../../../core/security/token.service';
 
 @ApiTags('Authentication')
@@ -82,6 +94,30 @@ export class AuthController {
   @ApiResponse({ status: HttpStatus.FORBIDDEN, description: 'Token reuse detected or revoked' })
   async refresh(@Body() dto: RefreshTokenDto): Promise<AuthResponseDto> {
     return this.authService.refreshTokens(dto);
+  }
+
+  // ─────────────────────────────────────────────
+  // GOOGLE OAUTH ENDPOINTS
+  // ─────────────────────────────────────────────
+  @Public()
+  @Get('google')
+  @UseGuards(GoogleAuthGuard)
+  @ApiOperation({ summary: 'Initiate Google OAuth2 authentication flow' })
+  async googleAuth(): Promise<void> {
+    // Handled automatically by Passport Google strategy redirect
+  }
+
+  @Public()
+  @Get('google/callback')
+  @UseGuards(GoogleAuthGuard)
+  @ApiOperation({ summary: 'Google OAuth2 callback endpoint' })
+  async googleAuthCallback(@Req() req: any, @Res() res: Response): Promise<void> {
+    const authResult = await this.authService.validateOAuthUser(req.user);
+    const frontendUrl = process.env.FRONTEND_URL ?? 'https://opspilot-frontend-5atm.onrender.com';
+    const redirectUrl = `${frontendUrl}/login?token=${encodeURIComponent(
+      authResult.tokens.accessToken,
+    )}&user=${encodeURIComponent(JSON.stringify(authResult.user))}`;
+    res.redirect(redirectUrl);
   }
 
   @Post('logout')
