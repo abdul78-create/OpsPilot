@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Eye, EyeOff, Mail, Lock, ArrowRight, CheckCircle2 } from 'lucide-react';
 
 const FEATURES_LIST = [
   'Automated CI/CD pipeline from first push',
@@ -20,7 +19,6 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Handle incoming OAuth callback URL params (token & user)
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const urlParams = new URLSearchParams(window.location.search);
@@ -33,25 +31,19 @@ export default function LoginPage() {
     } else if (token) {
       localStorage.setItem('opspilot_token', token);
       if (userParam) {
-        try {
-          localStorage.setItem('opspilot_user', userParam);
-        } catch {
-          // ignore JSON parse error
-        }
+        try { localStorage.setItem('opspilot_user', userParam); } catch { /* ignore */ }
       }
       window.location.href = '/dashboard';
     }
   }, []);
 
   const handleGoogleLogin = () => {
-    const apiBase =
-      process.env.NEXT_PUBLIC_API_URL || 'https://opspilot-backend-nq7l.onrender.com';
+    const apiBase = process.env.NEXT_PUBLIC_API_URL || 'https://opspilot-backend-nq7l.onrender.com';
     window.location.href = `${apiBase}/v1/auth/google`;
   };
 
   const handleGitHubLogin = () => {
-    const apiBase =
-      process.env.NEXT_PUBLIC_API_URL || 'https://opspilot-backend-nq7l.onrender.com';
+    const apiBase = process.env.NEXT_PUBLIC_API_URL || 'https://opspilot-backend-nq7l.onrender.com';
     window.location.href = `${apiBase}/v1/auth/github`;
   };
 
@@ -59,45 +51,28 @@ export default function LoginPage() {
     e.preventDefault();
     setError('');
     setLoading(true);
-
     try {
-      const apiBase =
-        process.env.NEXT_PUBLIC_API_URL || 'https://opspilot-backend-nq7l.onrender.com';
+      const apiBase = process.env.NEXT_PUBLIC_API_URL || 'https://opspilot-backend-nq7l.onrender.com';
       const res = await fetch(`${apiBase}/v1/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
-
-      let data: any = {};
-      try {
-        data = await res.json();
-      } catch {
-        // Fallback
-      }
-
+      let data: Record<string, unknown> = {};
+      try { data = await res.json(); } catch { /* ignore */ }
       if (!res.ok) {
-        const msg = data.message || `HTTP ${res.status}: Authentication failed`;
+        const msg = (data.message as string) || `HTTP ${res.status}: Authentication failed`;
         if (res.status === 401 && msg.toLowerCase().includes('verif')) {
-          setError(
-            'Please verify your email before signing in. Check your inbox for the verification link.',
-          );
+          setError('Please verify your email before signing in. Check your inbox for the verification link.');
         } else {
           setError(msg);
         }
         return;
       }
-
-      if (typeof window !== 'undefined') {
-        localStorage.setItem(
-          'opspilot_token',
-          data.data?.tokens?.accessToken || data.tokens?.accessToken || '',
-        );
-        localStorage.setItem(
-          'opspilot_user',
-          JSON.stringify(data.data?.user || data.user || {}),
-        );
-      }
+      const tokens = (data.data as Record<string, unknown>)?.tokens as Record<string, string> | undefined;
+      const user = (data.data as Record<string, unknown>)?.user;
+      localStorage.setItem('opspilot_token', tokens?.accessToken || '');
+      localStorage.setItem('opspilot_user', JSON.stringify(user || {}));
       window.location.href = '/dashboard';
     } catch {
       setError('Network connection error. Ensure the backend is reachable.');
@@ -107,217 +82,226 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#09090B] flex">
-      {/* ── Left Panel: Branding ── */}
-      <div className="hidden lg:flex w-1/2 flex-col justify-between p-12 relative overflow-hidden border-r border-[#1C1C1F]">
-        <div className="absolute inset-0 bg-gradient-to-br from-violet-600/10 via-blue-600/5 to-transparent pointer-events-none" />
-        <div className="absolute bottom-0 left-0 w-80 h-80 bg-violet-600/8 rounded-full blur-3xl pointer-events-none" />
+    <>
+      <style>{`
+        body { background-color: #09090B; color: #e4e1e5; }
+        .glass-panel {
+          background: rgba(17,17,19,0.7);
+          backdrop-filter: blur(16px);
+          -webkit-backdrop-filter: blur(16px);
+          border: 1px solid #27272A;
+          border-top: 1px solid #3F3F46;
+          box-shadow: 0px 8px 32px rgba(0,0,0,0.8);
+        }
+        .ambient-bg {
+          position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -1;
+          background:
+            radial-gradient(circle at 15% 50%, rgba(73,75,214,0.08), transparent 50%),
+            radial-gradient(circle at 85% 30%, rgba(74,225,118,0.05), transparent 50%);
+        }
+        .input-field {
+          display: block; width: 100%;
+          background: #09090B;
+          border: 1px solid #27272A;
+          border-radius: 8px;
+          padding: 10px 14px 10px 44px;
+          color: #e4e1e5;
+          font-size: 14px;
+          transition: all 0.2s;
+          outline: none;
+          font-family: Inter, sans-serif;
+        }
+        .input-field:focus { border-color: #494bd6; box-shadow: 0 0 0 2px rgba(99,102,241,0.2); }
+        .input-field::placeholder { color: #71717A; }
+        .btn-primary {
+          width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;
+          background: #494bd6; color: #ffffff;
+          font-size: 12px; font-weight: 500; letter-spacing: 0.05em;
+          padding: 12px 16px; border-radius: 8px; border: none; cursor: pointer;
+          transition: all 0.2s;
+        }
+        .btn-primary:hover { background: #3b3dcf; box-shadow: 0 0 15px rgba(73,75,214,0.4); }
+        .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+        .btn-social {
+          display: flex; align-items: center; justify-content: center; gap: 8px;
+          background: #1b1b1e; border: 1px solid #27272A; border-radius: 8px;
+          padding: 10px 16px; color: #e4e1e5; font-size: 13px; font-weight: 500;
+          cursor: pointer; transition: all 0.2s; width: 100%;
+        }
+        .btn-social:hover { background: #27272A; border-color: #3F3F46; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .spin { animation: spin 1s linear infinite; }
+      `}</style>
 
-        <div className="relative z-10">
-          <Link href="/landing" className="flex items-center gap-2.5 group w-fit">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-600 to-blue-600 flex items-center justify-center shadow-lg">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                <path
-                  d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"
-                  stroke="white"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
+      <div className="ambient-bg" />
+
+      <div style={{ minHeight: '100vh', display: 'flex', fontFamily: 'Inter, sans-serif' }}>
+        {/* ── Left Panel ── */}
+        <div style={{
+          display: 'none',
+          width: '50%', flexDirection: 'column', justifyContent: 'space-between',
+          padding: '48px', position: 'relative', overflow: 'hidden',
+          borderRight: '1px solid #1C1C1F',
+        }} className="lg-panel">
+          <style>{`@media(min-width:1024px){.lg-panel{display:flex!important}}`}</style>
+          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg,rgba(73,75,214,0.08),rgba(74,225,118,0.03),transparent)', pointerEvents: 'none' }} />
+
+          {/* Logo */}
+          <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: 10, position: 'relative', zIndex: 1, textDecoration: 'none' }}>
+            <div style={{ width: 32, height: 32, borderRadius: 10, background: 'linear-gradient(135deg,#494bd6,#4ae176)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
             </div>
-            <span className="text-base font-bold text-white">OpsPilot</span>
+            <span style={{ fontSize: 15, fontWeight: 700, color: '#e4e1e5' }}>OpsPilot</span>
           </Link>
-        </div>
 
-        <div className="relative z-10 space-y-8">
-          <div>
-            <h2 className="text-3xl font-bold text-white mb-3 leading-tight">
+          {/* Hero */}
+          <div style={{ position: 'relative', zIndex: 1 }}>
+            <h2 style={{ fontSize: 30, fontWeight: 700, color: '#e4e1e5', lineHeight: 1.3, marginBottom: 12 }}>
               Deploy with confidence.<br />
-              <span className="gradient-text">Every single time.</span>
+              <span style={{ background: 'linear-gradient(90deg,#8083ff,#4ae176)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Every single time.</span>
             </h2>
-            <p className="text-zinc-400 text-sm leading-relaxed max-w-xs">
-              Join 2,100+ engineering teams who ship faster with OpsPilot&apos;s autonomous CI/CD platform.
+            <p style={{ color: '#908fa0', fontSize: 14, lineHeight: 1.6, maxWidth: 280, marginBottom: 32 }}>
+              Join engineering teams who ship faster with OpsPilot&apos;s autonomous CI/CD platform.
             </p>
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {FEATURES_LIST.map(f => (
+                <li key={f} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: '#c7c4d7' }}>
+                  <span style={{ color: '#4ae176', fontSize: 16 }}>✓</span>
+                  {f}
+                </li>
+              ))}
+            </ul>
+            <div style={{ marginTop: 32, borderRadius: 10, background: '#111113', border: '1px solid #27272A', padding: '16px', fontFamily: 'JetBrains Mono, monospace', fontSize: 12 }}>
+              <div style={{ color: '#464554' }}>$ git push origin main</div>
+              <div style={{ color: '#8083ff' }}>⚡ Pipeline triggered</div>
+              <div style={{ color: '#908fa0' }}>▶ Clone → Install → Build → Test → Deploy</div>
+              <div style={{ color: '#4ae176' }}>✓ Deployed in 27.1s · HTTP 200 OK</div>
+            </div>
           </div>
 
-          <ul className="space-y-3">
-            {FEATURES_LIST.map((f) => (
-              <li key={f} className="flex items-center gap-3 text-sm text-zinc-300">
-                <CheckCircle2 size={15} className="text-emerald-400 shrink-0" />
-                {f}
-              </li>
-            ))}
-          </ul>
-
-          <div className="rounded-xl bg-[#111113] border border-[#27272A] p-4 font-mono text-xs space-y-1">
-            <div className="text-zinc-500">$ git push origin main</div>
-            <div className="text-violet-400">⚡ Pipeline triggered</div>
-            <div className="text-zinc-400">▶ Clone → Install → Build → Test → Deploy</div>
-            <div className="text-emerald-400">✓ Deployed in 27.1s · HTTP 200 OK</div>
+          <div style={{ position: 'relative', zIndex: 1 }}>
+            <p style={{ color: '#464554', fontSize: 12, fontStyle: 'italic' }}>&ldquo;The AI RCA alone saved us 6 hours this month.&rdquo;</p>
+            <p style={{ color: '#353437', fontSize: 11, marginTop: 4 }}>— Platform Engineering Lead</p>
           </div>
         </div>
 
-        <div className="relative z-10">
-          <p className="text-zinc-500 text-xs italic">
-            &ldquo;The AI RCA alone saved us 6 hours this month.&rdquo;
-          </p>
-          <p className="text-zinc-600 text-xs mt-1">— Platform Engineering Lead</p>
+        {/* ── Right Panel: Login Form ── */}
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 32 }}>
+          <div style={{ width: '100%', maxWidth: 400 }}>
 
-        </div>
-      </div>
-
-      {/* ── Right Panel: Login Form ── */}
-      <div className="flex-1 flex items-center justify-center p-8">
-        <div className="w-full max-w-sm space-y-5 animate-fade-in">
-          <div className="lg:hidden flex items-center gap-2 mb-2">
-            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-violet-600 to-blue-600 flex items-center justify-center">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                <path
-                  d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"
-                  stroke="white"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </div>
-            <span className="text-sm font-bold text-white">OpsPilot</span>
-          </div>
-
-          <div>
-            <h1 className="text-2xl font-bold text-white mb-1">Welcome back</h1>
-            <p className="text-sm text-zinc-500">Sign in to your workspace</p>
-          </div>
-
-          {/* ── Social OAuth Buttons ── */}
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              id="google-login-btn"
-              type="button"
-              onClick={handleGoogleLogin}
-              className="flex items-center justify-center gap-2.5 py-2.5 px-4 rounded-xl bg-[#111113] hover:bg-[#18181B] border border-[#27272A] hover:border-zinc-700 text-xs font-semibold text-zinc-200 transition-all hover:scale-[1.01]"
-            >
-              <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
-                <path
-                  fill="#EA4335"
-                  d="M12 5c1.6 0 3 .6 4.1 1.6l3.1-3.1C17.3 1.7 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.3 9 5 12 5z"
-                />
-                <path
-                  fill="#4285F4"
-                  d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.8z"
-                />
-                <path
-                  fill="#FBBC05"
-                  d="M5.6 14.8c-.2-.7-.4-1.5-.4-2.3s.2-1.6.4-2.3L1.9 7.3C.7 9.7 0 12.4 0 15.3s.7 5.6 1.9 8l3.7-2.9z"
-                />
-                <path
-                  fill="#34A853"
-                  d="M12 23c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2.3-6.4-5.2L1.9 16C3.7 19.7 7.5 23 12 23z"
-                />
-              </svg>
-              Continue with Google
-            </button>
-
-            <button
-              id="github-login-btn"
-              type="button"
-              onClick={handleGitHubLogin}
-              className="flex items-center justify-center gap-2.5 py-2.5 px-4 rounded-xl bg-[#111113] hover:bg-[#18181B] border border-[#27272A] hover:border-zinc-700 text-xs font-semibold text-zinc-200 transition-all hover:scale-[1.01]"
-            >
-              <svg className="w-4 h-4 fill-current text-white shrink-0" viewBox="0 0 24 24">
-                <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z" />
-              </svg>
-              Continue with GitHub
-            </button>
-          </div>
-
-          <div className="flex items-center gap-3 my-2">
-            <div className="flex-1 h-px bg-[#27272A]" />
-            <span className="text-[11px] text-zinc-600 uppercase tracking-wider">or sign in with email</span>
-            <div className="flex-1 h-px bg-[#27272A]" />
-          </div>
-
-          {/* Error */}
-          {error && (
-            <div className="px-4 py-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-xs leading-relaxed">
-              {error}
-            </div>
-          )}
-
-          {/* Form */}
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-zinc-400">Email address</label>
-              <div className="relative">
-                <Mail size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600" />
-                <input
-                  id="login-email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@company.com"
-                  required
-                  className="w-full pl-9 pr-4 py-2.5 rounded-lg bg-[#111113] border border-[#27272A] focus:border-violet-500/60 focus:outline-none focus:ring-1 focus:ring-violet-500/30 text-sm text-zinc-100 placeholder:text-zinc-600 transition-all"
-                />
+            {/* Mobile logo */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 32 }} className="mobile-logo">
+              <style>{`@media(min-width:1024px){.mobile-logo{display:none!important}}`}</style>
+              <div style={{ width: 28, height: 28, borderRadius: 8, background: 'linear-gradient(135deg,#494bd6,#4ae176)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
               </div>
+              <span style={{ fontSize: 14, fontWeight: 700, color: '#e4e1e5' }}>OpsPilot</span>
             </div>
 
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-medium text-zinc-400">Password</label>
-                <Link href="/forgot-password" className="text-[11px] text-violet-400 hover:text-violet-300 transition-colors">
-                  Forgot password?
-                </Link>
-              </div>
-              <div className="relative">
-                <Lock size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600" />
-                <input
-                  id="login-password"
-                  type={showPass ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  required
-                  className="w-full pl-9 pr-10 py-2.5 rounded-lg bg-[#111113] border border-[#27272A] focus:border-violet-500/60 focus:outline-none focus:ring-1 focus:ring-violet-500/30 text-sm text-zinc-100 placeholder:text-zinc-600 transition-all"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPass(s => !s)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-600 hover:text-zinc-400 transition-colors"
-                >
-                  {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
+            {/* Header */}
+            <div style={{ textAlign: 'center', marginBottom: 32 }}>
+              <h1 style={{ fontSize: 28, fontWeight: 700, color: '#e4e1e5', marginBottom: 6 }}>Welcome back</h1>
+              <p style={{ color: '#908fa0', fontSize: 14 }}>Sign in to your workspace</p>
+            </div>
+
+            <div className="glass-panel" style={{ borderRadius: 12, padding: 32 }}>
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, background: 'linear-gradient(90deg,transparent,#3F3F46,transparent)' }} />
+
+              {/* OAuth Buttons */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 24 }}>
+                <button id="google-login-btn" type="button" onClick={handleGoogleLogin} className="btn-social">
+                  <svg width="16" height="16" viewBox="0 0 24 24">
+                    <path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.6l3.1-3.1C17.3 1.7 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.3 9 5 12 5z"/>
+                    <path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.8z"/>
+                    <path fill="#FBBC05" d="M5.6 14.8c-.2-.7-.4-1.5-.4-2.3s.2-1.6.4-2.3L1.9 7.3C.7 9.7 0 12.4 0 15.3s.7 5.6 1.9 8l3.7-2.9z"/>
+                    <path fill="#34A853" d="M12 23c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2.3-6.4-5.2L1.9 16C3.7 19.7 7.5 23 12 23z"/>
+                  </svg>
+                  Google
+                </button>
+                <button id="github-login-btn" type="button" onClick={handleGitHubLogin} className="btn-social">
+                  <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+                  GitHub
                 </button>
               </div>
-            </div>
 
-            <div className="flex items-center gap-2">
-              <input id="remember" type="checkbox" className="w-3.5 h-3.5 accent-violet-600 rounded" />
-              <label htmlFor="remember" className="text-xs text-zinc-500">Remember me</label>
-            </div>
+              {/* Divider */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
+                <div style={{ flex: 1, height: 1, background: '#27272A' }} />
+                <span style={{ fontSize: 11, color: '#464554', textTransform: 'uppercase', letterSpacing: '0.1em' }}>or sign in with email</span>
+                <div style={{ flex: 1, height: 1, background: '#27272A' }} />
+              </div>
 
-            <button
-              id="login-submit"
-              type="submit"
-              disabled={loading}
-              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold text-sm transition-all hover:-translate-y-0.5 shadow-lg hover:shadow-violet-500/20"
-            >
-              {loading ? (
-                <svg className="animate-spin" width="15" height="15" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="30" strokeDashoffset="10"/></svg>
-              ) : (
-                <>Sign in <ArrowRight size={15} /></>
+              {/* Error */}
+              {error && (
+                <div style={{ padding: '12px 16px', borderRadius: 8, background: 'rgba(255,180,171,0.05)', border: '1px solid rgba(255,180,171,0.2)', color: '#ffb4ab', fontSize: 12, marginBottom: 20, lineHeight: 1.5 }}>
+                  {error}
+                </div>
               )}
-            </button>
-          </form>
 
-          <p className="text-xs text-center text-zinc-600">
-            Don&apos;t have an account?{' '}
-            <Link href="/register" className="text-violet-400 hover:text-violet-300 font-medium transition-colors">
-              Create one free
-            </Link>
-          </p>
+              {/* Form */}
+              <form onSubmit={handleLogin}>
+                {/* Email */}
+                <div style={{ marginBottom: 16 }}>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: '#908fa0', marginBottom: 6, letterSpacing: '0.05em', textTransform: 'uppercase' }}>Email Address</label>
+                  <div style={{ position: 'relative' }}>
+                    <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#464554', fontSize: 16 }}>✉</span>
+                    <input
+                      id="login-email"
+                      type="email"
+                      value={email}
+                      onChange={e => setEmail(e.target.value)}
+                      placeholder="engineer@company.com"
+                      required
+                      className="input-field"
+                    />
+                  </div>
+                </div>
+
+                {/* Password */}
+                <div style={{ marginBottom: 20 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <label style={{ fontSize: 12, fontWeight: 500, color: '#908fa0', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Password</label>
+                    <Link href="/forgot-password" style={{ fontSize: 11, color: '#8083ff', textDecoration: 'none' }}>Forgot password?</Link>
+                  </div>
+                  <div style={{ position: 'relative' }}>
+                    <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#464554', fontSize: 16 }}>🔒</span>
+                    <input
+                      id="login-password"
+                      type={showPass ? 'text' : 'password'}
+                      value={password}
+                      onChange={e => setPassword(e.target.value)}
+                      placeholder="••••••••"
+                      required
+                      className="input-field"
+                      style={{ paddingRight: 44 }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPass(s => !s)}
+                      style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#464554', fontSize: 13 }}
+                    >
+                      {showPass ? '👁' : '👁‍🗨'}
+                    </button>
+                  </div>
+                </div>
+
+                <button id="login-submit" type="submit" disabled={loading} className="btn-primary">
+                  {loading ? (
+                    <svg className="spin" width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="30" strokeDashoffset="10"/></svg>
+                  ) : (
+                    <><span>Sign in</span><span>→</span></>
+                  )}
+                </button>
+              </form>
+            </div>
+
+            <p style={{ textAlign: 'center', fontSize: 12, color: '#464554', marginTop: 24 }}>
+              Don&apos;t have an account?{' '}
+              <Link href="/register" style={{ color: '#8083ff', textDecoration: 'none', fontWeight: 500 }}>Create one free</Link>
+            </p>
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }

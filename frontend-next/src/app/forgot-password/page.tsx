@@ -2,7 +2,6 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { Mail, ArrowRight, MailCheck, ArrowLeft } from 'lucide-react';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
@@ -14,7 +13,6 @@ export default function ForgotPasswordPage() {
     e.preventDefault();
     setError('');
     setLoading(true);
-
     try {
       const apiBase = process.env.NEXT_PUBLIC_API_URL || '';
       const res = await fetch(`${apiBase}/v1/auth/forgot-password`, {
@@ -22,15 +20,12 @@ export default function ForgotPasswordPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
       });
-
-      let data: any = {};
+      let data: Record<string, unknown> = {};
       try { data = await res.json(); } catch { /* ignore */ }
-
       if (!res.ok) {
-        setError(data.message || `HTTP ${res.status}: Request failed.`);
+        setError((data.message as string) || `HTTP ${res.status}: Request failed.`);
         return;
       }
-
       setSent(true);
     } catch {
       setError('Network error. Ensure the backend is reachable.');
@@ -40,100 +35,135 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#09090B] flex items-center justify-center p-8">
-      <div className="w-full max-w-sm animate-fade-in space-y-6">
+    <>
+      <style>{`
+        body { background: #09090B; color: #e4e1e5; overflow-x: hidden; }
+        .ambient {
+          position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -1;
+          background:
+            radial-gradient(at 0% 0%, hsla(240,100%,70%,0.05) 0px, transparent 50%),
+            radial-gradient(at 100% 0%, hsla(240,100%,70%,0.05) 0px, transparent 50%);
+        }
+        .glass-card {
+          background: rgba(17,17,19,0.7);
+          backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+          border: 1px solid #27272A; border-top: 1px solid #3F3F46;
+          box-shadow: 0px 8px 32px rgba(0,0,0,0.8);
+          border-radius: 12px; padding: 40px; position: relative; overflow: hidden;
+        }
+        .input-field {
+          display: block; width: 100%; background: #09090B;
+          border: 1px solid #27272A; border-radius: 8px;
+          padding: 10px 14px 10px 44px; color: #e4e1e5;
+          font-size: 14px; font-family: Inter, sans-serif;
+          outline: none; transition: all 0.2s; box-sizing: border-box;
+        }
+        .input-field:focus { border-color: #494bd6; box-shadow: 0 0 0 2px rgba(73,75,214,0.2); }
+        .input-field::placeholder { color: #71717A; }
+        .btn-primary {
+          width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;
+          background: #494bd6; color: #fff;
+          font-size: 12px; font-weight: 500; letter-spacing: 0.05em;
+          padding: 12px 16px; border-radius: 8px; border: none; cursor: pointer;
+          transition: all 0.2s;
+        }
+        .btn-primary:hover { background: #3b3dcf; box-shadow: 0 0 20px rgba(73,75,214,0.4); }
+        .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .spin { animation: spin 1s linear infinite; }
+      `}</style>
 
-        {/* Logo */}
-        <Link href="/landing" className="inline-flex items-center gap-2 mb-2">
-          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-violet-600 to-blue-600 flex items-center justify-center">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </div>
-          <span className="text-sm font-bold text-white">OpsPilot</span>
-        </Link>
+      <div className="ambient" />
 
-        {!sent ? (
-          <>
-            <div>
-              <h1 className="text-2xl font-bold text-white mb-1">Forgot your password?</h1>
-              <p className="text-sm text-zinc-500">
-                Enter your account email and we'll send you a secure reset link.
-              </p>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 32, fontFamily: 'Inter, sans-serif' }}>
+        <div style={{ width: '100%', maxWidth: 420 }}>
+
+          {/* Brand header */}
+          <div style={{ textAlign: 'center', marginBottom: 32 }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 48, height: 48, borderRadius: 12, background: '#1f1f22', border: '1px solid #27272A', marginBottom: 16, boxShadow: '0 0 20px rgba(73,75,214,0.15)' }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="#c0c1ff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
             </div>
+            <h1 style={{ fontSize: 22, fontWeight: 700, color: '#e4e1e5', marginBottom: 4 }}>OpsPilot</h1>
+            <p style={{ fontSize: 11, color: '#464554', letterSpacing: '0.15em', textTransform: 'uppercase' }}>Enterprise CI/CD</p>
+          </div>
 
-            {error && (
-              <div className="px-4 py-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-xs">
-                {error}
-              </div>
-            )}
+          <div className="glass-card">
+            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: 'linear-gradient(90deg,transparent,rgba(128,131,255,0.5),transparent)', opacity: 0.5 }} />
 
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-zinc-400">Email address</label>
-                <div className="relative">
-                  <Mail size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600" />
-                  <input
-                    id="forgot-email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@company.com"
-                    required
-                    className="w-full pl-9 pr-4 py-2.5 rounded-lg bg-[#111113] border border-[#27272A] focus:border-violet-500/60 focus:outline-none focus:ring-1 focus:ring-violet-500/30 text-sm text-zinc-100 placeholder:text-zinc-600 transition-all"
-                  />
+            {!sent ? (
+              <>
+                <div style={{ textAlign: 'center', marginBottom: 28 }}>
+                  <h2 style={{ fontSize: 22, fontWeight: 700, color: '#e4e1e5', marginBottom: 8 }}>Reset your password</h2>
+                  <p style={{ fontSize: 13, color: '#908fa0', lineHeight: 1.6 }}>Enter your email address and we&apos;ll send you a link to reset your password.</p>
+                </div>
+
+                {error && (
+                  <div style={{ padding: '12px 16px', borderRadius: 8, background: 'rgba(255,180,171,0.05)', border: '1px solid rgba(255,180,171,0.2)', color: '#ffb4ab', fontSize: 12, marginBottom: 20, lineHeight: 1.5 }}>
+                    {error}
+                  </div>
+                )}
+
+                <form onSubmit={handleSubmit}>
+                  <div style={{ marginBottom: 20 }}>
+                    <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: '#908fa0', marginBottom: 6, letterSpacing: '0.05em', textTransform: 'uppercase' }}>Email Address</label>
+                    <div style={{ position: 'relative' }}>
+                      <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#464554', fontSize: 15 }}>✉</span>
+                      <input
+                        id="forgot-email"
+                        type="email"
+                        value={email}
+                        onChange={e => setEmail(e.target.value)}
+                        placeholder="engineer@company.com"
+                        required
+                        className="input-field"
+                      />
+                    </div>
+                  </div>
+
+                  <button id="forgot-submit" type="submit" disabled={loading} className="btn-primary">
+                    {loading ? (
+                      <svg className="spin" width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="30" strokeDashoffset="10"/></svg>
+                    ) : (
+                      <><span>Send Reset Link</span><span>→</span></>
+                    )}
+                  </button>
+                </form>
+
+                <div style={{ textAlign: 'center', marginTop: 24 }}>
+                  <Link href="/login" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#908fa0', textDecoration: 'none', transition: 'color 0.2s' }}>
+                    ← Back to login
+                  </Link>
+                </div>
+              </>
+            ) : (
+              /* Success state */
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ width: 72, height: 72, borderRadius: '50%', background: 'rgba(73,75,214,0.1)', border: '1px solid rgba(73,75,214,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>
+                  <span style={{ fontSize: 32 }}>📧</span>
+                </div>
+                <h2 style={{ fontSize: 22, fontWeight: 700, color: '#e4e1e5', marginBottom: 12 }}>Check your inbox</h2>
+                <p style={{ fontSize: 13, color: '#908fa0', lineHeight: 1.6, marginBottom: 24 }}>
+                  If <span style={{ color: '#c7c4d7', fontWeight: 500 }}>{email}</span> is registered, you&apos;ll receive a password reset link shortly.
+                </p>
+                <p style={{ fontSize: 12, color: '#464554' }}>
+                  Didn&apos;t get it? Check your spam folder or{' '}
+                  <button style={{ background: 'none', border: 'none', color: '#8083ff', cursor: 'pointer', fontSize: 12, padding: 0 }} onClick={() => { setSent(false); setEmail(''); }}>try again</button>.
+                </p>
+                <div style={{ marginTop: 24 }}>
+                  <Link href="/login" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#908fa0', textDecoration: 'none' }}>
+                    ← Back to sign in
+                  </Link>
                 </div>
               </div>
-
-              <button
-                id="forgot-submit"
-                type="submit"
-                disabled={loading}
-                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-60 text-white font-semibold text-sm transition-all hover:-translate-y-0.5 shadow-lg hover:shadow-violet-500/20"
-              >
-                {loading ? (
-                  <svg className="animate-spin" width="15" height="15" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="30" strokeDashoffset="10"/></svg>
-                ) : (
-                  <>Send reset link <ArrowRight size={15} /></>
-                )}
-              </button>
-            </form>
-
-            <Link href="/login" className="inline-flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-300 transition-colors">
-              <ArrowLeft size={13} />
-              Back to sign in
-            </Link>
-          </>
-        ) : (
-          /* Success state */
-          <div className="text-center space-y-6">
-            <div className="flex justify-center">
-              <div className="w-16 h-16 rounded-2xl bg-violet-600/15 border border-violet-500/30 flex items-center justify-center">
-                <MailCheck size={32} className="text-violet-400" />
-              </div>
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-white mb-2">Check your inbox</h1>
-              <p className="text-sm text-zinc-400 leading-relaxed">
-                If <span className="text-zinc-200 font-medium">{email}</span> is registered, you'll receive a password reset link shortly.
-              </p>
-            </div>
-            <p className="text-xs text-zinc-600">
-              Didn't get it? Check your spam folder or{' '}
-              <button
-                className="text-violet-400 hover:text-violet-300 transition-colors"
-                onClick={() => { setSent(false); setEmail(''); }}
-              >
-                try again
-              </button>.
-            </p>
-            <Link href="/login" className="inline-flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-300 transition-colors">
-              <ArrowLeft size={13} />
-              Back to sign in
-            </Link>
+            )}
           </div>
-        )}
+
+          <div style={{ textAlign: 'center', marginTop: 24, fontSize: 12, color: '#353437' }}>
+            Need help?{' '}
+            <Link href="#" style={{ color: '#8083ff', textDecoration: 'none' }}>Contact Support</Link>
+          </div>
+        </div>
       </div>
-    </div>
+    </>
   );
 }

@@ -3,30 +3,30 @@
 import React, { useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Lock, Eye, EyeOff, ArrowRight, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 
 type State = 'form' | 'success' | 'error';
 
-function PasswordStrength({ password }: { password: string }) {
+function PasswordStrengthBar({ password }: { password: string }) {
   const checks = [
-    { label: '8+ chars', pass: password.length >= 8 },
+    { label: '12+ chars', pass: password.length >= 12 },
     { label: 'Uppercase', pass: /[A-Z]/.test(password) },
-    { label: 'Lowercase', pass: /[a-z]/.test(password) },
     { label: 'Number', pass: /\d/.test(password) },
+    { label: 'Special', pass: /[^A-Za-z0-9]/.test(password) },
   ];
   const strength = checks.filter(c => c.pass).length;
-  const colors = ['bg-red-500', 'bg-amber-500', 'bg-amber-400', 'bg-emerald-400', 'bg-emerald-500'];
+  const colors = ['#ff4444', '#fb8500', '#ffb703', '#4ae176'];
+
   if (!password) return null;
   return (
-    <div className="space-y-2 mt-1">
-      <div className="flex gap-1">
+    <div style={{ marginTop: 8 }}>
+      <div style={{ display: 'flex', gap: 4, height: 4 }}>
         {[0, 1, 2, 3].map(i => (
-          <div key={i} className={`h-1 flex-1 rounded-full transition-all ${i < strength ? colors[strength] : 'bg-[#27272A]'}`} />
+          <div key={i} style={{ flex: 1, borderRadius: 4, background: i < strength ? colors[strength - 1] : '#27272A', transition: 'background 0.3s' }} />
         ))}
       </div>
-      <div className="flex gap-3">
+      <div style={{ display: 'flex', gap: 12, marginTop: 4 }}>
         {checks.map(c => (
-          <span key={c.label} className={`text-[10px] flex items-center gap-1 ${c.pass ? 'text-emerald-400' : 'text-zinc-600'}`}>
+          <span key={c.label} style={{ fontSize: 10, color: c.pass ? '#4ae176' : '#464554' }}>
             {c.pass ? '✓' : '○'} {c.label}
           </span>
         ))}
@@ -50,17 +50,13 @@ function ResetPasswordContent() {
 
   if (!token && state === 'form') {
     return (
-      <div className="text-center space-y-6">
-        <div className="flex justify-center">
-          <div className="w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/30 flex items-center justify-center">
-            <XCircle size={32} className="text-red-400" />
-          </div>
+      <div style={{ textAlign: 'center' }}>
+        <div style={{ width: 72, height: 72, borderRadius: '50%', background: 'rgba(255,180,171,0.05)', border: '1px solid rgba(255,180,171,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>
+          <span style={{ fontSize: 32 }}>✖</span>
         </div>
-        <div>
-          <h1 className="text-2xl font-bold text-white mb-2">Invalid reset link</h1>
-          <p className="text-sm text-zinc-400">No reset token found. Please use the link from your email.</p>
-        </div>
-        <Link href="/forgot-password" className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-semibold text-sm transition-all">
+        <h2 style={{ fontSize: 22, fontWeight: 700, color: '#e4e1e5', marginBottom: 12 }}>Invalid reset link</h2>
+        <p style={{ fontSize: 13, color: '#908fa0', marginBottom: 24 }}>No reset token found. Please use the link from your email.</p>
+        <Link href="/forgot-password" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '12px 24px', background: '#494bd6', color: '#fff', borderRadius: 8, fontSize: 13, fontWeight: 500, textDecoration: 'none' }}>
           Request new link
         </Link>
       </div>
@@ -70,16 +66,8 @@ function ResetPasswordContent() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError('');
-
-    if (newPassword !== confirmPassword) {
-      setFormError('Passwords do not match.');
-      return;
-    }
-    if (newPassword.length < 8) {
-      setFormError('Password must be at least 8 characters.');
-      return;
-    }
-
+    if (newPassword !== confirmPassword) { setFormError('Passwords do not match.'); return; }
+    if (newPassword.length < 8) { setFormError('Password must be at least 8 characters.'); return; }
     setLoading(true);
     try {
       const apiBase = process.env.NEXT_PUBLIC_API_URL || '';
@@ -88,16 +76,9 @@ function ResetPasswordContent() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token, newPassword }),
       });
-
-      let data: any = {};
+      let data: Record<string, unknown> = {};
       try { data = await res.json(); } catch { /* ignore */ }
-
-      if (!res.ok) {
-        setState('error');
-        setErrorMsg(data.message || 'This reset link is invalid or has expired.');
-        return;
-      }
-
+      if (!res.ok) { setState('error'); setErrorMsg((data.message as string) || 'This reset link is invalid or has expired.'); return; }
       setState('success');
     } catch {
       setFormError('Network error. Ensure the backend is reachable.');
@@ -108,22 +89,14 @@ function ResetPasswordContent() {
 
   if (state === 'success') {
     return (
-      <div className="text-center space-y-6">
-        <div className="flex justify-center">
-          <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center">
-            <CheckCircle2 size={32} className="text-emerald-400" />
-          </div>
+      <div style={{ textAlign: 'center' }}>
+        <div style={{ width: 72, height: 72, borderRadius: '50%', background: 'rgba(74,225,118,0.08)', border: '1px solid rgba(74,225,118,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>
+          <span style={{ fontSize: 32 }}>✓</span>
         </div>
-        <div>
-          <h1 className="text-2xl font-bold text-white mb-2">Password updated!</h1>
-          <p className="text-sm text-zinc-400">Your password has been changed. Sign in with your new credentials.</p>
-        </div>
-        <Link
-          id="reset-go-login"
-          href="/login"
-          className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-semibold text-sm transition-all hover:-translate-y-0.5"
-        >
-          Sign in <ArrowRight size={15} />
+        <h2 style={{ fontSize: 22, fontWeight: 700, color: '#e4e1e5', marginBottom: 12 }}>Password updated!</h2>
+        <p style={{ fontSize: 13, color: '#908fa0', marginBottom: 28 }}>Your password has been changed. Sign in with your new credentials.</p>
+        <Link id="reset-go-login" href="/login" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '12px 28px', background: '#494bd6', color: '#fff', borderRadius: 8, fontSize: 13, fontWeight: 500, textDecoration: 'none' }}>
+          Sign in →
         </Link>
       </div>
     );
@@ -131,117 +104,176 @@ function ResetPasswordContent() {
 
   if (state === 'error') {
     return (
-      <div className="text-center space-y-6">
-        <div className="flex justify-center">
-          <div className="w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/30 flex items-center justify-center">
-            <XCircle size={32} className="text-red-400" />
-          </div>
+      <div style={{ textAlign: 'center' }}>
+        <div style={{ width: 72, height: 72, borderRadius: '50%', background: 'rgba(255,180,171,0.05)', border: '1px solid rgba(255,180,171,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>
+          <span style={{ fontSize: 32 }}>✖</span>
         </div>
-        <div>
-          <h1 className="text-2xl font-bold text-white mb-2">Reset link expired</h1>
-          <p className="text-sm text-zinc-400 leading-relaxed">{errorMsg}</p>
-        </div>
-        <Link href="/forgot-password" className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-semibold text-sm transition-all">
+        <h2 style={{ fontSize: 22, fontWeight: 700, color: '#e4e1e5', marginBottom: 12 }}>Reset link expired</h2>
+        <p style={{ fontSize: 13, color: '#908fa0', marginBottom: 28, lineHeight: 1.6 }}>{errorMsg}</p>
+        <Link href="/forgot-password" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '12px 24px', background: '#494bd6', color: '#fff', borderRadius: 8, fontSize: 13, fontWeight: 500, textDecoration: 'none' }}>
           Request new link
         </Link>
       </div>
     );
   }
 
+  const requirementsMet = [
+    { label: 'At least 12 characters long', pass: newPassword.length >= 12 },
+    { label: 'Contains at least one uppercase letter', pass: /[A-Z]/.test(newPassword) },
+    { label: 'Contains at least one number', pass: /\d/.test(newPassword) },
+    { label: 'Contains at least one special character', pass: /[^A-Za-z0-9]/.test(newPassword) },
+  ];
+
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-white mb-1">Set new password</h1>
-        <p className="text-sm text-zinc-500">Choose a strong password for your account.</p>
+    <div>
+      <div style={{ textAlign: 'center', marginBottom: 28 }}>
+        <h2 style={{ fontSize: 22, fontWeight: 700, color: '#e4e1e5', marginBottom: 8 }}>Reset Password</h2>
+        <p style={{ fontSize: 13, color: '#908fa0' }}>Secure your OpsPilot enterprise account.</p>
       </div>
 
       {formError && (
-        <div className="px-4 py-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-xs">
+        <div style={{ padding: '12px 16px', borderRadius: 8, background: 'rgba(255,180,171,0.05)', border: '1px solid rgba(255,180,171,0.2)', color: '#ffb4ab', fontSize: 12, marginBottom: 20, lineHeight: 1.5 }}>
           {formError}
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="space-y-1.5">
-          <label className="text-xs font-medium text-zinc-400">New password</label>
-          <div className="relative">
-            <Lock size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600" />
+      <form onSubmit={handleSubmit}>
+        {/* New Password */}
+        <div style={{ marginBottom: 16 }}>
+          <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: '#908fa0', marginBottom: 6, letterSpacing: '0.05em', textTransform: 'uppercase' }}>New Password</label>
+          <div style={{ position: 'relative' }}>
+            <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#464554', fontSize: 15 }}>🔒</span>
             <input
               id="reset-new-password"
               type={showNew ? 'text' : 'password'}
               value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="At least 8 characters"
+              onChange={e => setNewPassword(e.target.value)}
+              placeholder="Enter new password"
               required
-              className="w-full pl-9 pr-10 py-2.5 rounded-lg bg-[#111113] border border-[#27272A] focus:border-violet-500/60 focus:outline-none focus:ring-1 focus:ring-violet-500/30 text-sm text-zinc-100 placeholder:text-zinc-600 transition-all"
+              className="input-field"
+              style={{ paddingRight: 44 }}
             />
-            <button type="button" onClick={() => setShowNew(s => !s)} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-600 hover:text-zinc-400">
-              {showNew ? <EyeOff size={15} /> : <Eye size={15} />}
+            <button type="button" onClick={() => setShowNew(s => !s)} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#464554', fontSize: 13 }}>
+              {showNew ? '👁' : '👁‍🗨'}
             </button>
           </div>
-          <PasswordStrength password={newPassword} />
+          <PasswordStrengthBar password={newPassword} />
         </div>
 
-        <div className="space-y-1.5">
-          <label className="text-xs font-medium text-zinc-400">Confirm password</label>
-          <div className="relative">
-            <Lock size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600" />
+        {/* Confirm Password */}
+        <div style={{ marginBottom: 20 }}>
+          <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: '#908fa0', marginBottom: 6, letterSpacing: '0.05em', textTransform: 'uppercase' }}>Confirm New Password</label>
+          <div style={{ position: 'relative' }}>
+            <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: '#464554', fontSize: 15 }}>🔒</span>
             <input
               id="reset-confirm-password"
               type={showConfirm ? 'text' : 'password'}
               value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="Repeat your new password"
+              onChange={e => setConfirmPassword(e.target.value)}
+              placeholder="Confirm new password"
               required
-              className="w-full pl-9 pr-10 py-2.5 rounded-lg bg-[#111113] border border-[#27272A] focus:border-violet-500/60 focus:outline-none focus:ring-1 focus:ring-violet-500/30 text-sm text-zinc-100 placeholder:text-zinc-600 transition-all"
+              className="input-field"
+              style={{ paddingRight: 44 }}
             />
-            <button type="button" onClick={() => setShowConfirm(s => !s)} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-600 hover:text-zinc-400">
-              {showConfirm ? <EyeOff size={15} /> : <Eye size={15} />}
+            <button type="button" onClick={() => setShowConfirm(s => !s)} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#464554', fontSize: 13 }}>
+              {showConfirm ? '👁' : '👁‍🗨'}
             </button>
           </div>
           {confirmPassword && newPassword !== confirmPassword && (
-            <p className="text-[11px] text-red-400 mt-1">Passwords do not match</p>
+            <p style={{ fontSize: 11, color: '#ffb4ab', marginTop: 4 }}>Passwords do not match</p>
           )}
         </div>
 
-        <button
-          id="reset-submit"
-          type="submit"
-          disabled={loading}
-          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-60 text-white font-semibold text-sm transition-all hover:-translate-y-0.5 shadow-lg hover:shadow-violet-500/20"
-        >
+        {/* Requirements */}
+        <div style={{ background: 'rgba(31,31,34,0.5)', border: '1px solid rgba(70,69,84,0.5)', borderRadius: 8, padding: 16, marginBottom: 24 }}>
+          <h4 style={{ fontSize: 11, fontWeight: 600, color: '#e4e1e5', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Password Requirements</h4>
+          {requirementsMet.map(req => (
+            <div key={req.label} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, fontSize: 12 }}>
+              <span style={{ color: req.pass ? '#4ae176' : '#464554', fontSize: 14 }}>{req.pass ? '●' : '○'}</span>
+              <span style={{ color: req.pass ? '#c7c4d7' : 'rgba(199,196,215,0.5)' }}>{req.label}</span>
+            </div>
+          ))}
+        </div>
+
+        <button id="reset-submit" type="submit" disabled={loading} className="btn-primary">
           {loading ? (
-            <svg className="animate-spin" width="15" height="15" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="30" strokeDashoffset="10"/></svg>
+            <svg className="spin" width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="30" strokeDashoffset="10"/></svg>
           ) : (
-            <>Update password <ArrowRight size={15} /></>
+            <><span>Update Password</span><span>→</span></>
           )}
         </button>
       </form>
+
+      <div style={{ textAlign: 'center', marginTop: 20 }}>
+        <Link href="/login" style={{ fontSize: 12, color: '#8083ff', textDecoration: 'none' }}>Return to Login</Link>
+      </div>
     </div>
   );
 }
 
 export default function ResetPasswordPage() {
   return (
-    <div className="min-h-screen bg-[#09090B] flex items-center justify-center p-8">
-      <div className="w-full max-w-sm animate-fade-in space-y-6">
-        <Link href="/landing" className="inline-flex items-center gap-2 mb-2">
-          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-violet-600 to-blue-600 flex items-center justify-center">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </div>
-          <span className="text-sm font-bold text-white">OpsPilot</span>
-        </Link>
+    <>
+      <style>{`
+        body { background: #09090B; color: #e4e1e5; overflow-x: hidden; }
+        .ambient {
+          position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -1;
+          background:
+            radial-gradient(circle at 15% 50%, rgba(73,75,214,0.08), transparent 50%),
+            radial-gradient(circle at 85% 30%, rgba(74,225,118,0.05), transparent 50%);
+        }
+        .glass-card {
+          background: rgba(27,27,30,0.4);
+          backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+          border: 1px solid rgba(70,69,84,0.4);
+          box-shadow: 0px 8px 32px rgba(0,0,0,0.8);
+          border-radius: 12px; padding: 32px; position: relative;
+        }
+        .input-field {
+          display: block; width: 100%; background: #1f1f22;
+          border: 1px solid #27272A; border-radius: 8px;
+          padding: 10px 14px 10px 44px; color: #e4e1e5;
+          font-size: 14px; font-family: Inter, sans-serif;
+          outline: none; transition: all 0.2s; box-sizing: border-box;
+        }
+        .input-field:focus { border-color: #8083ff; box-shadow: 0 0 0 2px rgba(128,131,255,0.2); }
+        .input-field::placeholder { color: #908fa0; }
+        .btn-primary {
+          width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;
+          background: #494bd6; color: #fff;
+          font-size: 12px; font-weight: 500; letter-spacing: 0.05em;
+          padding: 12px 16px; border-radius: 8px; border: none; cursor: pointer;
+          transition: all 0.2s;
+        }
+        .btn-primary:hover { background: #3b3dcf; box-shadow: 0 0 20px rgba(73,75,214,0.4); }
+        .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .spin { animation: spin 1s linear infinite; }
+      `}</style>
 
-        <Suspense fallback={
-          <div className="flex justify-center py-8">
-            <Loader2 size={28} className="text-violet-400 animate-spin" />
+      <div className="ambient" />
+
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 32, fontFamily: 'Inter, sans-serif' }}>
+        <div style={{ width: '100%', maxWidth: 420 }}>
+          {/* Brand */}
+          <div style={{ textAlign: 'center', marginBottom: 32 }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 48, height: 48, borderRadius: 12, background: 'rgba(128,131,255,0.08)', border: '1px solid rgba(128,131,255,0.2)', marginBottom: 16 }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="#c0c1ff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </div>
           </div>
-        }>
-          <ResetPasswordContent />
-        </Suspense>
+
+          <div className="glass-card">
+            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, background: 'linear-gradient(90deg,transparent,rgba(53,52,55,1),transparent)' }} />
+            <Suspense fallback={
+              <div style={{ textAlign: 'center', padding: 32 }}>
+                <svg className="spin" width="28" height="28" viewBox="0 0 24 24" fill="none" style={{ margin: 'auto' }}><circle cx="12" cy="12" r="10" stroke="#8083ff" strokeWidth="3" strokeDasharray="30" strokeDashoffset="10"/></svg>
+              </div>
+            }>
+              <ResetPasswordContent />
+            </Suspense>
+          </div>
+        </div>
       </div>
-    </div>
+    </>
   );
 }

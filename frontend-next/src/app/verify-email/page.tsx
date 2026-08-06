@@ -3,7 +3,6 @@
 import React, { useEffect, useState, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 
 type State = 'loading' | 'success' | 'error';
 
@@ -32,23 +31,21 @@ function VerifyEmailContent() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ token }),
         });
-
-        let data: any = {};
+        let data: Record<string, unknown> = {};
         try { data = await res.json(); } catch { /* ignore */ }
 
         if (!res.ok) {
           setState('error');
-          setMessage(data.message || 'This verification link is invalid or has expired.');
+          setMessage((data.message as string) || 'This verification link is invalid or has expired.');
           return;
         }
 
-        const tokenValue = data.data?.tokens?.accessToken || data.tokens?.accessToken || '';
-        const userValue = data.data?.user || data.user || {};
+        const tokens = (data.data as Record<string, unknown>)?.tokens as Record<string, string> | undefined;
+        const user = (data.data as Record<string, unknown>)?.user;
         if (typeof window !== 'undefined') {
-          localStorage.setItem('opspilot_token', tokenValue);
-          localStorage.setItem('opspilot_user', JSON.stringify(userValue));
+          localStorage.setItem('opspilot_token', tokens?.accessToken || '');
+          localStorage.setItem('opspilot_user', JSON.stringify(user || {}));
         }
-
         setState('success');
       } catch {
         setState('error');
@@ -59,96 +56,113 @@ function VerifyEmailContent() {
     verify();
   }, [token]);
 
-  return (
-    <>
-      {state === 'loading' && (
-        <>
-          <div className="flex justify-center">
-            <div className="w-16 h-16 rounded-2xl bg-violet-600/10 border border-violet-500/20 flex items-center justify-center">
-              <Loader2 size={28} className="text-violet-400 animate-spin" />
-            </div>
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-white mb-1">Verifying your email…</h1>
-            <p className="text-sm text-zinc-500">This will only take a moment.</p>
-          </div>
-        </>
-      )}
+  if (state === 'loading') {
+    return (
+      <>
+        <div style={{ width: 80, height: 80, borderRadius: '50%', background: 'rgba(73,75,214,0.1)', border: '1px solid rgba(73,75,214,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px', position: 'relative' }}>
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(128,131,255,0.1)', borderRadius: '50%', filter: 'blur(8px)' }} />
+          <svg style={{ animation: 'spin 1s linear infinite', position: 'relative', zIndex: 1 }} width="32" height="32" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="12" r="10" stroke="#c0c1ff" strokeWidth="3" strokeDasharray="30" strokeDashoffset="10"/>
+          </svg>
+        </div>
+        <h2 style={{ fontSize: 22, fontWeight: 700, color: '#e4e1e5', textAlign: 'center', marginBottom: 8 }}>Verifying your identity…</h2>
+        <p style={{ fontSize: 14, color: '#908fa0', textAlign: 'center' }}>This will only take a moment.</p>
+      </>
+    );
+  }
 
-      {state === 'success' && (
-        <>
-          <div className="flex justify-center">
-            <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center">
-              <CheckCircle2 size={32} className="text-emerald-400" />
-            </div>
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-white mb-2">Email verified!</h1>
-            <p className="text-sm text-zinc-400">
-              Your account is now active. You&apos;re signed in and ready to go.
-            </p>
-          </div>
+  if (state === 'success') {
+    return (
+      <>
+        <div style={{ width: 80, height: 80, borderRadius: '50%', background: 'rgba(74,225,118,0.08)', border: '1px solid rgba(74,225,118,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>
+          <span style={{ fontSize: 36, color: '#4ae176' }}>✓</span>
+        </div>
+        <h2 style={{ fontSize: 22, fontWeight: 700, color: '#e4e1e5', textAlign: 'center', marginBottom: 12 }}>Email verified!</h2>
+        <p style={{ fontSize: 14, color: '#908fa0', textAlign: 'center', marginBottom: 28 }}>Your account is now active. You&apos;re signed in and ready to go.</p>
+        <div style={{ textAlign: 'center' }}>
           <Link
             id="verify-go-dashboard"
             href="/dashboard"
-            className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-semibold text-sm transition-all hover:-translate-y-0.5 shadow-lg hover:shadow-violet-500/20"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '12px 32px', background: '#494bd6', color: '#fff', borderRadius: 8, fontSize: 13, fontWeight: 500, textDecoration: 'none' }}
           >
-            Go to Dashboard
+            Go to Dashboard →
           </Link>
-        </>
-      )}
+        </div>
+      </>
+    );
+  }
 
-      {state === 'error' && (
-        <>
-          <div className="flex justify-center">
-            <div className="w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/30 flex items-center justify-center">
-              <XCircle size={32} className="text-red-400" />
-            </div>
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-white mb-2">Verification failed</h1>
-            <p className="text-sm text-zinc-400 leading-relaxed">{message}</p>
-          </div>
-          <div className="flex flex-col gap-3">
-            <Link
-              href="/register"
-              className="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-semibold text-sm transition-all hover:-translate-y-0.5"
-            >
-              Register again
-            </Link>
-            <Link href="/login" className="text-sm text-zinc-500 hover:text-zinc-300 transition-colors">
-              Back to sign in
-            </Link>
-          </div>
-        </>
-      )}
+  return (
+    <>
+      <div style={{ width: 80, height: 80, borderRadius: '50%', background: 'rgba(255,180,171,0.05)', border: '1px solid rgba(255,180,171,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>
+        <span style={{ fontSize: 36, color: '#ffb4ab' }}>✖</span>
+      </div>
+      <h2 style={{ fontSize: 22, fontWeight: 700, color: '#e4e1e5', textAlign: 'center', marginBottom: 12 }}>Verification failed</h2>
+      <p style={{ fontSize: 13, color: '#908fa0', textAlign: 'center', lineHeight: 1.6, marginBottom: 28 }}>{message}</p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'center' }}>
+        <Link href="/register" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '12px 28px', background: '#494bd6', color: '#fff', borderRadius: 8, fontSize: 13, fontWeight: 500, textDecoration: 'none' }}>
+          Register again
+        </Link>
+        <Link href="/login" style={{ fontSize: 13, color: '#908fa0', textDecoration: 'none' }}>Back to sign in</Link>
+      </div>
     </>
   );
 }
 
 export default function VerifyEmailPage() {
   return (
-    <div className="min-h-screen bg-[#09090B] flex items-center justify-center p-8">
-      <div className="w-full max-w-sm text-center animate-fade-in space-y-6">
-        <Link href="/landing" className="inline-flex items-center gap-2 mb-2">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-600 to-blue-600 flex items-center justify-center">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </div>
-          <span className="text-base font-bold text-white">OpsPilot</span>
-        </Link>
+    <>
+      <style>{`
+        body { background: #09090B; color: #e4e1e5; overflow-x: hidden; }
+        .ambient {
+          position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -1;
+          background: radial-gradient(circle at 50% -20%, rgba(128,131,255,0.15), rgba(19,19,22,0) 70%);
+        }
+        .dot-grid {
+          position: absolute; inset: 0; z-index: 0; opacity: 0.1; pointer-events: none;
+          background-image: radial-gradient(#464554 1px, transparent 1px);
+          background-size: 24px 24px;
+        }
+        .card-edge {
+          background: linear-gradient(180deg,#3F3F46 0%,#27272A 100%);
+          padding: 1px; border-radius: 12px;
+          box-shadow: 0px 8px 32px rgba(0,0,0,0.8);
+        }
+        .card-inner { background: #111113; border-radius: 11px; padding: 48px 40px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+      `}</style>
 
-        <Suspense fallback={
-          <div className="flex justify-center">
-            <div className="w-16 h-16 rounded-2xl bg-violet-600/10 border border-violet-500/20 flex items-center justify-center">
-              <Loader2 size={28} className="text-violet-400 animate-spin" />
+      <div className="ambient" />
+
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden', fontFamily: 'Inter, sans-serif' }}>
+        <div className="dot-grid" />
+
+        <div style={{ width: '100%', maxWidth: 420, padding: '0 16px', position: 'relative', zIndex: 1 }}>
+          {/* Brand */}
+          <div style={{ textAlign: 'center', marginBottom: 32 }}>
+            <h1 style={{ fontSize: 36, fontWeight: 700, color: '#e4e1e5', letterSpacing: '-0.03em', marginBottom: 8 }}>OpsPilot</h1>
+            <p style={{ fontSize: 14, color: '#908fa0' }}>Enterprise Security Protocol</p>
+          </div>
+
+          <div className="card-edge">
+            <div className="card-inner">
+              <Suspense fallback={
+                <div style={{ textAlign: 'center', padding: 32 }}>
+                  <svg style={{ animation: 'spin 1s linear infinite', margin: 'auto' }} width="32" height="32" viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="10" stroke="#c0c1ff" strokeWidth="3" strokeDasharray="30" strokeDashoffset="10"/>
+                  </svg>
+                </div>
+              }>
+                <VerifyEmailContent />
+              </Suspense>
             </div>
           </div>
-        }>
-          <VerifyEmailContent />
-        </Suspense>
+
+          <div style={{ textAlign: 'center', marginTop: 20 }}>
+            <Link href="/login" style={{ fontSize: 12, color: '#464554', textDecoration: 'none' }}>Return to Login</Link>
+          </div>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
