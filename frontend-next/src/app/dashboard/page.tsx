@@ -132,23 +132,9 @@ function buildChartData(runs: Run[]) {
     else if (r.status === 'FAILED') buckets[k].failed++;
   });
 
-  // If buckets are empty (e.g. initial load in demo), fill with nice curve
-  const hasData = Object.values(buckets).some(b => b.success > 0 || b.failed > 0);
-  if (!hasData) {
-    const mockCurve = [
-      { day: 'Mon', success: 18, failed: 1 },
-      { day: 'Tue', success: 24, failed: 2 },
-      { day: 'Wed', success: 21, failed: 0 },
-      { day: 'Thu', success: 29, failed: 1 },
-      { day: 'Fri', success: 25, failed: 3 },
-      { day: 'Sat', success: 14, failed: 0 },
-      { day: 'Sun', success: 17, failed: 1 },
-    ];
-    return mockCurve;
-  }
-
   return Object.entries(buckets).map(([day, v]) => ({ day, ...v }));
 }
+
 
 /* ── Custom Tooltip ────────────────────────────── */
 function ChartTooltip({ active, payload, label }: any) {

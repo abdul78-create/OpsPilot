@@ -167,7 +167,8 @@ export function ContextualAIPanel({ selectedNode }: ContextualAIPanelProps) {
         open={diffDrawerOpen}
         onClose={() => setDiffDrawerOpen(false)}
         title={ctx.fixAction?.label ?? 'Apply Fix'}
-        targetItem={selectedNode ? String(selectedNode.data?.label ?? selectedNode.type) : 'acme-corp/backend-api'}
+        targetItem={selectedNode ? String(selectedNode.data?.label ?? selectedNode.type) : 'production/app-backend'}
+
         beforeContent={
           selectedNode?.type === 'deploy'
             ? 'DOCKER_HUB_TOKEN = "dckr_pat_exp20240114_old"'

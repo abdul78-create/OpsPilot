@@ -61,7 +61,8 @@ const STEP_ELAPSED   = ['1.2s', '38.4s', '12.1s', '2m 18s', '14.8s', '—'];
 
 // ─── Default pipeline ─────────────────────────────────────────────────────────
 const initialNodes: Node[] = [
-  { id: '1', type: 'source',       position: { x: 50,   y: 160 }, data: { label: 'Git Source',            repo: 'acme-corp/backend-api:main', runState: 'idle' } },
+  { id: '1', type: 'source',       position: { x: 50,   y: 160 }, data: { label: 'Git Source',            repo: 'production/app-backend:main', runState: 'idle' } },
+
   { id: '2', type: 'build',        position: { x: 310,  y: 160 }, data: { label: 'Docker Build',          image: 'node:20-alpine',            runState: 'idle' } },
   { id: '3', type: 'security',     position: { x: 570,  y: 80  }, data: { label: 'Trivy SAST',                                               runState: 'idle' } },
   { id: '4', type: 'test',         position: { x: 570,  y: 240 }, data: { label: 'Jest Tests',            command: 'npm test',                runState: 'idle' } },
@@ -80,7 +81,8 @@ const initialEdges: Edge[] = [
 
 // Sample terminal log lines — shown in bottom-left xterm panel
 const TERMINAL_LINES = [
-  '$ opspilot run --pipeline acme-corp/backend-api --branch main',
+  '$ opspilot run --pipeline production/app-backend --branch main',
+
   '▸ 14:31:00 · Git clone @ a4f3d19',
   '✓ Clone complete (1.2s)',
   '▸ 14:31:01 · Jest integration tests (--maxWorkers=4)',
