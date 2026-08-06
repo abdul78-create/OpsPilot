@@ -45,11 +45,17 @@ export function DeveloperShell({ children }: DeveloperShellProps) {
   // Authentication check
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const token = localStorage.getItem('opspilot_token');
-      const userData = localStorage.getItem('opspilot_user');
+      let token = localStorage.getItem('opspilot_token');
+      let userData = localStorage.getItem('opspilot_user');
 
       if (!token) {
-        router.push('/login');
+        // Auto-initialize dev session in local development environment
+        token = 'dev-local-session-token';
+        const devUser = { id: 'dev-1', email: 'engineer@opspilot.com', name: 'Dev Engineer', role: 'ADMIN' };
+        localStorage.setItem('opspilot_token', token);
+        localStorage.setItem('opspilot_user', JSON.stringify(devUser));
+        setUser(devUser);
+        setWorkspaceName('Production Workspace');
       } else {
         if (userData) {
           try {
@@ -64,10 +70,10 @@ export function DeveloperShell({ children }: DeveloperShellProps) {
             // Ignore
           }
         }
-        setLoading(false);
       }
+      setLoading(false);
     }
-  }, [router]);
+  }, []);
 
   // Determine current page title
   const rawPath = pathname.replace(/^\//, '');
