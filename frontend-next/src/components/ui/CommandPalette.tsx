@@ -74,7 +74,7 @@ export function CommandPalette({ onOpenSecretModal }: CommandPaletteProps) {
         toast({
           kind: 'success',
           title: 'Deployment Triggered',
-          message: `Docker build runner started for StockFlow.`,
+          message: `Docker build runner started.`,
         });
         router.push(`/runs/${res.data.id}`);
       }
@@ -128,7 +128,7 @@ export function CommandPalette({ onOpenSecretModal }: CommandPaletteProps) {
                 className="flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium text-zinc-300 hover:bg-zinc-800 hover:text-white cursor-pointer group"
               >
                 <Zap className="w-3.5 h-3.5 text-violet-400 group-hover:scale-105 transition-transform" />
-                <span>Run Pipeline (StockFlow)</span>
+                <span>Run Pipeline</span>
                 <kbd className="ml-auto text-[10px] font-mono bg-[#18181B] text-zinc-500 px-1.5 py-0.5 rounded border border-[#27272A]">⏎</kbd>
               </Command.Item>
 
@@ -186,7 +186,8 @@ export function CommandPalette({ onOpenSecretModal }: CommandPaletteProps) {
                 className="flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium text-zinc-300 hover:bg-zinc-800 hover:text-white cursor-pointer"
               >
                 <Terminal className="w-3.5 h-3.5 text-zinc-600" />
-                <span>StockFlow Microservice</span>
+                <span>Primary Microservice</span>
+
               </Command.Item>
             </Command.Group>
           </Command.List>

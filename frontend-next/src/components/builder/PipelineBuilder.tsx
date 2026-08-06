@@ -40,7 +40,8 @@ const STEP_ELAPSED   = ['1.2s', '38.4s', '12.1s', '2m 18s', '14.8s', '—'];
 
 // ─── Initial pipeline ─────────────────────────────────────────────────────────
 const initialNodes: Node[] = [
-  { id: '1', type: 'source',   position: { x: 50,   y: 170 }, data: { label: 'Git Source',              repo: 'acme-corp/backend-api:main', runState: 'idle' } },
+  { id: '1', type: 'source',   position: { x: 50,   y: 170 }, data: { label: 'Git Source',              repo: 'my-org/backend-service:main', runState: 'idle' } },
+
   { id: '2', type: 'build',    position: { x: 320,  y: 170 }, data: { label: 'Docker Container Build',  image: 'node:20-alpine',            runState: 'idle' } },
   { id: '3', type: 'security', position: { x: 590,  y: 80  }, data: { label: 'Trivy SAST Scan',                                             runState: 'idle' } },
   { id: '4', type: 'test',     position: { x: 590,  y: 260 }, data: { label: 'Jest Integration Tests',  command: 'npm test',                runState: 'idle' } },
@@ -238,7 +239,7 @@ function BuilderCanvas() {
 
     if (templateId === 'go-api-service') {
       const n = [
-        makeSrc('1','source','Git Source',   { repo: 'acme/go-api:main' },        50,  170),
+        makeSrc('1','source','Git Source',   { repo: 'workspace/go-api:main' },        50,  170),
         makeSrc('2','test',  'Go Test & Vet',{ command: 'go test ./...' },         320, 170),
         makeSrc('3','build', 'Scratch Container',{ image: 'scratch:latest' },       590, 170),
         makeSrc('4','deploy','Helm K8s Rollout',{ target: 'prod-cluster' },         860, 170),
@@ -247,7 +248,8 @@ function BuilderCanvas() {
       setEdges([makeEdge('1','2'), makeEdge('2','3'), makeEdge('3','4')]);
     } else if (templateId === 'nextjs-fullstack') {
       const n = [
-        makeSrc('1','source',  'Git Source',        { repo: 'acme/frontend:main' },     50,  170),
+        makeSrc('1','source',  'Git Source',        { repo: 'workspace/frontend:main' },     50,  170),
+
         makeSrc('2','test',    'ESLint + Jest',      { command: 'npm run lint && npm test' }, 320, 170),
         makeSrc('3','security','Trivy SAST Scan',    {},                                590, 80),
         makeSrc('4','build',   'Docker Build',       { image: 'node:20-alpine' },        590, 260),
@@ -274,7 +276,8 @@ function BuilderCanvas() {
           <div className="flex items-center gap-3">
             <h1 className="text-sm font-bold text-slate-100 tracking-tight">Visual Pipeline Builder</h1>
             <Badge status="healthy">v31 • Ready</Badge>
-            <span className="text-xs font-mono text-slate-400">acme-corp/backend-api</span>
+            <span className="text-xs font-mono text-slate-400">my-org/backend-service</span>
+
           </div>
 
           <div className="flex items-center gap-1.5">

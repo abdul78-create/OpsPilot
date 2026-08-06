@@ -19,7 +19,7 @@ interface DetectedFile {
 }
 
 export function RepoScannerModal({ open, onClose, onImportComplete }: RepoScannerModalProps) {
-  const [repoUrl, setRepoUrl] = useState('https://github.com/acme-corp/backend-api');
+  const [repoUrl, setRepoUrl] = useState('https://github.com/my-org/my-repository');
   const [scanning, setScanning] = useState(false);
   const [scanned, setScanned] = useState(false);
 
@@ -41,7 +41,8 @@ export function RepoScannerModal({ open, onClose, onImportComplete }: RepoScanne
   };
 
   const handleGenerate = () => {
-    onImportComplete('acme-corp/backend-api', detectedStack);
+    onImportComplete('my-org/my-repository', detectedStack);
+
     onClose();
     setScanned(false);
   };

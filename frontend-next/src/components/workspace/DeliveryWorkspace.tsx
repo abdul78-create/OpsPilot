@@ -49,7 +49,8 @@ export function DeliveryWorkspace() {
               <div className="flex items-center gap-2">
                 <h1 className="text-sm font-bold text-slate-100 tracking-tight">main-ci-build</h1>
                 <Badge status="healthy">● Healthy</Badge>
-                <span className="text-xs font-mono text-slate-400">acme-corp/backend-api</span>
+                <span className="text-xs font-mono text-slate-400">production/backend-api</span>
+
               </div>
               <p className="text-[11px] text-slate-400 mt-0.5 flex items-center gap-2">
                 <span className="flex items-center gap-1 font-mono"><GitBranch size={12} /> main</span>

@@ -276,7 +276,8 @@ function WorkspaceCanvas() {
           <div className="flex items-center gap-1.5 text-[11px] font-mono text-slate-500">
             <Link href="/" className="hover:text-slate-200 transition-colors">OpsPilot</Link>
             <span>/</span>
-            <span className="text-slate-400">acme-corp</span>
+            <span className="text-slate-400">production-workspace</span>
+
             <span>/</span>
             <span className="text-slate-300 font-semibold">backend-api</span>
           </div>

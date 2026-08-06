@@ -49,7 +49,8 @@ const FALLBACK_STEPS: ExecutionStep[] = [
     duration: '1.2s', cpu: '0.1%', mem: '12 MB', exitCode: 0, startedAt: '14:31:00',
     logs: [
       'Initialized git repository clone...',
-      'Cloning StockFlow/backend @ sha: a4f3d19',
+      'Cloning my-org/backend-service @ sha: a4f3d19',
+
       'Branch: main → HEAD detached at a4f3d19',
       'Files: 2,841 objects received (12.3 MB)',
       '✓ Clone complete in 1.2s',
@@ -241,7 +242,8 @@ export function ExecutionWorkspace({ runId }: ExecutionWorkspaceProps) {
 
   const runStatus = liveRun?.status || 'FAILED';
   const displayRunId = runId || '47';
-  const repoDisplay = liveRun?.repoName || 'StockFlow/backend';
+  const repoDisplay = liveRun?.repoName || 'workspace/repository';
+
   const commitSha = liveRun?.commitSha || 'a4f3d19';
   const startTime = liveRun?.startTime || '14:31:00';
   const endTime = liveRun?.endTime || '14:34:06';

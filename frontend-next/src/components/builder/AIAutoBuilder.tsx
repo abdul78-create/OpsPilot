@@ -69,7 +69,8 @@ function generatePipelineFromPrompt(prompt: string): GeneratedPipeline {
       const target = p.includes('vercel') ? 'Vercel Edge Deploy' : p.includes('fly') ? 'Fly.io Deploy' : p.includes('cloud run') ? 'GCP Cloud Run Deploy' : 'Railway Deploy';
       nodeList.push({ type: 'deploy', label: target, subtext: 'production environment' });
     } else {
-      nodeList.push({ type: 'deploy', label: 'Container Registry Push', subtext: 'docker.io/acme' });
+      nodeList.push({ type: 'deploy', label: 'Container Registry Push', subtext: 'docker.io/workspace' });
+
     }
 
     nodeList.push({ type: 'notification', label: 'Slack Webhook', subtext: '#deployments' });

@@ -187,7 +187,8 @@ export default function SettingsPage() {
                   <label className="text-[10px] text-zinc-500 uppercase tracking-wider block mb-1">Slug ID</label>
                   <input
                     type="text"
-                    defaultValue={org?.slug ?? 'acme-corp'}
+                    defaultValue={org?.slug ?? 'production-workspace'}
+
                     disabled
                     className="w-full bg-[#09090B]/60 border border-[#27272A]/80 rounded-lg px-3 py-2 text-xs text-zinc-500 font-mono"
                   />

@@ -84,7 +84,8 @@ export const SourceNode = memo(({ data, selected }: NodeProps) => {
         </div>
         <RunStateBadge state={runState} elapsed={d.elapsed as string | undefined} />
       </div>
-      <p className="text-[11px] font-mono text-slate-400 truncate">{String(d.repo ?? 'acme/backend:main')}</p>
+      <p className="text-[11px] font-mono text-slate-400 truncate">{String(d.repo ?? 'workspace/backend:main')}</p>
+
       <Handle type="source" position={Position.Right} className="!bg-slate-500 !w-2.5 !h-2.5 !border-2 !border-slate-900" />
       <AIStepButton />
     </div>

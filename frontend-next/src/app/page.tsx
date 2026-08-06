@@ -310,7 +310,8 @@ export default function LandingPage() {
                 <div className="w-2 h-2 rounded-full bg-amber-500/70" />
                 <div className="w-2 h-2 rounded-full bg-emerald-500/70" />
               </div>
-              <span className="ml-2 text-xs font-mono text-zinc-500">acme-corp / backend-api — run_1753942831456</span>
+              <span className="ml-2 text-xs font-mono text-zinc-500">production / app-backend — run_1753942831456</span>
+
               <div className="ml-auto flex items-center gap-1.5 text-xs text-emerald-400">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse-glow" />
                 SUCCESS · 27.1s

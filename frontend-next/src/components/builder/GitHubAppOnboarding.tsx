@@ -25,9 +25,9 @@ export function GitHubAppOnboarding({ open, onClose, onSelectRepo }: GitHubAppOn
   const [importing, setImporting] = useState(false);
 
   const repos: RepoItem[] = [
-    { name: 'acme-corp/backend-api', branch: 'main', stack: ['Node.js 22', 'Docker', 'K8s', 'Jest'], lastCommit: '2h ago', isInstalled: true },
-    { name: 'acme-corp/frontend-next', branch: 'main', stack: ['Next.js 15', 'Tailwind', 'Vercel'], lastCommit: '4h ago', isInstalled: true },
-    { name: 'acme-corp/data-worker', branch: 'main', stack: ['Python 3.11', 'FastAPI', 'Redis'], lastCommit: '1d ago', isInstalled: true },
+    { name: 'workspace/backend-api', branch: 'main', stack: ['Node.js 22', 'Docker', 'K8s', 'Jest'], lastCommit: '2h ago', isInstalled: true },
+    { name: 'workspace/frontend-next', branch: 'main', stack: ['Next.js 15', 'Tailwind', 'Vercel'], lastCommit: '4h ago', isInstalled: true },
+    { name: 'workspace/data-worker', branch: 'main', stack: ['Python 3.11', 'FastAPI', 'Redis'], lastCommit: '1d ago', isInstalled: true },
   ];
 
   const handleImport = (repoName: string) => {
@@ -50,9 +50,10 @@ export function GitHubAppOnboarding({ open, onClose, onSelectRepo }: GitHubAppOn
             </div>
             <div>
               <span className="text-xs font-bold text-slate-200">OpsPilot GitHub App</span>
-              <span className="block text-[10px] font-mono text-emerald-400">● Connected to org: acme-corp</span>
+              <span className="block text-[10px] font-mono text-emerald-400">● Connected to GitHub</span>
             </div>
           </div>
+
           <Badge status="healthy">App Active</Badge>
         </div>
 

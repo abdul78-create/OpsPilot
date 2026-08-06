@@ -18,8 +18,8 @@ export function executeCLICommand(cmdString: string): CLIResponse {
         success: true,
         output: [
           '▸ Authenticating with OpsPilot Cloud (https://api.opspilot.io/v1)...',
-          '✓ Session token verified for user: razzaq@acme-corp.com',
-          '✓ Workspace: acme-corp/production (Tenant ID: tnt_94812a)',
+          '✓ Session token verified for user: user@opspilot.io',
+          '✓ Workspace: production/workspace (Tenant ID: tnt_94812a)',
           'Logged in successfully.',
         ],
       };
@@ -56,7 +56,7 @@ export function executeCLICommand(cmdString: string): CLIResponse {
           '  [INFO] 14:52:01 · Git clone @ b7a1f49 (0.8s)',
           '  [INFO] 14:52:02 · npm test -- --ci (187 tests passed, 38.4s)',
           '  [INFO] 14:52:41 · Trivy SAST scan (0 HIGH/CRITICAL CVEs)',
-          '  [INFO] 14:52:53 · docker build -t acme/backend:v1.4.0 . (2m 12s)',
+          '  [INFO] 14:52:53 · docker build -t workspace/backend:v1.4.0 . (2m 12s)',
           '✓ Run #48 completed successfully.',
         ],
       };

@@ -32,10 +32,10 @@ jobs:
       - name: Trivy Vulnerability Scan
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: 'acme/backend:latest'
+          image-ref: 'workspace/backend:latest'
 
       - name: Build Docker Container
-        run: docker build -t acme/backend:latest .
+        run: docker build -t workspace/backend:latest .
 
       - name: Deploy to Kubernetes
         run: kubectl apply -f k8s/deployment.yaml
@@ -65,7 +65,8 @@ export function CIConverterPanel({ onImportPipeline, onClose }: CIConverterPanel
       } else if (lower.includes('trivy') || lower.includes('sast') || lower.includes('security')) {
         steps.push({ type: 'security', label: 'Trivy SAST Scan', detail: 'aquasecurity/trivy-action' });
       } else if (lower.includes('docker build') || lower.includes('build-push-action') || lower.includes('container')) {
-        steps.push({ type: 'build', label: 'Docker Container Build', detail: 'acme/backend:latest' });
+        steps.push({ type: 'build', label: 'Docker Container Build', detail: 'workspace/backend:latest' });
+
       } else if (lower.includes('kubectl') || lower.includes('deploy') || lower.includes('helm')) {
         steps.push({ type: 'deploy', label: 'Kubernetes Rollout', detail: 'kubectl apply -f k8s/' });
       } else if (lower.includes('slack') || lower.includes('notify') || lower.includes('webhook')) {

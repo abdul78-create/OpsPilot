@@ -42,7 +42,8 @@ export function PipelineReviewModal({ open, onClose }: PipelineReviewModalProps)
             <GitPullRequest size={16} className="text-blue-400" />
             <div>
               <span className="text-xs font-bold text-slate-200">PR #231 — Pipeline Refactor</span>
-              <span className="block text-[10px] font-mono text-slate-500">acme-corp/backend-api:main</span>
+              <span className="block text-[10px] font-mono text-slate-500">my-org/backend-service:main</span>
+
             </div>
           </div>
           <Badge status="healthy">● Ready for Merge</Badge>

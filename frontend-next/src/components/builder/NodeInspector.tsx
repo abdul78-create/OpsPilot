@@ -136,7 +136,8 @@ export function NodeInspector({ selectedNode, onUpdateNodeData, onDeleteNode, on
         {type === 'source' && (
           <Input
             label="Git Repository / Branch"
-            defaultValue={String(data.repo ?? 'acme/backend-api:main')}
+            defaultValue={String(data.repo ?? 'my-org/backend-service:main')}
+
             onChange={(e) => onUpdateNodeData(id, { repo: e.target.value })}
           />
         )}
