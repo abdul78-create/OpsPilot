@@ -3,7 +3,7 @@ import { OnEvent } from '@nestjs/event-emitter';
 import { AiOrchestrationRepository } from './ai-orchestration.repository';
 import { PrismaService } from '../../../core/database/prisma.service';
 import { IAiProvider } from '../../../core/ai/interfaces/ai-provider.interface';
-import { RuleBasedAiProvider } from '../../../core/ai/providers/rule-based-ai.provider';
+
 import {
   AiAnalysisReport,
   AiAnalysisType,
@@ -11,6 +11,8 @@ import {
   DeploymentStatus,
   Prisma,
 } from '@prisma/client';
+
+import { GeminiAiProvider } from '../../../core/ai/providers/gemini-ai.provider';
 
 export const AI_PROVIDER_TOKEN = 'IAiProvider';
 
@@ -21,7 +23,7 @@ export class AiOrchestrationService {
   constructor(
     private readonly aiRepository: AiOrchestrationRepository,
     private readonly prisma: PrismaService,
-    @Inject(RuleBasedAiProvider) private readonly aiProvider: IAiProvider,
+    @Inject(GeminiAiProvider) private readonly aiProvider: IAiProvider,
   ) {}
 
   async analyzeRunFailure(pipelineRunId: string): Promise<AiAnalysisReport> {

@@ -2,6 +2,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AiOrchestrationService } from './ai-orchestration.service';
 import { AiOrchestrationRepository } from './ai-orchestration.repository';
 import { RuleBasedAiProvider } from '../../../core/ai/providers/rule-based-ai.provider';
+import { GeminiAiProvider } from '../../../core/ai/providers/gemini-ai.provider';
+
 import { PrismaService } from '../../../core/database/prisma.service';
 import { AiAnalysisType, AiRiskLevel, JobStatus } from '@prisma/client';
 
@@ -50,6 +52,7 @@ describe('AiOrchestrationService', () => {
         { provide: AiOrchestrationRepository, useValue: mockAiRepository },
         { provide: PrismaService, useValue: mockPrisma },
         { provide: RuleBasedAiProvider, useValue: mockRuleBasedProvider },
+        { provide: GeminiAiProvider, useValue: mockRuleBasedProvider },
       ],
     }).compile();
 
