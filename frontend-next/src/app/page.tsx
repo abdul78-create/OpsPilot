@@ -54,7 +54,8 @@ const TESTIMONIALS = [
     quote: 'OpsPilot cut our deployment time from 40 minutes to under 3. The AI RCA alone saved us 6 hours this month.',
     author: 'Sarah K.',
     role: 'Platform Engineering Lead',
-    company: 'TechFlow Inc.',
+    company: 'Enterprise Engineering',
+
     avatar: 'SK',
     gradient: 'from-violet-600 to-blue-600',
   },

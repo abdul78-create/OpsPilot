@@ -79,27 +79,18 @@ const initialEdges: Edge[] = [
   { id: 'e5-6', source: '5', target: '6', animated: true, style: { stroke: '#475569', strokeWidth: 2 } },
 ];
 
-// Sample terminal log lines — shown in bottom-left xterm panel
 const TERMINAL_LINES = [
-  '$ opspilot run --pipeline production/app-backend --branch main',
-
-  '▸ 14:31:00 · Git clone @ a4f3d19',
-  '✓ Clone complete (1.2s)',
-  '▸ 14:31:01 · Jest integration tests (--maxWorkers=4)',
-  '  PASS src/__tests__/auth.test.ts',
-  '  PASS src/__tests__/pipelines.test.ts',
-  '✓ 187 tests passed (38.4s)',
-  '▸ 14:31:40 · Trivy SAST scan — node:20-alpine',
-  '✓ 0 HIGH/CRITICAL vulnerabilities (12.1s)',
-  '▸ 14:31:52 · docker buildx build --platform linux/amd64',
-  '  Step 4/8: RUN npm ci --omit=dev',
-  '  Step 8/8: EXPOSE 3000',
-  '✓ Built sha256:4b7e9f2a (2m 18s)',
-  '▸ 14:34:10 · kubectl apply -f k8s/deployment.yaml',
-  '  Waiting for rollout to finish...',
-  'Warning  Failed  kubelet  Error: ImagePullBackOff',
-  'Error: Rollout failed — Exit code: 1',
+  '$ opspilot --version',
+  'OpsPilot CLI v2.4.0 (Production Build)',
+  '$ opspilot help',
+  'Available commands:',
+  '  opspilot run --pipeline <name>   Trigger pipeline execution',
+  '  opspilot logs --run-id <id>      Stream live execution logs',
+  '  opspilot status                  Check cluster & database status',
+  '  opspilot ai analyze --run-id <id> Run AI Root Cause Analysis',
+  'Ready for user command...',
 ];
+
 
 // ─── Resize handle ─────────────────────────────────────────────────────────────
 function ResizeHandle({ direction = 'vertical' }: { direction?: 'vertical' | 'horizontal' }) {

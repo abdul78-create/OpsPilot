@@ -148,7 +148,8 @@ export function ExecutionWorkspace({ runId }: ExecutionWorkspaceProps) {
   const [sliderPct, setSliderPct] = useState(100);
   const [selectedStepId, setSelectedStepId] = useState<string>('s5');
   const [isReplaying, setIsReplaying] = useState(false);
-  const [steps, setSteps] = useState<ExecutionStep[]>(FALLBACK_STEPS);
+  const [steps, setSteps] = useState<ExecutionStep[]>([]);
+
   const [liveRun, setLiveRun] = useState<LiveRunData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [liveLogs, setLiveLogs] = useState<string[]>([]);

@@ -162,7 +162,8 @@ export default function LoginPage() {
           <p className="text-zinc-500 text-xs italic">
             &ldquo;The AI RCA alone saved us 6 hours this month.&rdquo;
           </p>
-          <p className="text-zinc-600 text-xs mt-1">— Sarah K., Platform Engineering Lead at TechFlow</p>
+          <p className="text-zinc-600 text-xs mt-1">— Platform Engineering Lead</p>
+
         </div>
       </div>
 
