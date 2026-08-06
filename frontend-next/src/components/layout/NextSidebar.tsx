@@ -62,9 +62,11 @@ export function NextSidebar({ collapsed = false, onToggle }: NextSidebarProps) {
 
   const [workspaceMenuOpen, setWorkspaceMenuOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
-  const [activeWorkspace, setActiveWorkspace] = useState('Acme Corp');
-  const [userName, setUserName] = useState('Alice Chen');
-  const [userEmail, setUserEmail] = useState('admin@opspilot.ai');
+  const [activeWorkspace, setActiveWorkspace] = useState('Workspace');
+  const [userName, setUserName] = useState('User');
+  const [userEmail, setUserEmail] = useState('');
+
+
 
   React.useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -168,19 +170,13 @@ export function NextSidebar({ collapsed = false, onToggle }: NextSidebarProps) {
             <div className="absolute left-2 right-2 mt-1.5 z-50 bg-[#111113] border border-[#27272A] rounded-lg shadow-xl py-1.5 overflow-hidden animate-slide-up">
               <p className="px-2.5 py-1 text-[9px] font-semibold text-zinc-500 uppercase tracking-widest">Switch Workspace</p>
               <button
-                onClick={() => handleSwitchWorkspace('Acme Corp')}
-                className={`w-full flex items-center justify-between px-2.5 py-2 text-left text-xs hover:bg-[#18181B] transition-colors ${activeWorkspace === 'Acme Corp' ? 'text-violet-400 font-medium' : 'text-zinc-300'}`}
+                onClick={() => handleSwitchWorkspace(activeWorkspace)}
+                className="w-full flex items-center justify-between px-2.5 py-2 text-left text-xs bg-[#18181B] text-violet-400 font-medium transition-colors"
               >
-                <span>Acme Corp</span>
-                <span className="text-[9px] font-mono bg-[#18181B] border border-[#27272A] text-zinc-500 px-1 rounded">Pro</span>
+                <span>{activeWorkspace}</span>
+                <span className="text-[9px] font-mono bg-[#18181B] border border-[#27272A] text-zinc-400 px-1 rounded">Active</span>
               </button>
-              <button
-                onClick={() => handleSwitchWorkspace('Personal Dev')}
-                className={`w-full flex items-center justify-between px-2.5 py-2 text-left text-xs hover:bg-[#18181B] transition-colors ${activeWorkspace === 'Personal Dev' ? 'text-violet-400 font-medium' : 'text-zinc-300'}`}
-              >
-                <span>Personal Dev</span>
-                <span className="text-[9px] font-mono bg-[#18181B] border border-[#27272A] text-zinc-500 px-1 rounded">Starter</span>
-              </button>
+
             </div>
           )}
         </div>

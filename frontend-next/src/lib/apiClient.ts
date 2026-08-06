@@ -352,14 +352,32 @@ export function parsePrometheusMetric(raw: string, name: string): number {
   return match ? parseFloat(match[1]) || 0 : 0;
 }
 
+export interface AiAnalysisReport {
+  id: string;
+  type: 'RUN_RCA' | 'DEPLOYMENT_RISK' | 'LOG_ANALYSIS' | 'SECURITY_AUDIT';
+  targetId: string;
+  summary: string;
+  rootCause?: string | null;
+  confidenceScore: number;
+  riskLevel: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  recommendations: string[];
+  metadata?: Record<string, unknown> | null;
+  createdAt: string;
+}
+
 // ─── AI ───────────────────────────────────────────────────────────────────────
 
 export async function analyzeRun(runId: string) {
-  return apiFetch(`/ai/analyze-run/${runId}`, { method: 'POST' });
+  return apiFetch<{ message: string; data: AiAnalysisReport }>(`/ai/analyze-run/${runId}`, {
+    method: 'POST',
+  });
 }
 
-export async function listAiReports(orgId: string = DEFAULT_ORG_ID) {
-  return apiFetch<{ data: unknown[] }>(`/organizations/${orgId}/ai-reports`);
+export async function listAiReports(orgId: string = DEFAULT_ORG_ID, type?: string) {
+  const query = type ? `?type=${encodeURIComponent(type)}` : '';
+  return apiFetch<{ message: string; data: AiAnalysisReport[] }>(
+    `/organizations/${orgId}/ai-reports${query}`,
+  );
 }
 
 // ─── Artifacts ────────────────────────────────────────────────────────────────

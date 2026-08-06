@@ -75,8 +75,9 @@ export default function SettingsPage() {
     } catch {
       setOrg({
         id: '3fdaca7b-c8e4-4be4-ba50-e1a2085ac913',
-        name: 'System Webhook Builds',
-        slug: 'system-webhooks',
+        name: 'Production Workspace',
+        slug: 'production-workspace',
+
         status: 'ACTIVE',
         createdAt: new Date().toISOString(),
       });
@@ -130,7 +131,7 @@ export default function SettingsPage() {
             <Settings size={16} className="text-violet-400" />
             <h1 className="text-sm font-bold text-zinc-100">Organization Settings</h1>
             <span className="text-[10px] font-mono text-zinc-500 border border-[#27272A] px-2 py-0.5 rounded-full">
-              {org?.name ?? 'Acme Corp'}
+              {org?.name ?? 'Production Workspace'}
             </span>
           </div>
 
@@ -176,10 +177,11 @@ export default function SettingsPage() {
                   <label className="text-[10px] text-zinc-500 uppercase tracking-wider block mb-1">Organization Name</label>
                   <input
                     type="text"
-                    defaultValue={org?.name ?? 'Acme Corp'}
+                    defaultValue={org?.name ?? 'Production Workspace'}
                     className="w-full bg-[#09090B] border border-[#27272A] rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:border-violet-500/50"
                   />
                 </div>
+
 
                 <div>
                   <label className="text-[10px] text-zinc-500 uppercase tracking-wider block mb-1">Slug ID</label>

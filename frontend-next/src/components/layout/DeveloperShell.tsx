@@ -27,24 +27,8 @@ const ROUTE_LABELS: Record<string, string> = {
   ai: 'AI',
 };
 
-const SEEDED_NOTIFICATIONS: NotificationItem[] = [
-  {
-    id: 'n_1',
-    kind: 'success',
-    title: 'Deployment Successful',
-    message: 'Production container build runner deployed successfully.',
-    time: '2m ago',
-    unread: true,
-  },
-  {
-    id: 'n_2',
-    kind: 'failed',
-    title: 'Pipeline Status',
-    message: 'Backend deployment pipeline completed all validation stages.',
-    time: '20m ago',
-    unread: false,
-  },
-];
+const SEEDED_NOTIFICATIONS: NotificationItem[] = [];
+
 
 export function DeveloperShell({ children }: DeveloperShellProps) {
   const pathname = usePathname();

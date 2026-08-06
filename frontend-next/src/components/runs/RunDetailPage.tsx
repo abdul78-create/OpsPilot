@@ -11,12 +11,13 @@ import {
 } from 'lucide-react';
 import {
   getPipelineRun, fetchRunLogs, cancelRun, analyzeRun,
-  formatLogLines, PipelineRun, PipelineJob, LogEntry,
+  formatLogLines, PipelineRun, PipelineJob, LogEntry, AiAnalysisReport,
 } from '@/lib/apiClient';
 import { StatusPill, CopyButton } from '@/components/ui/Primitives';
 import { useToast } from '@/components/ui/Toast';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
 
 function timeAgo(d?: string) {
   if (!d) return '—';
@@ -215,7 +216,8 @@ export function RunDetailPage({ runId }: RunDetailPageProps) {
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
-  const [aiReport, setAiReport] = useState<string | null>(null);
+  const [aiReport, setAiReport] = useState<AiAnalysisReport | null>(null);
+  const [aiError, setAiError] = useState<string | null>(null);
   const { toast } = useToast();
   const router = useRouter();
 
@@ -266,17 +268,24 @@ export function RunDetailPage({ runId }: RunDetailPageProps) {
 
   const handleAnalyze = async () => {
     setAnalyzing(true);
+    setAiError(null);
     try {
-      const res = await analyzeRun(runId) as { data?: { analysis?: string } };
-      setAiReport(res?.data?.analysis ?? 'Analysis complete. No critical issues found.');
-      toast({ kind: 'success', title: 'AI analysis complete' });
-    } catch {
-      toast({ kind: 'warning', title: 'AI analysis unavailable', message: 'Backend AI service may not be configured' });
-      setAiReport('AI analysis requires a configured OpenAI API key in the backend environment.');
+      const res = await analyzeRun(runId);
+      if (res?.data) {
+        setAiReport(res.data);
+        toast({ kind: 'success', title: 'AI Root Cause Analysis complete' });
+      } else {
+        setAiError('AI analysis returned no report payload.');
+      }
+    } catch (err: any) {
+      const errorMsg = err?.message || 'AI analysis backend service unavailable.';
+      setAiError(errorMsg);
+      toast({ kind: 'warning', title: 'AI analysis unavailable', message: errorMsg });
     } finally {
       setAnalyzing(false);
     }
   };
+
 
   if (loading) {
     return (
@@ -374,15 +383,69 @@ export function RunDetailPage({ runId }: RunDetailPageProps) {
         </div>
       </div>
 
-      {/* AI Report (if any) */}
+      {/* AI Root Cause Analysis Report Card */}
       {aiReport && (
-        <div className="px-4 py-3 bg-purple-900/10 border border-purple-800/30 rounded-xl text-xs text-purple-200 leading-relaxed shrink-0">
-          <div className="flex items-center gap-2 mb-1.5 font-semibold text-purple-300">
-            <Sparkles size={12} /> AI Analysis
+        <div className="p-4 bg-purple-950/20 border border-purple-800/40 rounded-xl text-xs space-y-3 shrink-0 animate-fade-in">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 font-bold text-purple-300">
+              <Sparkles size={15} className="text-purple-400 animate-pulse" />
+              <span>AI Root Cause Analysis (RCA)</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-purple-900/40 border border-purple-700/50 text-purple-200">
+                {Math.round((aiReport.confidenceScore ?? 0.95) * 100)}% Confidence
+              </span>
+              <span className={`px-2 py-0.5 rounded text-[10px] font-bold font-mono uppercase ${
+                aiReport.riskLevel === 'CRITICAL' ? 'bg-red-950 text-red-300 border border-red-800' :
+                aiReport.riskLevel === 'HIGH' ? 'bg-amber-950 text-amber-300 border border-amber-800' :
+                'bg-blue-950 text-blue-300 border border-blue-800'
+              }`}>
+                {aiReport.riskLevel ?? 'MEDIUM'} Risk
+              </span>
+            </div>
           </div>
-          {aiReport}
+
+          <div className="space-y-1.5 text-zinc-300">
+            <p className="font-semibold text-zinc-100">{aiReport.summary}</p>
+            {aiReport.rootCause && (
+              <div className="p-2.5 rounded-lg bg-[#09090B] border border-purple-900/50 font-mono text-[11px] text-purple-200">
+                <strong className="text-purple-400">Root Cause:</strong> {aiReport.rootCause}
+              </div>
+            )}
+          </div>
+
+          {Array.isArray(aiReport.recommendations) && aiReport.recommendations.length > 0 && (
+            <div className="space-y-1">
+              <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Recommended Fixes</span>
+              <ul className="space-y-1">
+                {aiReport.recommendations.map((rec, i) => (
+                  <li key={i} className="flex items-start gap-2 text-zinc-300 text-[11px]">
+                    <span className="text-purple-400 font-bold">•</span>
+                    <span>{rec}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       )}
+
+      {/* AI Error / Unavailable State */}
+      {aiError && !aiReport && (
+        <div className="p-3.5 bg-amber-950/20 border border-amber-800/40 rounded-xl text-xs text-amber-300 flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-2">
+            <AlertCircle size={15} className="text-amber-400 shrink-0" />
+            <span><strong>AI Analysis Unavailable:</strong> {aiError}</span>
+          </div>
+          <button
+            onClick={() => setAiError(null)}
+            className="text-[10px] text-zinc-400 hover:text-white underline font-mono"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
 
       {/* Main layout: Step Timeline + Log Viewer */}
       <div className="flex-1 min-h-0 grid grid-cols-[260px_1fr] gap-3">
