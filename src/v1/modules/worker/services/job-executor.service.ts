@@ -248,10 +248,15 @@ export class JobExecutorService {
         const checksum = crypto.createHash('sha256').update(fileBuffer).digest('hex');
         const sizeBytes = BigInt(fileBuffer.length);
 
+        // Derive artifact name from the build workspace directory name (repo slug)
+        const repoSlug = path
+          .basename(workspacePath)
+          .replace(/[^a-z0-9-]/gi, '-')
+          .toLowerCase();
         const artifact = await this.prisma.artifact.create({
           data: {
             pipelineRunId,
-            name: `stockflow-bundle-${pipelineRunId}`,
+            name: `${repoSlug}-build-${pipelineRunId.slice(0, 8)}`,
             version: '1.0.0',
             checksum,
             storageLocation: archivePath,

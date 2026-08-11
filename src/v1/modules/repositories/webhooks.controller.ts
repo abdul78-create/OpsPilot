@@ -157,7 +157,8 @@ export class WebhooksController {
 
     const repositoryUrl =
       (typeof repoObj?.html_url === 'string' ? repoObj.html_url : null) ||
-      'https://github.com/abdul78-create/StockFlow';
+      (typeof repoObj?.clone_url === 'string' ? repoObj.clone_url : null) ||
+      'https://github.com/unknown/unknown';
 
     const sender = (typeof senderObj?.login === 'string' ? senderObj.login : null) || 'github-bot';
 
@@ -275,18 +276,11 @@ export class WebhooksController {
   @ApiOperation({ summary: 'List repositories accessible via GitHub App installation' })
   async listAppRepositories(@Body() _payload: { installationId?: string }) {
     return {
-      status: 'success',
+      status: 'not_configured',
+      message:
+        'GitHub App repository browsing is not yet configured. To enable real repository listing, set GITHUB_APP_ID, GITHUB_PRIVATE_KEY, and connect an installation via /webhooks/github/installation.',
       data: {
-        repositories: [
-          {
-            id: 89012345,
-            name: 'StockFlow',
-            fullName: 'abdul78-create/StockFlow',
-            htmlUrl: 'https://github.com/abdul78-create/StockFlow',
-            private: false,
-            defaultBranch: 'main',
-          },
-        ],
+        repositories: [],
       },
     };
   }

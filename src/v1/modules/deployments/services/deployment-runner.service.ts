@@ -144,19 +144,20 @@ export class DeploymentRunnerService {
 
       // Create live target runtime server script inside deployDir
       const targetVersion = deployment.releaseVersion;
+      const envName = deployment.environment.name.toLowerCase().replace(/[^a-z0-9]/g, '-');
       const serverScript = `
 const http = require('http');
 const server = http.createServer((req, res) => {
   if (req.url === '/health' || req.url === '/v1/health') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ status: 'healthy', service: 'stockflow-app', version: '${targetVersion}', deploymentId: '${deploymentId}', timestamp: new Date().toISOString() }));
+    res.end(JSON.stringify({ status: 'healthy', service: 'opspilot-app', version: '${targetVersion}', deploymentId: '${deploymentId}', timestamp: new Date().toISOString() }));
   } else {
     res.writeHead(200, { 'Content-Type': 'text/html' });
-    res.end('<h1>StockFlow SaaS App</h1><p>Status: Active</p><p>Version: ${targetVersion}</p>');
+    res.end('<h1>OpsPilot Deployed App</h1><p>Status: Active</p><p>Version: ${targetVersion}</p><p>Environment: ${envName}</p>');
   }
 });
 server.listen(8080, '0.0.0.0', () => {
-  console.log('StockFlow app server listening on port 8080');
+  console.log('OpsPilot app server listening on port 8080');
 });
 `;
       fs.writeFileSync(path.join(deployDir, 'server.js'), serverScript);
