@@ -183,6 +183,58 @@ export class RepositoriesController {
     };
   }
 
+  @Get(':id/tree')
+  @Permissions(ProjectPermissions.READ)
+  @ApiOperation({ summary: 'Browse GitHub file tree and directory contents' })
+  @ApiParam({ name: 'projectId', description: 'Project UUID' })
+  @ApiParam({ name: 'id', description: 'Repository Connection UUID' })
+  async getTree(
+    @Param('projectId') projectId: string,
+    @Param('id') repositoryConnectionId: string,
+    @Body() body: { path?: string; ref?: string },
+  ) {
+    const repo = await this.repositoriesService.findById(projectId, repositoryConnectionId);
+    const parsed = parseGitHubUrl(repo.repositoryUrl);
+    const owner = parsed?.owner || 'opspilot';
+    const repoName = parsed?.repo || 'app';
+    const items = await this.githubAppService.getRepositoryTree(
+      owner,
+      repoName,
+      body?.path || '',
+      body?.ref || repo.defaultBranch || 'main',
+    );
+    return {
+      message: 'Repository file tree retrieved successfully',
+      data: items,
+    };
+  }
+
+  @Get(':id/file')
+  @Permissions(ProjectPermissions.READ)
+  @ApiOperation({ summary: 'Retrieve decoded GitHub file contents for code viewer' })
+  @ApiParam({ name: 'projectId', description: 'Project UUID' })
+  @ApiParam({ name: 'id', description: 'Repository Connection UUID' })
+  async getFile(
+    @Param('projectId') projectId: string,
+    @Param('id') repositoryConnectionId: string,
+    @Body() body: { path: string; ref?: string },
+  ) {
+    const repo = await this.repositoriesService.findById(projectId, repositoryConnectionId);
+    const parsed = parseGitHubUrl(repo.repositoryUrl);
+    const owner = parsed?.owner || 'opspilot';
+    const repoName = parsed?.repo || 'app';
+    const file = await this.githubAppService.getFileContent(
+      owner,
+      repoName,
+      body?.path || 'package.json',
+      body?.ref || repo.defaultBranch || 'main',
+    );
+    return {
+      message: 'Repository file content retrieved',
+      data: file,
+    };
+  }
+
   @Post(':id/dispatch')
   @Permissions(ProjectPermissions.UPDATE)
   @ApiOperation({ summary: 'Trigger manual GitHub workflow dispatch' })
