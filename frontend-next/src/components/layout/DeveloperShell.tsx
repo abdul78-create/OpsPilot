@@ -15,6 +15,7 @@ interface DeveloperShellProps {
 
 const ROUTE_LABELS: Record<string, string> = {
   '': 'Overview',
+  repositories: 'Repositories',
   pipelines: 'Pipelines',
   runs: 'Runs',
   deployments: 'Deployments',

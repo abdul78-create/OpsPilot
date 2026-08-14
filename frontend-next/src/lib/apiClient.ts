@@ -457,3 +457,112 @@ export async function createSecret(key: string, value: string, description?: str
 export async function deleteSecret(secretId: string) {
   return apiFetch(`/secrets/${secretId}`, { method: 'DELETE' });
 }
+
+// ─── Repositories & GitHub Code Explorer ──────────────────────
+
+export interface RepositoryConnection {
+  id: string;
+  projectId: string;
+  provider: 'GITHUB' | 'GITLAB' | 'BITBUCKET';
+  repositoryUrl: string;
+  defaultBranch?: string;
+  webhookId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface GitHubBranchInfo {
+  name: string;
+  commitSha: string;
+  isProtected: boolean;
+}
+
+export interface GitHubCommitInfo {
+  sha: string;
+  message: string;
+  authorName: string;
+  authorEmail: string;
+  date: string;
+}
+
+export interface GitHubFileItem {
+  name: string;
+  path: string;
+  type: 'file' | 'dir';
+  size: number;
+  downloadUrl: string | null;
+}
+
+export interface GitHubFileContent {
+  name: string;
+  path: string;
+  size: number;
+  encoding: string;
+  content: string;
+  language: string;
+}
+
+export async function listRepositories(projectId: string = DEFAULT_PROJECT_ID) {
+  return apiFetch<{ data: RepositoryConnection[] }>(`/projects/${projectId}/repositories`);
+}
+
+export async function connectRepository(
+  projectId: string = DEFAULT_PROJECT_ID,
+  dto: {
+    provider: 'GITHUB' | 'GITLAB';
+    repositoryUrl: string;
+    defaultBranch?: string;
+    accessToken?: string;
+  },
+) {
+  return apiFetch<{ data: RepositoryConnection }>(`/projects/${projectId}/repositories`, {
+    method: 'POST',
+    body: JSON.stringify(dto),
+  });
+}
+
+export async function fetchRepositoryBranches(
+  projectId: string = DEFAULT_PROJECT_ID,
+  repositoryId: string,
+) {
+  return apiFetch<{ data: GitHubBranchInfo[] }>(
+    `/projects/${projectId}/repositories/${repositoryId}/branches`,
+  );
+}
+
+export async function fetchRepositoryCommits(
+  projectId: string = DEFAULT_PROJECT_ID,
+  repositoryId: string,
+) {
+  return apiFetch<{ data: GitHubCommitInfo[] }>(
+    `/projects/${projectId}/repositories/${repositoryId}/commits`,
+  );
+}
+
+export async function fetchRepositoryTree(
+  projectId: string = DEFAULT_PROJECT_ID,
+  repositoryId: string,
+  path: string = '',
+  ref: string = 'main',
+) {
+  return apiFetch<{ data: GitHubFileItem[] }>(
+    `/projects/${projectId}/repositories/${repositoryId}/tree`,
+    {
+      method: 'GET',
+    },
+  );
+}
+
+export async function fetchRepositoryFile(
+  projectId: string = DEFAULT_PROJECT_ID,
+  repositoryId: string,
+  path: string = 'package.json',
+  ref: string = 'main',
+) {
+  return apiFetch<{ data: GitHubFileContent }>(
+    `/projects/${projectId}/repositories/${repositoryId}/file`,
+    {
+      method: 'GET',
+    },
+  );
+}

@@ -15,6 +15,7 @@ import {
   ChevronRight,
   Sparkles,
   GitBranch,
+  FolderGit2,
   ChevronLeft,
   ChevronDown,
   User,
@@ -28,6 +29,7 @@ const NAV_SECTIONS = [
     label: 'Platform',
     links: [
       { to: '/dashboard', icon: LayoutDashboard, label: 'Overview', exact: true },
+      { to: '/repositories', icon: FolderGit2, label: 'Repositories' },
       { to: '/pipelines', icon: GitBranch, label: 'Pipelines' },
       { to: '/runs', icon: PlayCircle, label: 'Runs' },
       { to: '/deployments', icon: Rocket, label: 'Deployments' },
