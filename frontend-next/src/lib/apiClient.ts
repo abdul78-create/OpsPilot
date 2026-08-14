@@ -224,10 +224,44 @@ export async function listProjects(orgId: string = DEFAULT_ORG_ID) {
   return apiFetch<{ data: Project[] }>(`/organizations/${orgId}/projects`);
 }
 
+export async function createProject(name: string, slug: string, orgId: string = DEFAULT_ORG_ID) {
+  return apiFetch<{ data: Project }>(`/organizations/${orgId}/projects`, {
+    method: 'POST',
+    body: JSON.stringify({ name, slug }),
+  });
+}
+
 // ─── Pipelines ────────────────────────────────────────────────────────────────
 
 export async function listPipelines(projectId: string = DEFAULT_PROJECT_ID) {
   return apiFetch<{ data: PipelineDefinition[] }>(`/projects/${projectId}/pipelines`);
+}
+
+export async function createPipelineFromRepo(
+  projectId: string,
+  repositoryUrl: string,
+  branch = 'main',
+) {
+  return apiFetch<{ data: PipelineDefinition }>(`/projects/${projectId}/pipelines/from-repo`, {
+    method: 'POST',
+    body: JSON.stringify({ repositoryUrl, branch }),
+  });
+}
+
+export async function createPipelineDefinition(
+  projectId: string,
+  data: {
+    name: string;
+    yamlConfig: string;
+    slug?: string;
+    description?: string;
+    triggerBranch?: string;
+  },
+) {
+  return apiFetch<{ data: PipelineDefinition }>(`/projects/${projectId}/pipelines`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
 }
 
 export async function getPipeline(projectId: string, pipelineId: string) {

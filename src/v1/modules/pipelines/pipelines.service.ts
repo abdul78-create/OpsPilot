@@ -7,6 +7,9 @@ import { RequestContextService } from '../../../core/context/request-context.ser
 import { YamlValidatorUtil } from './utils/yaml-validator.util';
 import { CreatePipelineDefinitionDto } from './dto/create-pipeline-definition.dto';
 import { UpdatePipelineDefinitionDto } from './dto/update-pipeline-definition.dto';
+import { CreatePipelineFromRepoDto } from './dto/create-pipeline-from-repo.dto';
+import { WorkflowCompilerService } from './workflow-compiler.service';
+import { parseGitHubUrl } from '../repositories/providers/github-repository.provider';
 import { PipelineDefinition, PipelineVersion, TriggerType } from '@prisma/client';
 import { slugify, validateSlug } from '@shared/utils/slug.util';
 
@@ -18,6 +21,7 @@ export class PipelinesService {
     private readonly txManager: TransactionManager,
     private readonly eventBus: EventBusService,
     private readonly contextService: RequestContextService,
+    private readonly workflowCompiler: WorkflowCompilerService,
   ) {}
 
   async create(
@@ -106,6 +110,104 @@ export class PipelinesService {
         pipelineDefinitionId: result.id,
         versionNumber: 1,
         checksum: result.versions[0].checksum,
+        createdByUserId: userId,
+      },
+    });
+
+    return result;
+  }
+
+  async createFromRepository(
+    projectId: string,
+    userId: string,
+    dto: CreatePipelineFromRepoDto,
+  ): Promise<PipelineDefinition & { versions?: PipelineVersion[] }> {
+    const project = await this.prisma.project.findFirst({
+      where: { id: projectId, deletedAt: null },
+    });
+
+    if (!project) {
+      throw new NotFoundException(`Project '${projectId}' not found`);
+    }
+
+    const repoConnection = await this.prisma.repositoryConnection.findFirst({
+      where: {
+        id: dto.repositoryConnectionId,
+        projectId,
+        deletedAt: null,
+      },
+    });
+
+    if (!repoConnection) {
+      throw new NotFoundException(
+        `RepositoryConnection '${dto.repositoryConnectionId}' not found or does not belong to Project '${projectId}'`,
+      );
+    }
+
+    const parsed = parseGitHubUrl(repoConnection.repositoryUrl);
+    const repoName = parsed?.repo || 'repository';
+    const triggerBranch = dto.triggerBranch || repoConnection.defaultBranch || 'main';
+
+    const rawYaml =
+      dto.yamlConfig ||
+      this.workflowCompiler.generateYamlSpecFromRepo(repoName, triggerBranch, 'node');
+
+    const yamlResult = YamlValidatorUtil.validateAndCanonicalize(rawYaml);
+
+    const pipelineName =
+      dto.name || `${repoName.charAt(0).toUpperCase() + repoName.slice(1)} Pipeline`;
+    const targetSlug = slugify(pipelineName);
+
+    validateSlug(targetSlug);
+
+    const existingSlug = await this.pipelinesRepository.findByProjectAndSlug(projectId, targetSlug);
+    if (existingSlug) {
+      throw new ConflictException(
+        `Pipeline with slug '${targetSlug}' already exists in this Project`,
+      );
+    }
+
+    const result = await this.txManager.execute(async (tx) => {
+      const pipeline = await tx.pipelineDefinition.create({
+        data: {
+          project: { connect: { id: projectId } },
+          name: pipelineName,
+          slug: targetSlug,
+          description: `Auto-generated pipeline from connected repository '${repoConnection.repositoryUrl}'`,
+          triggerType: dto.triggerType || TriggerType.GIT_PUSH,
+          triggerBranch,
+          currentVersionNumber: 1,
+        },
+      });
+
+      const version = await tx.pipelineVersion.create({
+        data: {
+          pipelineDefinition: { connect: { id: pipeline.id } },
+          versionNumber: 1,
+          yamlConfig: rawYaml,
+          checksum: yamlResult.checksum,
+          changeSummary: `Initial pipeline created from repository connection ${repoConnection.id}`,
+          createdByUserId: userId,
+        },
+      });
+
+      return { ...pipeline, versions: [version] };
+    });
+
+    await this.eventBus.publish({
+      eventId: `evt_${Date.now()}`,
+      eventName: 'pipeline.definition_created.v1',
+      aggregateId: result.id,
+      aggregateType: 'PipelineDefinition',
+      occurredOn: new Date(),
+      version: 1,
+      correlationId: this.contextService.getCorrelationId(),
+      payload: {
+        pipelineDefinitionId: result.id,
+        projectId: result.projectId,
+        name: result.name,
+        slug: result.slug,
+        triggerType: result.triggerType,
         createdByUserId: userId,
       },
     });

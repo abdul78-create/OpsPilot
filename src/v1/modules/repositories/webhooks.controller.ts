@@ -18,6 +18,7 @@ import { RequestContextService } from '../../../core/context/request-context.ser
 import { RepositoryScannerService } from './services/repository-scanner.service';
 import { WorkflowCompilerService } from '../pipelines/workflow-compiler.service';
 import { PipelineOrchestratorService } from '../pipelines/services/pipeline-orchestrator.service';
+import { GitHubAppService } from './services/github-app.service';
 
 @ApiTags('Webhooks')
 @Controller('webhooks')
@@ -31,6 +32,7 @@ export class WebhooksController {
     private readonly scanner: RepositoryScannerService,
     private readonly compiler: WorkflowCompilerService,
     private readonly orchestrator: PipelineOrchestratorService,
+    private readonly githubAppService: GitHubAppService,
   ) {}
 
   private getRedisClient(): Redis {
@@ -273,12 +275,34 @@ export class WebhooksController {
 
   @Public()
   @Post('github/repositories')
-  @ApiOperation({ summary: 'List repositories accessible via GitHub App installation' })
-  async listAppRepositories(@Body() _payload: { installationId?: string }) {
+  @ApiOperation({
+    summary:
+      'List repositories accessible via GitHub authentication token or GitHub App installation',
+  })
+  async listAppRepositories(@Body() payload: { installationId?: string; accessToken?: string }) {
+    const token = payload?.accessToken || process.env.GITHUB_TOKEN;
+    if (token) {
+      try {
+        const repos = await this.githubAppService.listUserRepositories(token);
+        return {
+          status: 'success',
+          data: {
+            repositories: repos,
+          },
+        };
+      } catch (err) {
+        return {
+          status: 'error',
+          message: (err as Error).message,
+          data: { repositories: [] },
+        };
+      }
+    }
+
     return {
       status: 'not_configured',
       message:
-        'GitHub App repository browsing is not yet configured. To enable real repository listing, set GITHUB_APP_ID, GITHUB_PRIVATE_KEY, and connect an installation via /webhooks/github/installation.',
+        'GitHub App / OAuth repository browsing is not yet configured. Provide an accessToken or set GITHUB_TOKEN environment variable to list repositories dynamically.',
       data: {
         repositories: [],
       },

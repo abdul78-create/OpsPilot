@@ -6,6 +6,8 @@ import { TransactionManager } from '../../../core/database/transaction.manager';
 import { EventBusService } from '../../../core/events/event-bus.service';
 import { RequestContextService } from '../../../core/context/request-context.service';
 
+import { WorkflowCompilerService } from './workflow-compiler.service';
+
 describe('PipelinesService', () => {
   let service: PipelinesService;
 
@@ -45,6 +47,7 @@ describe('PipelinesService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         PipelinesService,
+        WorkflowCompilerService,
         { provide: PipelinesRepository, useValue: mockPipelinesRepository },
         { provide: PrismaService, useValue: mockPrisma },
         { provide: TransactionManager, useValue: mockTransactionManager },

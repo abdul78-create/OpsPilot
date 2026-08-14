@@ -60,10 +60,10 @@ export class ArtifactsService {
       },
     });
 
-    return artifact;
+    return this.serializeArtifact(artifact);
   }
 
-  async findByPipelineRun(pipelineRunId: string): Promise<Artifact[]> {
+  async findByPipelineRun(pipelineRunId: string): Promise<any[]> {
     const run = await this.prisma.pipelineRun.findFirst({
       where: { id: pipelineRunId, deletedAt: null },
     });
@@ -72,20 +72,21 @@ export class ArtifactsService {
       throw new NotFoundException(`Pipeline Run '${pipelineRunId}' not found`);
     }
 
-    return this.artifactsRepository.findByPipelineRun(pipelineRunId);
+    const list = await this.artifactsRepository.findByPipelineRun(pipelineRunId);
+    return list.map((a) => this.serializeArtifact(a));
   }
 
-  async findById(artifactId: string): Promise<Artifact> {
+  async findById(artifactId: string): Promise<any> {
     const artifact = await this.artifactsRepository.findOneById(artifactId);
 
     if (!artifact) {
       throw new NotFoundException(`Artifact '${artifactId}' not found`);
     }
 
-    return artifact;
+    return this.serializeArtifact(artifact);
   }
 
-  async delete(artifactId: string, userId: string): Promise<Artifact> {
+  async delete(artifactId: string, userId: string): Promise<any> {
     const artifact = await this.findById(artifactId);
 
     const deleted = await this.artifactsRepository.update(artifact.id, {
@@ -108,7 +109,7 @@ export class ArtifactsService {
       },
     });
 
-    return deleted;
+    return this.serializeArtifact(deleted);
   }
 
   async getDownloadStream(
@@ -143,6 +144,33 @@ export class ArtifactsService {
     };
   }
 
+  async verifyIntegrity(artifactId: string): Promise<{
+    artifactId: string;
+    expectedChecksum: string;
+    actualChecksum: string;
+    match: boolean;
+  }> {
+    const artifact = await this.findById(artifactId);
+
+    if (!fs.existsSync(artifact.storageLocation)) {
+      throw new NotFoundException(
+        `Artifact file not found at storage location '${artifact.storageLocation}'`,
+      );
+    }
+
+    const crypto = await import('crypto');
+    const fileBuffer = fs.readFileSync(artifact.storageLocation);
+    const actualChecksum = crypto.createHash('sha256').update(fileBuffer).digest('hex');
+    const match = actualChecksum.toLowerCase() === artifact.checksum.toLowerCase();
+
+    return {
+      artifactId: artifact.id,
+      expectedChecksum: artifact.checksum,
+      actualChecksum,
+      match,
+    };
+  }
+
   private computeExpiry(policy: ArtifactRetentionPolicy): Date | null {
     const now = new Date();
     switch (policy) {
@@ -154,5 +182,14 @@ export class ArtifactsService {
       case ArtifactRetentionPolicy.KEEP_LATEST_N:
         return null;
     }
+  }
+
+  private serializeArtifact(artifact: any): any {
+    if (!artifact) return artifact;
+    return {
+      ...artifact,
+      sizeBytes:
+        typeof artifact.sizeBytes === 'bigint' ? Number(artifact.sizeBytes) : artifact.sizeBytes,
+    };
   }
 }

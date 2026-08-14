@@ -28,4 +28,12 @@ export class CreateRepositoryConnectionDto {
   @IsString()
   @IsOptional()
   authSecretId?: string;
+
+  @ApiPropertyOptional({
+    example: 'ghp_1234567890abcdef',
+    description: 'GitHub Personal Access Token or OAuth token for authentication',
+  })
+  @IsString()
+  @IsOptional()
+  accessToken?: string;
 }

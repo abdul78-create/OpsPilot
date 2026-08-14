@@ -1,14 +1,15 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { ApiPropertyOptional } from '@nestjs/swagger';
+import { IsOptional, IsString } from 'class-validator';
 
 export class RollbackDeploymentDto {
-  @ApiProperty({
+  @ApiPropertyOptional({
     example: 'dep_123456789',
-    description: 'Target successful Deployment UUID to rollback to',
+    description:
+      'Target successful Deployment UUID to rollback to (defaults to latest successful deployment)',
   })
   @IsString()
-  @IsNotEmpty()
-  targetDeploymentId!: string;
+  @IsOptional()
+  targetDeploymentId?: string;
 
   @ApiPropertyOptional({
     example: 'Automated rollback triggered by elevated error rates',

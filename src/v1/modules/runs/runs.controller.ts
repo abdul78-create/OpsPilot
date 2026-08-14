@@ -19,6 +19,7 @@ export class RunsController {
   constructor(private readonly runsService: RunsService) {}
 
   @Post('pipelines/:pipelineId/runs')
+  @Post('projects/:projectId/pipelines/:pipelineId/runs')
   @Permissions(PipelinePermissions.TRIGGER)
   @ApiOperation({ summary: 'Trigger a new Pipeline Run execution' })
   @ApiParam({ name: 'pipelineId', description: 'Pipeline Definition UUID' })

@@ -1,6 +1,7 @@
 export interface RepositoryConnectionConfig {
   repositoryUrl: string;
   authSecret?: string;
+  accessToken?: string;
 }
 
 export interface WebhookRegistrationResult {

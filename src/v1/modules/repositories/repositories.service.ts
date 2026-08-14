@@ -38,29 +38,41 @@ export class RepositoriesService {
       throw new NotFoundException(`Project '${projectId}' not found`);
     }
 
-    const existingRepo = await this.repositoriesRepository.findByProjectAndUrl(
-      projectId,
-      dto.repositoryUrl,
-    );
+    const existing = await this.prisma.repositoryConnection.findFirst({
+      where: { projectId, repositoryUrl: dto.repositoryUrl },
+    });
 
-    if (existingRepo) {
-      throw new ConflictException(
-        `Repository URL '${dto.repositoryUrl}' is already connected to this Project`,
-      );
+    if (existing) {
+      if (existing.deletedAt === null) {
+        throw new ConflictException(
+          `Repository '${dto.repositoryUrl}' is already connected to this project`,
+        );
+      }
+      // Re-activate soft-deleted repository connection
+      const reactivated = await this.prisma.repositoryConnection.update({
+        where: { id: existing.id },
+        data: {
+          deletedAt: null,
+          defaultBranch: dto.defaultBranch || existing.defaultBranch,
+          isVerified: true,
+        },
+      });
+      return reactivated;
     }
 
     const isValid = await this.repositoryProvider.validateConnection({
       repositoryUrl: dto.repositoryUrl,
+      accessToken: dto.accessToken,
     });
 
     if (!isValid) {
       throw new BadRequestException(
-        `Failed to validate Repository URL '${dto.repositoryUrl}' for provider ${dto.provider}`,
+        `Failed to validate Repository URL '${dto.repositoryUrl}' for provider ${dto.provider}. Ensure the repository exists and access token is valid.`,
       );
     }
 
     const webhookResult = await this.repositoryProvider.createWebhook(
-      { repositoryUrl: dto.repositoryUrl },
+      { repositoryUrl: dto.repositoryUrl, accessToken: dto.accessToken },
       `https://api.opspilot.ai/v1/webhooks/${dto.provider.toLowerCase()}`,
     );
 
@@ -68,6 +80,7 @@ export class RepositoriesService {
       dto.defaultBranch ||
       (await this.repositoryProvider.getDefaultBranch({
         repositoryUrl: dto.repositoryUrl,
+        accessToken: dto.accessToken,
       }));
 
     const repoConnection = await this.repositoriesRepository.create({

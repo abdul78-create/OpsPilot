@@ -83,6 +83,19 @@ export class ArtifactsController {
     stream.pipe(res);
   }
 
+  @Get('artifacts/:id/integrity')
+  @Permissions(PipelinePermissions.READ)
+  @ApiOperation({ summary: 'Verify SHA-256 integrity of stored artifact archive' })
+  @ApiParam({ name: 'id', description: 'Artifact UUID' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Integrity check report' })
+  async verifyIntegrity(@Param('id') artifactId: string) {
+    const result = await this.artifactsService.verifyIntegrity(artifactId);
+    return {
+      message: 'Artifact integrity verification completed',
+      data: result,
+    };
+  }
+
   @Delete('artifacts/:id')
   @Permissions(PipelinePermissions.DELETE)
   @ApiOperation({ summary: 'Soft-delete an artifact' })

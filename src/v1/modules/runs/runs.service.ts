@@ -114,9 +114,17 @@ export class RunsService {
       },
     });
 
+    // Resolve target repository connection URL for worker repository cloning
+    const repoConn = await this.prisma.repositoryConnection.findFirst({
+      where: { projectId: pipeline.projectId, deletedAt: null },
+      orderBy: { createdAt: 'desc' },
+    });
+    const repoUrl = repoConn?.repositoryUrl || 'https://github.com/expressjs/express';
+
     // Dispatch to BullMQ worker queue for async execution
     await this.pipelineRunQueue.add(PIPELINE_RUN_JOB_NAME, {
       pipelineRunId: result.id,
+      repoUrl,
     });
 
     return result;

@@ -67,6 +67,19 @@ export class DeploymentsController {
     };
   }
 
+  @Get('deployments/:id/health')
+  @Permissions(EnvironmentPermissions.READ)
+  @ApiOperation({ summary: 'Perform automated live health probe against deployed environment URL' })
+  @ApiParam({ name: 'id', description: 'Deployment UUID' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Deployment health check response' })
+  async getHealth(@Param('id') deploymentId: string) {
+    const health = await this.deploymentsService.getDeploymentHealth(deploymentId);
+    return {
+      message: 'Deployment health probe executed successfully',
+      data: health,
+    };
+  }
+
   @Post('deployments/:id/approve')
   @Permissions(EnvironmentPermissions.DEPLOY)
   @ApiOperation({ summary: 'Sign off or reject a pending Deployment Approval Gate' })

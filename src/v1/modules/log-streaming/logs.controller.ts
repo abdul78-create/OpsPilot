@@ -23,7 +23,7 @@ import { PipelinePermissions } from '@shared/constants/permissions.constants';
 
 @ApiTags('Log Streaming')
 @ApiBearerAuth()
-@Controller('pipeline-runs')
+@Controller(['pipeline-runs', 'runs'])
 @UseGuards(JwtAuthGuard, TenantGuard, PermissionsGuard)
 export class LogsController {
   constructor(

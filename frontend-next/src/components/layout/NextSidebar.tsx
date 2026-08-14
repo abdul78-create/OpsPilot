@@ -114,7 +114,9 @@ export function NextSidebar({ collapsed = false, onToggle }: NextSidebarProps) {
 
   return (
     <aside
-      className={`${collapsed ? 'w-[60px]' : 'w-[220px]'} bg-[#111113] border-r border-[#27272A] flex flex-col h-screen sticky top-0 select-none transition-all duration-200 ease-in-out z-40`}
+      className={`${
+        collapsed ? 'w-[60px]' : 'w-[60px] md:w-[220px]'
+      } bg-[#111113] border-r border-[#27272A] flex flex-col h-screen sticky top-0 select-none transition-all duration-200 ease-in-out z-40 shrink-0`}
     >
       {/* Brand Header */}
       <div className="h-14 px-3 border-b border-[#1C1C1F] flex items-center justify-between gap-2 shrink-0">

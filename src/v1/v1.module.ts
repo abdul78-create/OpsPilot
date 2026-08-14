@@ -16,6 +16,7 @@ import { ArtifactsModule } from './modules/artifacts/artifacts.module';
 import { WorkerModule } from './modules/worker/worker.module';
 import { LogStreamingModule } from './modules/log-streaming/log-streaming.module';
 import { AiOrchestrationModule } from './modules/ai-orchestration/ai-orchestration.module';
+import { BillingModule } from './modules/billing/billing.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { AiOrchestrationModule } from './modules/ai-orchestration/ai-orchestrati
     WorkerModule,
     LogStreamingModule,
     AiOrchestrationModule,
+    BillingModule,
   ],
   exports: [
     HealthModule,
@@ -55,6 +57,7 @@ import { AiOrchestrationModule } from './modules/ai-orchestration/ai-orchestrati
     WorkerModule,
     LogStreamingModule,
     AiOrchestrationModule,
+    BillingModule,
   ],
 })
 export class V1Module {}

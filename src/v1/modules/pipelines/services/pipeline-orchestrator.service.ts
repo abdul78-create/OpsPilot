@@ -2,7 +2,10 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import * as crypto from 'crypto';
-import { PIPELINE_RUN_QUEUE } from '../../../../core/worker/worker.constants';
+import {
+  PIPELINE_RUN_QUEUE,
+  PIPELINE_RUN_JOB_NAME,
+} from '../../../../core/worker/worker.constants';
 import { PrismaService } from '../../../../core/database/prisma.service';
 import { EventBusService } from '../../../../core/events/event-bus.service';
 import { RequestContextService } from '../../../../core/context/request-context.service';
@@ -139,33 +142,22 @@ export class PipelineOrchestratorService {
       this.logger.log(`  ↳ PipelineJob '${dbJob.name}' created (stage: ${stage.stage})`);
     }
 
-    // ── 7. Enqueue BullMQ jobs referencing the real DB run ID ─────────────────
+    // ── 7. Enqueue BullMQ run job referencing the real DB run ID ─────────────────
     const traceparent = this.contextService?.getTraceparent();
 
-    for (const stage of graph.stages) {
-      await this.pipelineQueue.add(
-        'execute-stage',
-        {
-          pipelineRunId: run.id,
-          repoUrl,
-          traceparent,
-          stageId: stage.id,
-          stageName: stage.name,
-          stageType: stage.stage,
-          image: stage.image,
-          commands: stage.commands,
-          timeoutSeconds: stage.timeoutSeconds,
-          maxRetries: stage.maxRetries,
-        },
-        {
-          jobId: `${run.id}_${stage.id}_enq`,
-          attempts: stage.maxRetries + 1,
-          backoff: { type: 'exponential', delay: 1000 },
-          removeOnComplete: true,
-          removeOnFail: false,
-        },
-      );
-    }
+    await this.pipelineQueue.add(
+      PIPELINE_RUN_JOB_NAME,
+      {
+        pipelineRunId: run.id,
+        repoUrl,
+        traceparent,
+      },
+      {
+        jobId: `${run.id}_enq`,
+        removeOnComplete: true,
+        removeOnFail: false,
+      },
+    );
 
     await this.eventBus.publish({
       eventId: `evt_${Date.now()}`,

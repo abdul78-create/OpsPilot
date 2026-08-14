@@ -23,6 +23,7 @@ import { CurrentUser } from '../../../core/security/decorators/current-user.deco
 import { JwtPayload } from '../../../core/security/token.service';
 import { ProjectPermissions } from '@shared/constants/permissions.constants';
 
+import { parseGitHubUrl } from './providers/github-repository.provider';
 import { GitHubAppService } from './services/github-app.service';
 
 @ApiTags('Repository Connections')
@@ -34,6 +35,18 @@ export class RepositoriesController {
     private readonly repositoriesService: RepositoriesService,
     private readonly githubAppService: GitHubAppService,
   ) {}
+
+  @Post('github/user-repos')
+  @Permissions(ProjectPermissions.READ)
+  @ApiOperation({ summary: 'Fetch user repositories from GitHub REST API' })
+  @ApiParam({ name: 'projectId', description: 'Project UUID' })
+  async listUserRepositories(@Body() body: { accessToken?: string }) {
+    const repos = await this.githubAppService.listUserRepositories(body.accessToken);
+    return {
+      message: 'GitHub user repositories retrieved successfully',
+      data: repos,
+    };
+  }
 
   @Post()
   @Permissions(ProjectPermissions.CREATE)
@@ -135,8 +148,11 @@ export class RepositoriesController {
     @Param('projectId') projectId: string,
     @Param('id') repositoryConnectionId: string,
   ) {
-    await this.repositoriesService.findById(projectId, repositoryConnectionId);
-    const branches = await this.githubAppService.listBranches('abdul78-create', 'StockFlow');
+    const repo = await this.repositoriesService.findById(projectId, repositoryConnectionId);
+    const parsed = parseGitHubUrl(repo.repositoryUrl);
+    const owner = parsed?.owner || 'opspilot';
+    const repoName = parsed?.repo || 'app';
+    const branches = await this.githubAppService.listBranches(owner, repoName);
     return {
       message: 'Repository branches retrieved successfully',
       data: branches,
@@ -152,8 +168,15 @@ export class RepositoriesController {
     @Param('projectId') projectId: string,
     @Param('id') repositoryConnectionId: string,
   ) {
-    await this.repositoriesService.findById(projectId, repositoryConnectionId);
-    const commits = await this.githubAppService.listCommits('abdul78-create', 'StockFlow', 'main');
+    const repo = await this.repositoriesService.findById(projectId, repositoryConnectionId);
+    const parsed = parseGitHubUrl(repo.repositoryUrl);
+    const owner = parsed?.owner || 'opspilot';
+    const repoName = parsed?.repo || 'app';
+    const commits = await this.githubAppService.listCommits(
+      owner,
+      repoName,
+      repo.defaultBranch || 'main',
+    );
     return {
       message: 'Repository commits retrieved successfully',
       data: commits,
@@ -170,10 +193,13 @@ export class RepositoriesController {
     @Param('id') repositoryConnectionId: string,
     @Body() body: { eventType?: string; payload?: Record<string, unknown> },
   ) {
-    await this.repositoriesService.findById(projectId, repositoryConnectionId);
+    const repo = await this.repositoriesService.findById(projectId, repositoryConnectionId);
+    const parsed = parseGitHubUrl(repo.repositoryUrl);
+    const owner = parsed?.owner || 'opspilot';
+    const repoName = parsed?.repo || 'app';
     const result = await this.githubAppService.dispatchWorkflow(
-      'abdul78-create',
-      'StockFlow',
+      owner,
+      repoName,
       body.eventType || 'manual_build',
       body.payload,
     );

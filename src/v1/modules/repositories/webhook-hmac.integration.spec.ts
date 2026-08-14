@@ -6,8 +6,9 @@ import { RepositoryScannerService } from './services/repository-scanner.service'
 import { WorkflowCompilerService } from '../pipelines/workflow-compiler.service';
 import { PipelineOrchestratorService } from '../pipelines/services/pipeline-orchestrator.service';
 import * as crypto from 'crypto';
+import { GitHubAppService } from './services/github-app.service';
 
-describe('WebhooksController HMAC SHA-256 Signature Verification Integration Test', () => {
+describe('WebhooksController HMAC SHA-256 Security Integration Test', () => {
   let controller: WebhooksController;
   const webhookSecret = 'test_webhook_secret_key_123';
 
@@ -22,6 +23,7 @@ describe('WebhooksController HMAC SHA-256 Signature Verification Integration Tes
   const mockOrchestrator = {
     dispatchRun: jest.fn().mockResolvedValue({ runId: 'run_test_hmac', jobsEnqueued: 2 }),
   };
+  const mockGitHubAppService = { listUserRepositories: jest.fn().mockResolvedValue([]) };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -32,6 +34,7 @@ describe('WebhooksController HMAC SHA-256 Signature Verification Integration Tes
         { provide: RepositoryScannerService, useValue: mockScanner },
         { provide: WorkflowCompilerService, useValue: mockCompiler },
         { provide: PipelineOrchestratorService, useValue: mockOrchestrator },
+        { provide: GitHubAppService, useValue: mockGitHubAppService },
       ],
     }).compile();
 

@@ -92,7 +92,8 @@ describe('ArtifactsService', () => {
         retentionPolicy: ArtifactRetentionPolicy.KEEP_30_DAYS,
       });
 
-      expect(result).toEqual(mockArtifact);
+      expect(result.id).toBe(mockArtifact.id);
+      expect(result.sizeBytes).toBe(52428800);
       expect(mockArtifactsRepository.create).toHaveBeenCalledTimes(1);
       expect(mockEventBus.publish).toHaveBeenCalledWith(
         expect.objectContaining({ eventName: 'artifact.registered.v1' }),

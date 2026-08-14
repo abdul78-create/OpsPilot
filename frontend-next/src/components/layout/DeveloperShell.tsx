@@ -49,13 +49,17 @@ export function DeveloperShell({ children }: DeveloperShellProps) {
       let userData = localStorage.getItem('opspilot_user');
 
       if (!token) {
-        // Auto-initialize dev session in local development environment
-        token = 'dev-local-session-token';
-        const devUser = { id: 'dev-1', email: 'engineer@opspilot.com', name: 'Dev Engineer', role: 'ADMIN' };
-        localStorage.setItem('opspilot_token', token);
-        localStorage.setItem('opspilot_user', JSON.stringify(devUser));
-        setUser(devUser);
-        setWorkspaceName('Production Workspace');
+        if (process.env.NODE_ENV === 'development') {
+          token = 'dev-local-session-token';
+          const devUser = { id: 'dev-1', email: 'engineer@opspilot.com', name: 'Dev Engineer', role: 'ADMIN' };
+          localStorage.setItem('opspilot_token', token);
+          localStorage.setItem('opspilot_user', JSON.stringify(devUser));
+          setUser(devUser);
+          setWorkspaceName('Production Workspace');
+        } else {
+          router.push('/login');
+          return;
+        }
       } else {
         if (userData) {
           try {
@@ -73,7 +77,7 @@ export function DeveloperShell({ children }: DeveloperShellProps) {
       }
       setLoading(false);
     }
-  }, []);
+  }, [router]);
 
   // Determine current page title
   const rawPath = pathname.replace(/^\//, '');

@@ -15,6 +15,8 @@ import {
 } from '@/lib/apiClient';
 import { StatusPill, CopyButton } from '@/components/ui/Primitives';
 import { useToast } from '@/components/ui/Toast';
+import { XTermPanel } from '@/components/ui/XTermPanel';
+import { TerminalStream } from '@/components/ui/terminal-stream';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -487,9 +489,44 @@ export function RunDetailPage({ runId }: RunDetailPageProps) {
           </div>
         </div>
 
-        {/* Log Viewer */}
-        <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
-          <LogViewer logs={logs} jobId={activeJobId} />
+        {/* Log Panel — XTermPanel (canvas) for completed runs, TerminalStream (SSE) for live */}
+        <div className="bg-[#09090B] border border-[#27272A] rounded-2xl overflow-hidden flex flex-col">
+          {/* Toolbar */}
+          <div className="flex items-center gap-2 px-4 py-2 border-b border-[#27272A] shrink-0 bg-[#111113]">
+            <div className="flex items-center gap-1.5">
+              <div className="w-2.5 h-2.5 rounded-full bg-[#EF4444]/60" />
+              <div className="w-2.5 h-2.5 rounded-full bg-[#EAB308]/60" />
+              <div className="w-2.5 h-2.5 rounded-full bg-[#22C55E]/60" />
+            </div>
+            <span className="flex-1 text-center text-[11px] font-mono text-zinc-600">
+              {isLive ? 'live stream' : `${logs.filter(l => !activeJobId || l.jobId === activeJobId).length} lines`}
+            </span>
+            {isLive && (
+              <span className="text-[10px] font-mono text-emerald-400 border border-emerald-500/20 bg-emerald-500/5 px-2 py-0.5 rounded-md animate-pulse">
+                ● streaming
+              </span>
+            )}
+          </div>
+
+          {/* Canvas surface */}
+          <div className="flex-1 min-h-0">
+            {isLive ? (
+              // Live run — SSE streaming terminal
+              <TerminalStream
+                runId={runId}
+              />
+            ) : (
+              // Completed run — hardware-accelerated canvas with pre-buffered lines
+              <XTermPanel
+                lines={formatLogLines(
+                  activeJobId
+                    ? logs.filter(l => l.jobId === activeJobId)
+                    : logs
+                )}
+                stream={false}
+              />
+            )}
+          </div>
         </div>
       </div>
     </div>

@@ -20,4 +20,22 @@ export class HealthController {
       () => this.prismaIndicator.pingCheck('database', this.prismaService),
     ]);
   }
+
+  @Get('liveness')
+  @ApiOperation({ summary: 'Kubernetes/Docker Liveness probe' })
+  liveness() {
+    return {
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  @Get('readiness')
+  @HealthCheck()
+  @ApiOperation({ summary: 'Kubernetes/Docker Readiness probe' })
+  readiness() {
+    return this.health.check([
+      () => this.prismaIndicator.pingCheck('database', this.prismaService),
+    ]);
+  }
 }

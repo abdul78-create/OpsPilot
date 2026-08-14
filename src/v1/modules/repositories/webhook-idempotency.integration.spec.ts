@@ -5,6 +5,7 @@ import { RequestContextService } from '../../../core/context/request-context.ser
 import { RepositoryScannerService } from './services/repository-scanner.service';
 import { WorkflowCompilerService } from '../pipelines/workflow-compiler.service';
 import { PipelineOrchestratorService } from '../pipelines/services/pipeline-orchestrator.service';
+import { GitHubAppService } from './services/github-app.service';
 
 describe('WebhooksController X-GitHub-Delivery Idempotency Integration Test', () => {
   let controller: WebhooksController;
@@ -20,6 +21,7 @@ describe('WebhooksController X-GitHub-Delivery Idempotency Integration Test', ()
   const mockOrchestrator = {
     dispatchRun: jest.fn().mockResolvedValue({ runId: 'run_test_idempotent', jobsEnqueued: 2 }),
   };
+  const mockGitHubAppService = { listUserRepositories: jest.fn().mockResolvedValue([]) };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -30,6 +32,7 @@ describe('WebhooksController X-GitHub-Delivery Idempotency Integration Test', ()
         { provide: RepositoryScannerService, useValue: mockScanner },
         { provide: WorkflowCompilerService, useValue: mockCompiler },
         { provide: PipelineOrchestratorService, useValue: mockOrchestrator },
+        { provide: GitHubAppService, useValue: mockGitHubAppService },
       ],
     }).compile();
 

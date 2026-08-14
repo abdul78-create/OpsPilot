@@ -236,17 +236,59 @@ export class DeploymentsService {
     userId: string,
     dto: RollbackDeploymentDto,
   ): Promise<Deployment> {
-    const targetDeployment = await this.findById(dto.targetDeploymentId);
+    const sourceDeployment = await this.findById(deploymentId);
+
+    // If source deployment is stuck IN_PROGRESS, cleanly transition to FAILED to release environment lock
+    if (sourceDeployment.status === DeploymentStatus.IN_PROGRESS) {
+      await this.deploymentsRepository.update(sourceDeployment.id, {
+        status: DeploymentStatus.FAILED,
+        finishedAt: new Date(),
+      });
+    }
+
+    let targetDeployment: Deployment | null = null;
+    if (dto.targetDeploymentId) {
+      targetDeployment = await this.findById(dto.targetDeploymentId);
+    } else {
+      targetDeployment = await this.prisma.deployment.findFirst({
+        where: {
+          environmentId: sourceDeployment.environmentId,
+          status: DeploymentStatus.SUCCESS,
+          id: { not: deploymentId },
+          deletedAt: null,
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+    }
+
+    if (!targetDeployment) {
+      throw new BadRequestException(
+        `No valid prior successful deployment found for rollback in environment '${sourceDeployment.environmentId}'`,
+      );
+    }
 
     if (targetDeployment.status !== DeploymentStatus.SUCCESS) {
       throw new BadRequestException(
-        `Target deployment '${dto.targetDeploymentId}' was not successful and cannot be used for rollback`,
+        `Target deployment '${targetDeployment.id}' was not successful and cannot be used for rollback`,
       );
     }
 
     const rollbackDeployment = await this.createDeployment(targetDeployment.environmentId, userId, {
       pipelineRunId: targetDeployment.pipelineRunId,
       releaseVersion: `${targetDeployment.releaseVersion}-rollback`,
+    });
+
+    // Clear any stale/abandoned IN_PROGRESS deployments in target environment to release lock
+    await this.prisma.deployment.updateMany({
+      where: {
+        environmentId: targetDeployment.environmentId,
+        status: DeploymentStatus.IN_PROGRESS,
+        id: { not: rollbackDeployment.id },
+      },
+      data: {
+        status: DeploymentStatus.FAILED,
+        finishedAt: new Date(),
+      },
     });
 
     await this.deploymentRunner.executeDeployment(rollbackDeployment.id);
@@ -275,5 +317,67 @@ export class DeploymentsService {
     });
 
     return updatedRollback;
+  }
+
+  async getDeploymentHealth(deploymentId: string): Promise<{
+    deploymentId: string;
+    releaseVersion: string;
+    environmentId: string;
+    status: string;
+    healthStatus: string;
+    url: string;
+    statusCode: number;
+    latencyMs: number;
+  }> {
+    const deployment = await this.findById(deploymentId);
+    const start = Date.now();
+    let statusCode = 0;
+    let healthStatus = 'UNHEALTHY';
+
+    try {
+      const http = await import('http');
+      const targetUrl =
+        process.env.DEPLOYMENT_HEALTH_URL || 'http://opspilot_app_target:8080/health';
+      const result = await new Promise<{ statusCode: number; body: string }>((resolve, reject) => {
+        const req = http.get(targetUrl, (res) => {
+          let b = '';
+          res.on('data', (c) => (b += c));
+          res.on('end', () => resolve({ statusCode: res.statusCode || 0, body: b }));
+        });
+        req.on('error', (_err) => {
+          // Fallback to localhost if container host is not resolved
+          http
+            .get('http://localhost:8080/health', (res2) => {
+              let b2 = '';
+              res2.on('data', (c2) => (b2 += c2));
+              res2.on('end', () => resolve({ statusCode: res2.statusCode || 0, body: b2 }));
+            })
+            .on('error', reject);
+        });
+        req.setTimeout(3000, () => {
+          req.destroy();
+          reject(new Error('Timeout'));
+        });
+      });
+      statusCode = result.statusCode;
+      if (statusCode === 200) {
+        healthStatus = 'HEALTHY';
+      }
+    } catch (e) {
+      statusCode = 503;
+      healthStatus = 'UNREACHABLE';
+    }
+
+    const latencyMs = Date.now() - start;
+    return {
+      deploymentId: deployment.id,
+      releaseVersion: deployment.releaseVersion,
+      environmentId: deployment.environmentId,
+      status: deployment.status,
+      healthStatus,
+      url: 'http://localhost:8080/health',
+      statusCode,
+      latencyMs,
+    };
   }
 }

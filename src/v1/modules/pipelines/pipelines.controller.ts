@@ -14,6 +14,7 @@ import {
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
 import { PipelinesService } from './pipelines.service';
 import { CreatePipelineDefinitionDto } from './dto/create-pipeline-definition.dto';
+import { CreatePipelineFromRepoDto } from './dto/create-pipeline-from-repo.dto';
 import { UpdatePipelineDefinitionDto } from './dto/update-pipeline-definition.dto';
 import { PipelineDefinitionResponseDto } from './dto/pipeline-definition-response.dto';
 import { PipelineVersionResponseDto } from './dto/pipeline-version-response.dto';
@@ -31,6 +32,27 @@ import { PipelinePermissions } from '@shared/constants/permissions.constants';
 @UseGuards(JwtAuthGuard, TenantGuard, PermissionsGuard)
 export class PipelinesController {
   constructor(private readonly pipelinesService: PipelinesService) {}
+
+  @Post('from-repo')
+  @Permissions(PipelinePermissions.CREATE)
+  @ApiOperation({ summary: 'Provision a new Pipeline Definition from connected Repository' })
+  @ApiParam({ name: 'projectId', description: 'Project UUID' })
+  @ApiResponse({ status: HttpStatus.CREATED, type: PipelineDefinitionResponseDto })
+  @ApiResponse({
+    status: HttpStatus.NOT_FOUND,
+    description: 'Repository connection or Project not found',
+  })
+  async createFromRepo(
+    @CurrentUser() user: JwtPayload,
+    @Param('projectId') projectId: string,
+    @Body() dto: CreatePipelineFromRepoDto,
+  ) {
+    const pipeline = await this.pipelinesService.createFromRepository(projectId, user.sub, dto);
+    return {
+      message: 'Pipeline definition successfully created from connected repository',
+      data: pipeline,
+    };
+  }
 
   @Post()
   @Permissions(PipelinePermissions.CREATE)

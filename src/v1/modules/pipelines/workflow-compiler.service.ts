@@ -10,6 +10,52 @@ export class WorkflowCompilerService {
   private readonly logger = new Logger(WorkflowCompilerService.name);
 
   /**
+   * Generates a canonical OpsPilot YAML pipeline specification from repository metadata & detected stack.
+   */
+  generateYamlSpecFromRepo(
+    repoName: string,
+    defaultBranch: string = 'main',
+    stackLanguage: string = 'node',
+  ): string {
+    const cleanRepoName = repoName.replace(/[^a-zA-Z0-9_\-\s]/g, '').trim();
+
+    let stagesYaml = `stages:
+  - name: lint
+    commands:
+      - npm run lint || echo "No lint script configured"
+  - name: test
+    commands:
+      - npm test || echo "No test script configured"
+  - name: build
+    commands:
+      - npm run build || echo "No build script configured"`;
+
+    if (stackLanguage === 'python') {
+      stagesYaml = `stages:
+  - name: test
+    commands:
+      - pip install -r requirements.txt || true
+      - pytest || echo "No pytest suite configured"`;
+    } else if (stackLanguage === 'go') {
+      stagesYaml = `stages:
+  - name: test
+    commands:
+      - go test ./...
+  - name: build
+    commands:
+      - go build -v ./...`;
+    }
+
+    return `version: "1"
+name: "${cleanRepoName || 'OpsPilot'} CI/CD Pipeline"
+trigger:
+  event: push
+  branch: "${defaultBranch}"
+${stagesYaml}
+`;
+  }
+
+  /**
    * Compiles StackDefinition & raw pipeline configuration into a validated ExecutionGraph
    */
   compilePipeline(stack: StackDefinition, pipelineId: string = 'pipe_v1'): ExecutionGraph {
