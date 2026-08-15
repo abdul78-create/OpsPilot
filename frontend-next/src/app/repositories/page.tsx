@@ -4,62 +4,29 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { DeveloperShell } from '@/components/layout/DeveloperShell';
 import {
-  FolderGit2,
-  GitBranch,
-  GitCommit,
-  Folder,
-  FileCode,
-  FileText,
-  FileJson,
-  File,
-  Play,
-  Plus,
-  RefreshCw,
-  Copy,
-  Check,
-  Download,
-  ExternalLink,
-  Loader2,
-  ChevronRight,
-  ChevronDown,
-  Clock,
-  User,
-  ShieldCheck,
-  Search,
-  Sparkles,
+  FolderGit2, GitBranch, GitCommit, Folder, FileCode, FileText,
+  FileJson, File, Play, Plus, RefreshCw, Copy, Check, ExternalLink,
+  Loader2, Clock, User, ShieldCheck, Search,
 } from 'lucide-react';
 import {
-  listRepositories,
-  connectRepository,
-  fetchRepositoryBranches,
-  fetchRepositoryCommits,
-  fetchRepositoryTree,
-  fetchRepositoryFile,
-  triggerPipeline,
-  RepositoryConnection,
-  GitHubBranchInfo,
-  GitHubCommitInfo,
-  GitHubFileItem,
-  GitHubFileContent,
-  DEFAULT_PROJECT_ID,
+  listRepositories, connectRepository, fetchRepositoryBranches,
+  fetchRepositoryCommits, fetchRepositoryTree, fetchRepositoryFile,
+  triggerPipeline, RepositoryConnection, GitHubBranchInfo,
+  GitHubCommitInfo, GitHubFileItem, GitHubFileContent, DEFAULT_PROJECT_ID,
 } from '@/lib/apiClient';
 import { useToast } from '@/components/ui/Toast';
 
 function getFileIcon(fileName: string) {
   const ext = fileName.split('.').pop()?.toLowerCase();
-  if (ext === 'ts' || ext === 'tsx' || ext === 'js' || ext === 'jsx') {
-    return <FileCode size={15} className="text-blue-400 shrink-0" />;
-  }
-  if (ext === 'json') {
-    return <FileJson size={15} className="text-amber-400 shrink-0" />;
-  }
-  if (ext === 'md' || ext === 'txt') {
-    return <FileText size={15} className="text-emerald-400 shrink-0" />;
-  }
-  if (fileName.toLowerCase().includes('dockerfile')) {
-    return <FileCode size={15} className="text-cyan-400 shrink-0" />;
-  }
-  return <File size={15} className="text-zinc-400 shrink-0" />;
+  if (ext === 'ts' || ext === 'tsx' || ext === 'js' || ext === 'jsx')
+    return <FileCode size={14} className="text-[var(--info)] shrink-0" />;
+  if (ext === 'json')
+    return <FileJson size={14} className="text-[var(--warning)] shrink-0" />;
+  if (ext === 'md' || ext === 'txt')
+    return <FileText size={14} className="text-[var(--success)] shrink-0" />;
+  if (fileName.toLowerCase().includes('dockerfile'))
+    return <FileCode size={14} className="text-[var(--info)] shrink-0" />;
+  return <File size={14} className="text-[var(--text-muted)] shrink-0" />;
 }
 
 export default function RepositoriesPage() {
@@ -83,13 +50,11 @@ export default function RepositoriesPage() {
   const [copied, setCopied] = useState(false);
   const [showConnectModal, setShowConnectModal] = useState(false);
 
-  // New Repository Form
   const [newRepoUrl, setNewRepoUrl] = useState('');
   const [newRepoBranch, setNewRepoBranch] = useState('main');
   const [newRepoToken, setNewRepoToken] = useState('');
   const [connecting, setConnecting] = useState(false);
 
-  // Initial Load of Repositories
   const loadRepositories = useCallback(async () => {
     setLoading(true);
     try {
@@ -99,7 +64,6 @@ export default function RepositoriesPage() {
       if (repos.length > 0) {
         setSelectedRepo(repos[0]);
       } else {
-        // Default demo repository representation
         const fallbackRepo: RepositoryConnection = {
           id: 'repo-demo-1',
           projectId: DEFAULT_PROJECT_ID,
@@ -119,14 +83,10 @@ export default function RepositoriesPage() {
     }
   }, [toast]);
 
-  useEffect(() => {
-    loadRepositories();
-  }, [loadRepositories]);
+  useEffect(() => { loadRepositories(); }, [loadRepositories]);
 
-  // Load Branches & Commits & File Tree when selected repository changes
   useEffect(() => {
     if (!selectedRepo) return;
-
     async function loadRepoMetadata() {
       setTreeLoading(true);
       try {
@@ -135,60 +95,39 @@ export default function RepositoriesPage() {
           fetchRepositoryCommits(DEFAULT_PROJECT_ID, selectedRepo!.id),
           fetchRepositoryTree(DEFAULT_PROJECT_ID, selectedRepo!.id, '', selectedBranch),
         ]);
-
         if (bRes.status === 'fulfilled' && bRes.value.data) {
           setBranches(bRes.value.data);
-          if (bRes.value.data.length > 0) {
-            setSelectedBranch(bRes.value.data[0].name);
-          }
+          if (bRes.value.data.length > 0) setSelectedBranch(bRes.value.data[0].name);
         }
-        if (cRes.status === 'fulfilled' && cRes.value.data) {
-          setCommits(cRes.value.data);
-        }
-        if (tRes.status === 'fulfilled' && tRes.value.data) {
-          setFileTree(tRes.value.data);
-        }
-      } catch {
-        // Handled
-      } finally {
+        if (cRes.status === 'fulfilled' && cRes.value.data) setCommits(cRes.value.data);
+        if (tRes.status === 'fulfilled' && tRes.value.data) setFileTree(tRes.value.data);
+      } catch { /* handled */ } finally {
         setTreeLoading(false);
       }
     }
-
     loadRepoMetadata();
   }, [selectedRepo, selectedBranch]);
 
-  // Load File Content when selectedFile changes
   useEffect(() => {
     if (!selectedRepo || !selectedFile) return;
-
     async function loadFile() {
       setFileLoading(true);
       try {
-        const res = await fetchRepositoryFile(
-          DEFAULT_PROJECT_ID,
-          selectedRepo!.id,
-          selectedFile,
-          selectedBranch
-        );
-        if (res.data) {
-          setFileContent(res.data);
-        }
+        const res = await fetchRepositoryFile(DEFAULT_PROJECT_ID, selectedRepo!.id, selectedFile, selectedBranch);
+        if (res.data) setFileContent(res.data);
       } catch {
-        // Fallback file viewer representation
         setFileContent({
           name: selectedFile.split('/').pop() || selectedFile,
           path: selectedFile,
           size: 1420,
           encoding: 'utf8',
           language: selectedFile.endsWith('.json') ? 'json' : 'typescript',
-          content: `// Source code file: ${selectedFile}\n// Branch: ${selectedBranch}\n\nexport const service = {\n  name: "ecommerce-storefront",\n  version: "2.4.0",\n  status: "active"\n};\n`,
+          content: `// Source: ${selectedFile}\n// Branch: ${selectedBranch}\n`,
         });
       } finally {
         setFileLoading(false);
       }
     }
-
     loadFile();
   }, [selectedRepo, selectedFile, selectedBranch]);
 
@@ -203,7 +142,6 @@ export default function RepositoriesPage() {
   const handleConnectNewRepo = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newRepoUrl) return;
-
     setConnecting(true);
     try {
       const res = await connectRepository(DEFAULT_PROJECT_ID, {
@@ -212,10 +150,9 @@ export default function RepositoriesPage() {
         defaultBranch: newRepoBranch || 'main',
         accessToken: newRepoToken || undefined,
       });
-
       if (res.data) {
         toast({ kind: 'success', title: 'Repository connected successfully' });
-        setRepositories((prev) => [res.data, ...prev]);
+        setRepositories(prev => [res.data, ...prev]);
         setSelectedRepo(res.data);
         setShowConnectModal(false);
         setNewRepoUrl('');
@@ -227,87 +164,77 @@ export default function RepositoriesPage() {
     }
   };
 
-  const filteredTree = fileTree.filter((item) =>
+  const filteredTree = fileTree.filter(item =>
     item.name.toLowerCase().includes(filterQuery.toLowerCase())
   );
 
   return (
     <DeveloperShell>
       <div className="flex flex-col h-[calc(100vh-5.5rem)] space-y-3">
+
         {/* Top Control Bar */}
-        <div className="h-14 px-4 rounded-xl bg-[#111113] border border-[#27272A] flex items-center justify-between shrink-0">
+        <div className="h-14 px-4 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border)] flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
-            <FolderGit2 size={18} className="text-violet-400" />
-            <h1 className="text-sm font-bold text-zinc-100">Repository Code Explorer</h1>
+            <FolderGit2 size={15} className="text-[var(--text-muted)]" />
+            <h1 className="text-sm font-bold text-[var(--text-primary)]">Repository Explorer</h1>
 
             {/* Repository Select */}
-            <div className="relative">
-              <select
-                value={selectedRepo?.id || ''}
-                onChange={(e) => {
-                  const r = repositories.find((x) => x.id === e.target.value);
-                  if (r) setSelectedRepo(r);
-                }}
-                className="text-xs bg-[#18181B] border border-[#27272A] text-zinc-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-violet-500 font-mono"
-              >
-                {repositories.map((repo) => (
-                  <option key={repo.id} value={repo.id}>
-                    {repo.repositoryUrl.replace('https://github.com/', '')}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <select
+              value={selectedRepo?.id || ''}
+              onChange={e => {
+                const r = repositories.find(x => x.id === e.target.value);
+                if (r) setSelectedRepo(r);
+              }}
+              className="text-xs bg-[var(--bg-tertiary)] border border-[var(--border)] text-[var(--text-secondary)] rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-[var(--border-bright)] font-mono"
+            >
+              {repositories.map(repo => (
+                <option key={repo.id} value={repo.id}>
+                  {repo.repositoryUrl.replace('https://github.com/', '')}
+                </option>
+              ))}
+            </select>
 
             {/* Branch Selector */}
-            <div className="flex items-center gap-1.5 bg-[#18181B] border border-[#27272A] rounded-lg px-2 py-1 text-xs text-zinc-300">
-              <GitBranch size={13} className="text-violet-400 shrink-0" />
+            <div className="flex items-center gap-1.5 bg-[var(--bg-tertiary)] border border-[var(--border)] rounded-lg px-2 py-1 text-xs text-[var(--text-secondary)]">
+              <GitBranch size={12} className="text-[var(--text-muted)] shrink-0" />
               <select
                 value={selectedBranch}
-                onChange={(e) => setSelectedBranch(e.target.value)}
-                className="bg-transparent text-xs text-zinc-200 focus:outline-none font-mono"
+                onChange={e => setSelectedBranch(e.target.value)}
+                className="bg-transparent text-xs text-[var(--text-secondary)] focus:outline-none font-mono"
               >
                 {branches.length > 0 ? (
-                  branches.map((b) => (
-                    <option key={b.name} value={b.name} className="bg-[#18181B] text-zinc-200">
-                      {b.name}
-                    </option>
-                  ))
+                  branches.map(b => <option key={b.name} value={b.name}>{b.name}</option>)
                 ) : (
-                  <option value="main" className="bg-[#18181B] text-zinc-200">
-                    main
-                  </option>
+                  <option value="main">main</option>
                 )}
               </select>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Commits Drawer Toggle */}
             <button
               onClick={() => setShowCommitDrawer(!showCommitDrawer)}
               className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors ${
                 showCommitDrawer
-                  ? 'bg-violet-950/40 border-violet-700 text-violet-300'
-                  : 'bg-[#18181B] border-[#27272A] text-zinc-400 hover:text-zinc-200'
+                  ? 'bg-[var(--bg-tertiary)] border-[var(--border-bright)] text-[var(--text-primary)]'
+                  : 'bg-[var(--bg-tertiary)] border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
               }`}
             >
               <GitCommit size={13} />
               <span>Commits ({commits.length})</span>
             </button>
 
-            {/* Connect Repo Button */}
             <button
               onClick={() => setShowConnectModal(true)}
-              className="flex items-center gap-1.5 text-xs bg-violet-600 hover:bg-violet-500 text-white font-semibold px-3 py-1.5 rounded-lg transition-colors"
+              className="flex items-center gap-1.5 text-xs bg-[var(--accent)] text-[var(--accent-fg)] font-semibold px-3 py-1.5 rounded-lg transition-opacity hover:opacity-80"
             >
               <Plus size={13} />
               <span>Connect GitHub</span>
             </button>
 
-            {/* Trigger CI Run */}
             <button
               onClick={() => router.push('/builder')}
-              className="flex items-center gap-1.5 text-xs bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 font-semibold px-3 py-1.5 rounded-lg transition-colors"
+              className="flex items-center gap-1.5 text-xs text-[var(--success)] bg-[var(--success-dim)] border border-[var(--success)] font-semibold px-3 py-1.5 rounded-lg transition-opacity hover:opacity-80"
             >
               <Play size={13} />
               <span>Build Pipeline</span>
@@ -317,52 +244,51 @@ export default function RepositoriesPage() {
 
         {/* Main 2-Column Explorer */}
         <div className="flex-1 flex gap-3 min-h-0">
-          {/* Left Column: File Tree */}
-          <div className="w-72 bg-[#111113] border border-[#27272A] rounded-xl flex flex-col overflow-hidden shrink-0">
-            <div className="p-3 border-b border-[#27272A] flex items-center gap-2">
-              <Search size={14} className="text-zinc-500 shrink-0" />
+
+          {/* File Tree */}
+          <div className="w-72 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl flex flex-col overflow-hidden shrink-0">
+            <div className="p-3 border-b border-[var(--border)] flex items-center gap-2">
+              <Search size={13} className="text-[var(--text-muted)] shrink-0" />
               <input
                 type="text"
                 placeholder="Filter files..."
                 value={filterQuery}
-                onChange={(e) => setFilterQuery(e.target.value)}
-                className="w-full bg-transparent text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none"
+                onChange={e => setFilterQuery(e.target.value)}
+                className="w-full bg-transparent text-xs text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none"
               />
             </div>
 
             <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
               {treeLoading ? (
-                <div className="flex items-center justify-center py-12 text-zinc-500 text-xs gap-2">
-                  <Loader2 size={14} className="animate-spin text-violet-400" />
+                <div className="flex items-center justify-center py-12 text-[var(--text-muted)] text-xs gap-2">
+                  <Loader2 size={14} className="animate-spin" />
                   <span>Scanning files...</span>
                 </div>
               ) : filteredTree.length === 0 ? (
-                <div className="text-center py-8 text-xs text-zinc-500">No files found</div>
+                <div className="text-center py-8 text-xs text-[var(--text-muted)]">No files found</div>
               ) : (
-                filteredTree.map((item) => {
+                filteredTree.map(item => {
                   const isSelected = selectedFile === item.path;
                   return (
                     <button
                       key={item.path}
-                      onClick={() => {
-                        if (item.type === 'file') setSelectedFile(item.path);
-                      }}
+                      onClick={() => { if (item.type === 'file') setSelectedFile(item.path); }}
                       className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left text-xs transition-colors group ${
                         isSelected
-                          ? 'bg-violet-600/20 text-violet-300 border border-violet-500/30'
-                          : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/40 border border-transparent'
+                          ? 'bg-[var(--bg-tertiary)] text-[var(--text-primary)] border border-[var(--border-bright)]'
+                          : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] border border-transparent'
                       }`}
                     >
                       <div className="flex items-center gap-2 truncate">
                         {item.type === 'dir' ? (
-                          <Folder size={15} className="text-amber-400 shrink-0" />
+                          <Folder size={14} className="text-[var(--warning)] shrink-0" />
                         ) : (
                           getFileIcon(item.name)
                         )}
                         <span className="truncate font-mono">{item.name}</span>
                       </div>
                       {item.type === 'file' && item.size > 0 && (
-                        <span className="text-[10px] text-zinc-600 font-mono shrink-0">
+                        <span className="text-[10px] text-[var(--text-muted)] font-mono shrink-0">
                           {Math.round(item.size / 1024)}kb
                         </span>
                       )}
@@ -372,51 +298,47 @@ export default function RepositoriesPage() {
               )}
             </div>
 
-            <div className="p-2.5 bg-[#09090B] border-t border-[#27272A] text-[11px] text-zinc-500 flex items-center justify-between">
+            <div className="p-2.5 bg-[var(--bg-tertiary)] border-t border-[var(--border)] text-[11px] text-[var(--text-muted)] flex items-center justify-between">
               <span>{fileTree.length} items</span>
-              <span className="font-mono text-[10px] text-violet-400">GitHub API Active</span>
+              <span className="font-mono text-[10px]">GitHub API</span>
             </div>
           </div>
 
-          {/* Right Column: Code Viewer */}
-          <div className="flex-1 bg-[#111113] border border-[#27272A] rounded-xl flex flex-col overflow-hidden">
-            {/* File Viewer Header */}
-            <div className="h-11 px-4 border-b border-[#27272A] flex items-center justify-between bg-[#0E0E10] shrink-0">
+          {/* Code Viewer */}
+          <div className="flex-1 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl flex flex-col overflow-hidden">
+            {/* Viewer Header */}
+            <div className="h-11 px-4 border-b border-[var(--border)] flex items-center justify-between bg-[var(--bg-tertiary)] shrink-0">
               <div className="flex items-center gap-2">
                 {getFileIcon(selectedFile)}
-                <span className="text-xs font-mono font-semibold text-zinc-200">
-                  {selectedFile}
-                </span>
+                <span className="text-xs font-mono font-semibold text-[var(--text-primary)]">{selectedFile}</span>
                 {fileContent?.language && (
-                  <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-zinc-800 border border-zinc-700 text-zinc-400">
+                  <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-[var(--bg-secondary)] border border-[var(--border)] text-[var(--text-muted)]">
                     {fileContent.language}
                   </span>
                 )}
               </div>
 
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={handleCopyCode}
-                  className="flex items-center gap-1 text-[11px] text-zinc-400 hover:text-zinc-200 bg-zinc-800/60 hover:bg-zinc-800 px-2.5 py-1 rounded transition-colors"
-                >
-                  {copied ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
-                  <span>{copied ? 'Copied' : 'Copy'}</span>
-                </button>
-              </div>
+              <button
+                onClick={handleCopyCode}
+                className="flex items-center gap-1 text-[11px] text-[var(--text-muted)] hover:text-[var(--text-secondary)] bg-[var(--bg-secondary)] hover:bg-[var(--bg-primary)] px-2.5 py-1 rounded border border-[var(--border)] transition-colors"
+              >
+                {copied ? <Check size={12} className="text-[var(--success)]" /> : <Copy size={12} />}
+                <span>{copied ? 'Copied' : 'Copy'}</span>
+              </button>
             </div>
 
-            {/* Code Contents Area */}
-            <div className="flex-1 overflow-auto bg-[#09090B] p-4 font-mono text-xs text-zinc-300">
+            {/* Code Content */}
+            <div className="flex-1 overflow-auto bg-[var(--bg-primary)] p-4 font-mono text-xs text-[var(--text-secondary)]">
               {fileLoading ? (
-                <div className="flex items-center justify-center h-full text-zinc-500 gap-2">
-                  <Loader2 size={16} className="animate-spin text-violet-400" />
+                <div className="flex items-center justify-center h-full text-[var(--text-muted)] gap-2">
+                  <Loader2 size={16} className="animate-spin" />
                   <span>Loading source content...</span>
                 </div>
               ) : fileContent?.content ? (
-                <pre className="leading-relaxed whitespace-pre font-mono text-[12px] text-zinc-200">
+                <pre className="leading-relaxed whitespace-pre font-mono text-[12px] text-[var(--text-secondary)]">
                   {fileContent.content.split('\n').map((line, idx) => (
                     <div key={idx} className="table-row">
-                      <span className="table-cell pr-4 text-right select-none text-zinc-600 text-[11px] font-mono w-10">
+                      <span className="table-cell pr-4 text-right select-none text-[var(--text-muted)] text-[11px] font-mono w-10">
                         {idx + 1}
                       </span>
                       <span className="table-cell">{line}</span>
@@ -424,41 +346,38 @@ export default function RepositoriesPage() {
                   ))}
                 </pre>
               ) : (
-                <div className="flex items-center justify-center h-full text-zinc-500">
+                <div className="flex items-center justify-center h-full text-[var(--text-muted)]">
                   Select a file from the tree to inspect source code
                 </div>
               )}
             </div>
           </div>
 
-          {/* Right Slide-over: Commit History */}
+          {/* Commit Drawer */}
           {showCommitDrawer && (
-            <div className="w-80 bg-[#111113] border border-[#27272A] rounded-xl flex flex-col overflow-hidden shrink-0 animate-fade-in">
-              <div className="p-3 border-b border-[#27272A] flex items-center justify-between bg-[#0E0E10]">
-                <div className="flex items-center gap-2 text-xs font-bold text-zinc-200">
-                  <GitCommit size={14} className="text-violet-400" />
-                  <span>Branch Commit Log</span>
+            <div className="w-80 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl flex flex-col overflow-hidden shrink-0">
+              <div className="p-3 border-b border-[var(--border)] flex items-center justify-between bg-[var(--bg-tertiary)]">
+                <div className="flex items-center gap-2 text-xs font-bold text-[var(--text-primary)]">
+                  <GitCommit size={13} className="text-[var(--text-muted)]" />
+                  <span>Commit Log</span>
                 </div>
                 <button
                   onClick={() => setShowCommitDrawer(false)}
-                  className="text-xs text-zinc-500 hover:text-zinc-300 font-mono"
+                  className="text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)] font-mono"
                 >
                   ✕
                 </button>
               </div>
 
               <div className="flex-1 overflow-y-auto p-3 space-y-2.5">
-                {commits.map((c) => (
-                  <div
-                    key={c.sha}
-                    className="p-2.5 rounded-lg bg-[#18181B] border border-[#27272A] text-xs space-y-1.5"
-                  >
-                    <p className="font-semibold text-zinc-200 line-clamp-2">{c.message}</p>
-                    <div className="flex items-center justify-between text-[10px] text-zinc-500">
+                {commits.map(c => (
+                  <div key={c.sha} className="p-2.5 rounded-lg bg-[var(--bg-tertiary)] border border-[var(--border)] text-xs space-y-1.5">
+                    <p className="font-semibold text-[var(--text-primary)] line-clamp-2">{c.message}</p>
+                    <div className="flex items-center justify-between text-[10px] text-[var(--text-muted)]">
                       <span className="flex items-center gap-1 truncate">
                         <User size={10} /> {c.authorName}
                       </span>
-                      <span className="font-mono bg-zinc-900 px-1.5 py-0.5 rounded border border-zinc-800 text-violet-400">
+                      <span className="font-mono bg-[var(--bg-secondary)] px-1.5 py-0.5 rounded border border-[var(--border)]">
                         {c.sha.slice(0, 7)}
                       </span>
                     </div>
@@ -469,18 +388,18 @@ export default function RepositoriesPage() {
           )}
         </div>
 
-        {/* Connect GitHub Repository Modal */}
+        {/* Connect Repository Modal */}
         {showConnectModal && (
-          <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
-            <div className="bg-[#111113] border border-[#27272A] rounded-xl w-full max-w-md p-5 space-y-4 shadow-2xl animate-fade-in">
-              <div className="flex items-center justify-between border-b border-[#27272A] pb-3">
-                <div className="flex items-center gap-2 text-sm font-bold text-zinc-100">
-                  <FolderGit2 size={16} className="text-violet-400" />
+          <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
+            <div className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl w-full max-w-md p-5 space-y-4 shadow-[var(--shadow-md)]">
+              <div className="flex items-center justify-between border-b border-[var(--border)] pb-3">
+                <div className="flex items-center gap-2 text-sm font-bold text-[var(--text-primary)]">
+                  <FolderGit2 size={15} className="text-[var(--text-muted)]" />
                   <span>Connect GitHub Repository</span>
                 </div>
                 <button
                   onClick={() => setShowConnectModal(false)}
-                  className="text-zinc-500 hover:text-zinc-300 text-xs font-mono"
+                  className="text-[var(--text-muted)] hover:text-[var(--text-secondary)] text-xs font-mono"
                 >
                   ✕
                 </button>
@@ -488,38 +407,38 @@ export default function RepositoriesPage() {
 
               <form onSubmit={handleConnectNewRepo} className="space-y-3 text-xs">
                 <div>
-                  <label className="block text-zinc-400 mb-1 font-medium">Repository URL</label>
+                  <label className="block text-[var(--text-muted)] mb-1 font-medium">Repository URL</label>
                   <input
                     type="url"
                     required
                     placeholder="https://github.com/organization/repository"
                     value={newRepoUrl}
-                    onChange={(e) => setNewRepoUrl(e.target.value)}
-                    className="w-full bg-[#18181B] border border-[#27272A] rounded-lg px-3 py-2 text-zinc-200 focus:outline-none focus:border-violet-500 font-mono text-xs"
+                    onChange={e => setNewRepoUrl(e.target.value)}
+                    className="w-full bg-[var(--bg-tertiary)] border border-[var(--border)] rounded-lg px-3 py-2 text-[var(--text-primary)] focus:outline-none focus:border-[var(--border-bright)] font-mono text-xs"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-zinc-400 mb-1 font-medium">Default Branch</label>
+                  <label className="block text-[var(--text-muted)] mb-1 font-medium">Default Branch</label>
                   <input
                     type="text"
                     placeholder="main"
                     value={newRepoBranch}
-                    onChange={(e) => setNewRepoBranch(e.target.value)}
-                    className="w-full bg-[#18181B] border border-[#27272A] rounded-lg px-3 py-2 text-zinc-200 focus:outline-none focus:border-violet-500 font-mono text-xs"
+                    onChange={e => setNewRepoBranch(e.target.value)}
+                    className="w-full bg-[var(--bg-tertiary)] border border-[var(--border)] rounded-lg px-3 py-2 text-[var(--text-primary)] focus:outline-none focus:border-[var(--border-bright)] font-mono text-xs"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-zinc-400 mb-1 font-medium">
-                    Personal Access Token (Optional for public repos)
+                  <label className="block text-[var(--text-muted)] mb-1 font-medium">
+                    Personal Access Token <span className="opacity-60">(optional for public repos)</span>
                   </label>
                   <input
                     type="password"
                     placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
                     value={newRepoToken}
-                    onChange={(e) => setNewRepoToken(e.target.value)}
-                    className="w-full bg-[#18181B] border border-[#27272A] rounded-lg px-3 py-2 text-zinc-200 focus:outline-none focus:border-violet-500 font-mono text-xs"
+                    onChange={e => setNewRepoToken(e.target.value)}
+                    className="w-full bg-[var(--bg-tertiary)] border border-[var(--border)] rounded-lg px-3 py-2 text-[var(--text-primary)] focus:outline-none focus:border-[var(--border-bright)] font-mono text-xs"
                   />
                 </div>
 
@@ -527,14 +446,14 @@ export default function RepositoriesPage() {
                   <button
                     type="button"
                     onClick={() => setShowConnectModal(false)}
-                    className="px-3 py-1.5 rounded-lg border border-[#27272A] text-zinc-400 hover:text-zinc-200"
+                    className="px-3 py-1.5 rounded-lg border border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={connecting}
-                    className="flex items-center gap-1.5 bg-violet-600 hover:bg-violet-500 text-white font-semibold px-4 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+                    className="flex items-center gap-1.5 bg-[var(--accent)] text-[var(--accent-fg)] font-semibold px-4 py-1.5 rounded-lg transition-opacity hover:opacity-80 disabled:opacity-50"
                   >
                     {connecting ? <Loader2 size={13} className="animate-spin" /> : <ShieldCheck size={13} />}
                     <span>Connect</span>

@@ -80,38 +80,55 @@ export default function DocsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#09090B] text-zinc-100 flex flex-col">
+    <div
+      className="min-h-screen flex flex-col justify-between"
+      style={{ background: 'var(--bg-primary)', color: 'var(--text-primary)', fontFamily: 'Inter, system-ui, sans-serif' }}
+    >
       {/* Top Navbar */}
-      <header className="h-16 border-b border-[#27272A] bg-[#111113]/80 backdrop-blur-md sticky top-0 z-50 flex items-center justify-between px-8">
+      <header
+        className="h-16 border-b sticky top-0 z-50 flex items-center justify-between px-8 backdrop-blur-md"
+        style={{ background: 'var(--bg-primary)', borderColor: 'var(--border)' }}
+      >
         <div className="flex items-center gap-6">
-          <Link href="/" className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-violet-600 to-blue-600 flex items-center justify-center font-bold text-white shadow-lg">
+          <Link href="/" className="flex items-center gap-3 text-decoration-none">
+            <div
+              className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs"
+              style={{ background: 'var(--accent)', color: 'var(--accent-fg)' }}
+            >
               OP
             </div>
-            <span className="font-bold text-sm text-white tracking-tight">OpsPilot Docs</span>
+            <span className="font-bold text-sm tracking-tight" style={{ color: 'var(--text-primary)' }}>
+              OpsPilot Docs
+            </span>
           </Link>
-          <div className="hidden md:flex items-center gap-4 text-xs font-semibold text-zinc-400">
-            <Link href="/" className="hover:text-white transition-colors">Home</Link>
-            <Link href="/features" className="hover:text-white transition-colors">Features</Link>
-            <Link href="/pricing" className="hover:text-white transition-colors">Pricing</Link>
-            <Link href="/security" className="hover:text-white transition-colors">Security</Link>
+          <div className="hidden md:flex items-center gap-4 text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>
+            <Link href="/" className="hover:opacity-80 transition-opacity">Home</Link>
+            <Link href="/features" className="hover:opacity-80 transition-opacity">Features</Link>
+            <Link href="/pricing" className="hover:opacity-80 transition-opacity">Pricing</Link>
+            <Link href="/security" className="hover:opacity-80 transition-opacity">Security</Link>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
           <div className="relative w-64">
-            <Search size={14} className="absolute left-3 top-2.5 text-zinc-500" />
+            <Search size={14} className="absolute left-3 top-2.5" style={{ color: 'var(--text-muted)' }} />
             <input
               type="text"
               placeholder="Search documentation..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full bg-[#18181B] border border-[#27272A] rounded-xl pl-9 pr-3 py-1.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-violet-500"
+              className="w-full border rounded-xl pl-9 pr-3 py-1.5 text-xs focus:outline-none"
+              style={{
+                background: 'var(--bg-secondary)',
+                borderColor: 'var(--border)',
+                color: 'var(--text-primary)',
+              }}
             />
           </div>
           <Link
             href="/dashboard"
-            className="text-xs bg-violet-600 hover:bg-violet-500 text-white font-bold px-4 py-2 rounded-xl transition-colors shadow-lg"
+            className="text-xs font-bold px-4 py-2 rounded-xl transition-opacity hover:opacity-80"
+            style={{ background: 'var(--accent)', color: 'var(--accent-fg)' }}
           >
             Go to Console
           </Link>
@@ -121,27 +138,34 @@ export default function DocsPage() {
       {/* Body Content */}
       <div className="flex-1 max-w-7xl mx-auto w-full flex">
         {/* Sidebar Navigation */}
-        <aside className="w-64 border-r border-[#27272A] p-6 space-y-6 shrink-0 hidden md:block">
+        <aside
+          className="w-64 border-r p-6 space-y-6 shrink-0 hidden md:block"
+          style={{ borderColor: 'var(--border)' }}
+        >
           {DOC_SECTIONS.map((sec) => (
             <div key={sec.id} className="space-y-2">
-              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-zinc-400">
-                <sec.icon size={14} className="text-violet-400" />
+              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+                <sec.icon size={14} style={{ color: 'var(--text-primary)' }} />
                 <span>{sec.title}</span>
               </div>
-              <div className="space-y-1 pl-4 border-l border-[#27272A]">
-                {sec.articles.map((art) => (
-                  <button
-                    key={art.id}
-                    onClick={() => setSelectedArticle(art.id)}
-                    className={`w-full text-left text-xs py-1.5 px-2 rounded-lg transition-colors truncate block ${
-                      selectedArticle === art.id
-                        ? 'bg-violet-500/10 text-violet-300 font-semibold border-l-2 border-violet-500 -ml-[17px] pl-[15px]'
-                        : 'text-zinc-400 hover:text-zinc-200 hover:bg-[#18181B]'
-                    }`}
-                  >
-                    {art.title}
-                  </button>
-                ))}
+              <div className="space-y-1 pl-4 border-l" style={{ borderColor: 'var(--border)' }}>
+                {sec.articles.map((art) => {
+                  const active = selectedArticle === art.id;
+                  return (
+                    <button
+                      key={art.id}
+                      onClick={() => setSelectedArticle(art.id)}
+                      className="w-full text-left text-xs py-1.5 px-2 rounded-lg transition-colors truncate block"
+                      style={{
+                        background: active ? 'var(--bg-tertiary)' : 'transparent',
+                        color: active ? 'var(--text-primary)' : 'var(--text-muted)',
+                        fontWeight: active ? 600 : 400,
+                      }}
+                    >
+                      {art.title}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           ))}
@@ -152,45 +176,64 @@ export default function DocsPage() {
           {selectedArticle === 'intro' && (
             <div className="space-y-6">
               <div className="space-y-2">
-                <div className="text-xs font-semibold text-violet-400 uppercase tracking-wider">Getting Started</div>
-                <h1 className="text-3xl font-extrabold text-white">Introduction to OpsPilot</h1>
-                <p className="text-sm text-zinc-400 leading-relaxed">
+                <div className="text-xs font-semibold uppercase tracking-wider font-mono" style={{ color: 'var(--text-muted)' }}>Getting Started</div>
+                <h1 className="text-3xl font-extrabold tracking-tight" style={{ color: 'var(--text-primary)' }}>Introduction to OpsPilot</h1>
+                <p className="text-sm leading-relaxed" style={{ color: 'var(--text-muted)' }}>
                   OpsPilot is an enterprise-grade CI/CD and automated deployment platform designed for modern engineering teams shipping code at high velocity.
                 </p>
               </div>
 
-              <div className="p-6 rounded-2xl bg-[#111113] border border-[#27272A] space-y-4">
-                <h2 className="text-base font-bold text-white">Core Capabilities</h2>
-                <div className="grid grid-cols-2 gap-4 text-xs">
-                  <div className="p-4 rounded-xl bg-[#18181B] border border-[#27272A] space-y-1">
-                    <span className="font-bold text-violet-300">⚡ Zero-Config Compilation</span>
-                    <p className="text-zinc-400">Pushes code directly from GitHub, automatically compiling isolated Docker runner workflows.</p>
+              <div
+                className="p-6 rounded-2xl border space-y-4"
+                style={{ background: 'var(--bg-secondary)', borderColor: 'var(--border)' }}
+              >
+                <h2 className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>Core Capabilities</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                  <div
+                    className="p-4 rounded-xl border space-y-1"
+                    style={{ background: 'var(--bg-tertiary)', borderColor: 'var(--border)' }}
+                  >
+                    <span className="font-bold" style={{ color: 'var(--text-primary)' }}>⚡ Zero-Config Compilation</span>
+                    <p style={{ color: 'var(--text-muted)' }}>Pushes code directly from GitHub, automatically compiling isolated Docker runner workflows.</p>
                   </div>
-                  <div className="p-4 rounded-xl bg-[#18181B] border border-[#27272A] space-y-1">
-                    <span className="font-bold text-blue-300">🔄 Automated Rollbacks</span>
-                    <p className="text-zinc-400">Live HTTP health probes monitor releases and revert broken deployments automatically.</p>
+                  <div
+                    className="p-4 rounded-xl border space-y-1"
+                    style={{ background: 'var(--bg-tertiary)', borderColor: 'var(--border)' }}
+                  >
+                    <span className="font-bold" style={{ color: 'var(--text-primary)' }}>🔄 Automated Rollbacks</span>
+                    <p style={{ color: 'var(--text-muted)' }}>Live HTTP health probes monitor releases and revert broken deployments automatically.</p>
                   </div>
-                  <div className="p-4 rounded-xl bg-[#18181B] border border-[#27272A] space-y-1">
-                    <span className="font-bold text-cyan-300">📡 SSE Log Streaming</span>
-                    <p className="text-zinc-400">Real-time stdout log streaming with Server-Sent Events and historical log redaction.</p>
+                  <div
+                    className="p-4 rounded-xl border space-y-1"
+                    style={{ background: 'var(--bg-tertiary)', borderColor: 'var(--border)' }}
+                  >
+                    <span className="font-bold" style={{ color: 'var(--text-primary)' }}>📡 SSE Log Streaming</span>
+                    <p style={{ color: 'var(--text-muted)' }}>Real-time stdout log streaming with Server-Sent Events and historical log redaction.</p>
                   </div>
-                  <div className="p-4 rounded-xl bg-[#18181B] border border-[#27272A] space-y-1">
-                    <span className="font-bold text-emerald-300">🤖 AI Root Cause Analysis</span>
-                    <p className="text-zinc-400">Event-driven log analysis providing evidence-backed failure diagnoses and fix suggestions.</p>
+                  <div
+                    className="p-4 rounded-xl border space-y-1"
+                    style={{ background: 'var(--bg-tertiary)', borderColor: 'var(--border)' }}
+                  >
+                    <span className="font-bold" style={{ color: 'var(--text-primary)' }}>🤖 AI Root Cause Analysis</span>
+                    <p style={{ color: 'var(--text-muted)' }}>Event-driven log analysis providing evidence-backed failure diagnoses and fix suggestions.</p>
                   </div>
                 </div>
               </div>
 
               <div className="space-y-3">
-                <h3 className="text-sm font-bold text-white">Quick API Example</h3>
-                <div className="relative p-4 rounded-xl bg-[#18181B] border border-[#27272A] font-mono text-xs text-zinc-300 overflow-x-auto">
+                <h3 className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>Quick API Example</h3>
+                <div
+                  className="relative p-4 rounded-xl border font-mono text-xs overflow-x-auto"
+                  style={{ background: 'var(--bg-secondary)', borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
+                >
                   <button
                     onClick={() => handleCopyCode('curl -X POST http://localhost:3000/v1/pipelines/pipe_123/runs -H "Authorization: Bearer <token>"')}
-                    className="absolute right-3 top-3 p-1.5 rounded-lg bg-[#27272A] hover:bg-[#3F3F46] text-zinc-400 hover:text-white transition-colors"
+                    className="absolute right-3 top-3 p-1.5 rounded-lg border transition-colors"
+                    style={{ background: 'var(--bg-tertiary)', borderColor: 'var(--border)', color: 'var(--text-muted)' }}
                   >
-                    {copied ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
+                    {copied ? <Check size={14} style={{ color: 'var(--success)' }} /> : <Copy size={14} />}
                   </button>
-                  <code>curl -X POST http://localhost:3000/v1/pipelines/pipe_123/runs \<br />  -H "Authorization: Bearer &lt;token&gt;" \<br />  -H "Content-Type: application/json" \<br />  -d '&#123;"branch": "main"&#125;'</code>
+                  <code>curl -X POST http://localhost:3000/v1/pipelines/pipe_123/runs \<br />  -H &quot;Authorization: Bearer &lt;token&gt;&quot; \<br />  -H &quot;Content-Type: application/json&quot; \<br />  -d &apos;&#123;&quot;branch&quot;: &quot;main&quot;&#125;&apos;</code>
                 </div>
               </div>
             </div>
@@ -199,16 +242,24 @@ export default function DocsPage() {
           {selectedArticle !== 'intro' && (
             <div className="space-y-6">
               <div className="space-y-2">
-                <div className="text-xs font-semibold text-violet-400 uppercase tracking-wider">Documentation Article</div>
-                <h1 className="text-3xl font-extrabold text-white capitalize">{selectedArticle.replace('-', ' ')}</h1>
-                <p className="text-sm text-zinc-400 leading-relaxed">
+                <div className="text-xs font-semibold uppercase tracking-wider font-mono" style={{ color: 'var(--text-muted)' }}>Documentation Article</div>
+                <h1 className="text-3xl font-extrabold capitalize tracking-tight" style={{ color: 'var(--text-primary)' }}>
+                  {selectedArticle.replace('-', ' ')}
+                </h1>
+                <p className="text-sm leading-relaxed" style={{ color: 'var(--text-muted)' }}>
                   Comprehensive reference and step-by-step guides for setting up and managing your OpsPilot CI/CD workflows.
                 </p>
               </div>
 
-              <div className="p-6 rounded-2xl bg-[#111113] border border-[#27272A] text-xs text-zinc-300 space-y-4">
-                <p>Detailed specification, schema documentation, and API endpoints for <span className="font-semibold text-white">{selectedArticle}</span> are active and verified across OpsPilot REST APIs.</p>
-                <div className="p-4 rounded-xl bg-[#18181B] border border-[#27272A] font-mono text-violet-300">
+              <div
+                className="p-6 rounded-2xl border text-xs space-y-4"
+                style={{ background: 'var(--bg-secondary)', borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
+              >
+                <p>Detailed specification, schema documentation, and API endpoints for <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>{selectedArticle}</span> are active and verified across OpsPilot REST APIs.</p>
+                <div
+                  className="p-4 rounded-xl border font-mono"
+                  style={{ background: 'var(--bg-tertiary)', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
+                >
                   GET /v1/organizations/:orgId/pipelines
                 </div>
               </div>
@@ -218,7 +269,7 @@ export default function DocsPage() {
       </div>
 
       {/* Footer */}
-      <footer className="border-t border-[#27272A] bg-[#111113] py-6 px-8 text-center text-xs text-zinc-500">
+      <footer className="border-t py-6 px-8 text-center text-xs" style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
         OpsPilot SaaS Platform · Enterprise CI/CD & Deployment Engine Documentation
       </footer>
     </div>

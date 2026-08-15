@@ -28,10 +28,10 @@ function timeAgo(d?: string) {
 }
 
 function mimeIcon(mime?: string) {
-  if (!mime) return <FileArchive size={14} className="text-slate-500" />;
-  if (mime.includes('zip') || mime.includes('tar')) return <FileArchive size={14} className="text-amber-400" />;
-  if (mime.includes('image')) return <Eye size={14} className="text-blue-400" />;
-  return <Package size={14} className="text-slate-500" />;
+  if (!mime) return <FileArchive size={14} style={{ color: 'var(--text-muted)' }} />;
+  if (mime.includes('zip') || mime.includes('tar')) return <FileArchive size={14} style={{ color: 'var(--warning)' }} />;
+  if (mime.includes('image')) return <Eye size={14} style={{ color: 'var(--info)' }} />;
+  return <Package size={14} style={{ color: 'var(--text-muted)' }} />;
 }
 
 const PAGE_SIZE = 25;
@@ -75,14 +75,31 @@ export default function ArtifactsPage() {
       <div className="flex flex-col h-[calc(100vh-5.5rem)] space-y-3">
 
         {/* Header */}
-        <div className="h-14 px-4 rounded-xl bg-[#111113] border border-[#27272A] flex items-center justify-between shrink-0">
+        <div
+          className="h-14 px-4 rounded-xl border flex items-center justify-between shrink-0"
+          style={{ background: 'var(--bg-secondary)', borderColor: 'var(--border)' }}
+        >
           <div className="flex items-center gap-3">
-            <Package size={16} className="text-violet-400" />
-            <h1 className="text-sm font-bold text-zinc-100">Artifacts</h1>
-            <span className="text-[10px] font-mono text-zinc-500 border border-[#27272A] px-2 py-0.5 rounded-full">{artifacts.length} files</span>
-            <span className="text-[10px] font-mono text-zinc-500 border border-[#27272A] px-2 py-0.5 rounded-full">{formatBytes(totalSize)} total</span>
+            <Package size={15} style={{ color: 'var(--text-muted)' }} />
+            <h1 className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>Artifacts</h1>
+            <span
+              className="text-[10px] font-mono border px-2 py-0.5 rounded-full"
+              style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}
+            >
+              {artifacts.length} files
+            </span>
+            <span
+              className="text-[10px] font-mono border px-2 py-0.5 rounded-full"
+              style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}
+            >
+              {formatBytes(totalSize)} total
+            </span>
           </div>
-          <button onClick={load} className="flex items-center gap-1.5 text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors">
+          <button
+            onClick={load}
+            className="flex items-center gap-1.5 text-[11px] transition-colors"
+            style={{ color: 'var(--text-muted)' }}
+          >
             <RefreshCw size={12} className={loading ? 'animate-spin' : ''} /> Refresh
           </button>
         </div>
@@ -93,8 +110,14 @@ export default function ArtifactsPage() {
         </div>
 
         {/* Table */}
-        <div className="flex-1 min-h-0 bg-[#111113] border border-[#27272A] rounded-xl overflow-hidden flex flex-col">
-          <div className="h-9 px-4 border-b border-[#27272A] flex items-center gap-4 text-[10px] font-bold text-zinc-500 uppercase tracking-wider shrink-0 bg-[#18181B]/40">
+        <div
+          className="flex-1 min-h-0 border rounded-xl overflow-hidden flex flex-col"
+          style={{ background: 'var(--bg-secondary)', borderColor: 'var(--border)' }}
+        >
+          <div
+            className="h-9 px-4 border-b flex items-center gap-4 text-[10px] font-bold uppercase tracking-wider shrink-0"
+            style={{ background: 'var(--bg-tertiary)', borderColor: 'var(--border)', color: 'var(--text-muted)' }}
+          >
             <span className="w-5"></span>
             <span className="flex-1">Artifact</span>
             <span className="w-32">SHA256</span>
@@ -114,37 +137,50 @@ export default function ArtifactsPage() {
               />
             ) : (
               paginated.map(a => (
-                <div key={a.id} className="h-14 px-4 border-b border-[#27272A]/60 flex items-center gap-4 text-xs hover:bg-[#18181B]/20 transition-colors group">
+                <div
+                  key={a.id}
+                  className="h-14 px-4 border-b flex items-center gap-4 text-xs transition-colors hover:opacity-80 group"
+                  style={{ borderColor: 'var(--border)' }}
+                >
                   <span className="w-5">{mimeIcon(a.mimeType)}</span>
 
                   <div className="flex-1 min-w-0">
-                    <div className="font-semibold text-zinc-200 truncate">{a.name}</div>
+                    <div className="font-semibold truncate" style={{ color: 'var(--text-primary)' }}>{a.name}</div>
                     {a.pipelineRunId && (
-                      <div className="text-[10px] font-mono text-zinc-650 mt-0.5 font-medium">Run: {a.pipelineRunId.slice(0, 8)}</div>
+                      <div className="text-[10px] font-mono mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                        Run: {a.pipelineRunId.slice(0, 8)}
+                      </div>
                     )}
                   </div>
 
                   <div className="w-32 flex items-center gap-1">
                     {a.sha256 ? (
                       <>
-                        <code className="text-[9px] font-mono text-zinc-500 truncate max-w-[72px]">{a.sha256.slice(0, 12)}…</code>
+                        <code className="text-[9px] font-mono truncate max-w-[72px]" style={{ color: 'var(--text-muted)' }}>
+                          {a.sha256.slice(0, 12)}…
+                        </code>
                         <CopyButton text={a.sha256} label="Copy" />
                       </>
-                    ) : <span className="text-zinc-600">—</span>}
+                    ) : <span style={{ color: 'var(--text-muted)' }}>—</span>}
                   </div>
 
-                  <div className="w-20 text-right font-mono text-[11px] text-zinc-400 flex items-center justify-end gap-1">
+                  <div className="w-20 text-right font-mono text-[11px] flex items-center justify-end gap-1" style={{ color: 'var(--text-secondary)' }}>
                     <HardDrive size={10} /> {formatBytes(a.size)}
                   </div>
 
-                  <div className="w-24 text-right font-mono text-[10px] text-zinc-500 flex items-center justify-end gap-1">
+                  <div className="w-24 text-right font-mono text-[10px] flex items-center justify-end gap-1" style={{ color: 'var(--text-muted)' }}>
                     <Clock size={10} /> {timeAgo(a.createdAt)}
                   </div>
 
                   <div className="w-20 flex justify-end gap-1">
                     <button
                       onClick={() => handleDownload(a)}
-                      className="flex items-center gap-1 text-[10px] font-semibold text-violet-400 hover:text-violet-300 border border-violet-800/20 bg-violet-900/10 px-2 py-1 rounded-lg transition-colors"
+                      className="flex items-center gap-1 text-[10px] font-semibold px-2.5 py-1 rounded-lg border transition-all"
+                      style={{
+                        background: 'var(--accent)',
+                        borderColor: 'var(--accent)',
+                        color: 'var(--accent-fg)',
+                      }}
                     >
                       <Download size={10} /> Get
                     </button>

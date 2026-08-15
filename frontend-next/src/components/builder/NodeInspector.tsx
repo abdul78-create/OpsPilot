@@ -48,8 +48,8 @@ function MonacoField({
 }) {
   return (
     <div className="space-y-1">
-      <label className="block text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">{label}</label>
-      <div className="rounded-xl overflow-hidden border border-[#27272A] bg-[#09090B]" style={{ height }}>
+      <label className="block text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{label}</label>
+      <div className="rounded-xl overflow-hidden border" style={{ borderColor: 'var(--border)', background: 'var(--bg-primary)', height }}>
         <MonacoEditor
           language={language}
           value={value}
@@ -65,10 +65,13 @@ function MonacoField({
 export function NodeInspector({ selectedNode, onUpdateNodeData, onDeleteNode, onClose }: NodeInspectorProps) {
   if (!selectedNode) {
     return (
-      <aside className="w-80 bg-[#09090B] border-l border-[#27272A] flex flex-col items-center justify-center p-6 text-center select-none">
-        <SlidersHorizontal size={24} className="text-zinc-600 mb-2" />
-        <h3 className="text-xs font-bold text-zinc-300">No Step Selected</h3>
-        <p className="text-[11px] text-zinc-500 mt-1 max-w-xs">
+      <aside
+        className="w-80 border-l flex flex-col items-center justify-center p-6 text-center select-none"
+        style={{ background: 'var(--bg-secondary)', borderColor: 'var(--border)' }}
+      >
+        <SlidersHorizontal size={24} className="mb-2 opacity-40" style={{ color: 'var(--text-muted)' }} />
+        <h3 className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>No Step Selected</h3>
+        <p className="text-[11px] mt-1 max-w-xs" style={{ color: 'var(--text-muted)' }}>
           Click any step in the canvas to inspect properties, configure execution commands, and view AI recommendations.
         </p>
       </aside>
@@ -78,17 +81,27 @@ export function NodeInspector({ selectedNode, onUpdateNodeData, onDeleteNode, on
   const { id, type, data } = selectedNode;
 
   return (
-    <aside className="w-80 bg-[#09090B] border-l border-[#27272A] flex flex-col h-full overflow-hidden select-none">
+    <aside
+      className="w-80 border-l flex flex-col h-full overflow-hidden select-none"
+      style={{ background: 'var(--bg-secondary)', borderColor: 'var(--border)' }}
+    >
       {/* Header */}
-      <div className="h-14 px-4 border-b border-[#27272A] flex items-center justify-between shrink-0 bg-[#111113]">
+      <div
+        className="h-14 px-4 border-b flex items-center justify-between shrink-0"
+        style={{ background: 'var(--bg-tertiary)', borderColor: 'var(--border)' }}
+      >
         <div className="flex items-center gap-2">
-          <SlidersHorizontal size={14} className="text-violet-400" />
+          <SlidersHorizontal size={14} style={{ color: 'var(--accent)' }} />
           <div>
-            <h3 className="text-xs font-bold text-zinc-100 uppercase tracking-wider">{String(data.label ?? type)}</h3>
-            <span className="text-[10px] font-mono text-zinc-500">ID: {id}</span>
+            <h3 className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--text-primary)' }}>{String(data.label ?? type)}</h3>
+            <span className="text-[10px] font-mono" style={{ color: 'var(--text-muted)' }}>ID: {id}</span>
           </div>
         </div>
-        <button onClick={onClose} className="p-1 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition-colors">
+        <button
+          onClick={onClose}
+          className="p-1 rounded-lg transition-colors"
+          style={{ color: 'var(--text-muted)' }}
+        >
           <X size={14} />
         </button>
       </div>
@@ -96,20 +109,36 @@ export function NodeInspector({ selectedNode, onUpdateNodeData, onDeleteNode, on
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {/* Step Status Pill */}
-        <div className="p-2.5 rounded-xl bg-[#111113] border border-[#27272A] flex items-center justify-between text-xs">
-          <span className="text-zinc-400">Step Status</span>
-          <span className="text-[10px] font-mono text-emerald-400 border border-emerald-500/20 bg-emerald-500/5 px-2 py-0.5 rounded-md flex items-center gap-1">
+        <div
+          className="p-2.5 rounded-xl border flex items-center justify-between text-xs"
+          style={{ background: 'var(--bg-tertiary)', borderColor: 'var(--border)' }}
+        >
+          <span style={{ color: 'var(--text-secondary)' }}>Step Status</span>
+          <span
+            className="text-[10px] font-mono border px-2 py-0.5 rounded-md flex items-center gap-1"
+            style={{
+              background: 'var(--success-dim)',
+              borderColor: 'var(--success)',
+              color: 'var(--success)',
+            }}
+          >
             <CheckCircle2 size={10} /> Validated
           </span>
         </div>
 
         {/* AI Tip */}
-        <div className="p-3 rounded-xl bg-violet-950/20 border border-violet-800/40 text-xs space-y-1">
-          <div className="flex items-center gap-1.5 font-bold text-violet-300">
-            <Sparkles size={13} className="text-violet-400" />
+        <div
+          className="p-3 rounded-xl border text-xs space-y-1"
+          style={{
+            background: 'var(--bg-tertiary)',
+            borderColor: 'var(--border)',
+          }}
+        >
+          <div className="flex items-center gap-1.5 font-bold" style={{ color: 'var(--text-primary)' }}>
+            <Sparkles size={13} style={{ color: 'var(--accent)' }} />
             <span>AI Copilot Insight</span>
           </div>
-          <p className="text-[11px] text-zinc-300 leading-relaxed">
+          <p className="text-[11px] leading-relaxed" style={{ color: 'var(--text-muted)' }}>
             {type === 'build' ? 'Enable BuildKit layer caching to accelerate rebuilds by up to 45%.' :
              type === 'test' ? 'Run test suites in parallel worker shards to lower execution duration.' :
              type === 'security' ? 'Automated SAST scans detect critical vulnerabilities before cluster rollout.' :
@@ -206,14 +235,17 @@ export function NodeInspector({ selectedNode, onUpdateNodeData, onDeleteNode, on
           />
         )}
 
-        <div className="pt-2 border-t border-[#27272A] space-y-3">
+        <div className="pt-2 border-t space-y-3" style={{ borderColor: 'var(--border)' }}>
           <Input label="Timeout (seconds)" defaultValue="300" />
           <Input label="Retry Attempts" defaultValue="2" />
         </div>
       </div>
 
       {/* Footer */}
-      <div className="p-4 bg-[#111113] border-t border-[#27272A] flex items-center justify-between shrink-0">
+      <div
+        className="p-4 border-t flex items-center justify-between shrink-0"
+        style={{ background: 'var(--bg-tertiary)', borderColor: 'var(--border)' }}
+      >
         <Button onClick={() => onDeleteNode(id)} variant="destructive" size="sm" className="gap-1.5 w-full justify-center">
           <Trash2 size={13} />
           <span>Delete Step</span>

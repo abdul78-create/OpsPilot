@@ -66,14 +66,14 @@ const initialNodes: Node[] = [
 ];
 
 const initialEdges: Edge[] = [
-  { id: 'e1-2', source: '1', target: '2', animated: true, style: { stroke: '#8B5CF6', strokeWidth: 2 } },
-  { id: 'e2-3', source: '2', target: '3', animated: true, style: { stroke: '#3B82F6', strokeWidth: 2 } },
-  { id: 'e2-4', source: '2', target: '4', animated: true, style: { stroke: '#3B82F6', strokeWidth: 2 } },
-  { id: 'e3-5', source: '3', target: '5', animated: true, style: { stroke: '#10B981', strokeWidth: 2 } },
-  { id: 'e4-5', source: '4', target: '5', animated: true, style: { stroke: '#F59E0B', strokeWidth: 2 } },
-  { id: 'e5-6', source: '5', target: '6', animated: true, style: { stroke: '#EAB308', strokeWidth: 2 } },
-  { id: 'e6-7', source: '6', target: '7', animated: true, style: { stroke: '#A855F7', strokeWidth: 2 } },
-  { id: 'e7-8', source: '7', target: '8', animated: true, style: { stroke: '#14B8A6', strokeWidth: 2 } },
+  { id: 'e1-2', source: '1', target: '2', animated: true, style: { stroke: 'var(--accent)', strokeWidth: 2 } },
+  { id: 'e2-3', source: '2', target: '3', animated: true, style: { stroke: 'var(--info)', strokeWidth: 2 } },
+  { id: 'e2-4', source: '2', target: '4', animated: true, style: { stroke: 'var(--info)', strokeWidth: 2 } },
+  { id: 'e3-5', source: '3', target: '5', animated: true, style: { stroke: 'var(--success)', strokeWidth: 2 } },
+  { id: 'e4-5', source: '4', target: '5', animated: true, style: { stroke: 'var(--warning)', strokeWidth: 2 } },
+  { id: 'e5-6', source: '5', target: '6', animated: true, style: { stroke: 'var(--warning)', strokeWidth: 2 } },
+  { id: 'e6-7', source: '6', target: '7', animated: true, style: { stroke: 'var(--accent)', strokeWidth: 2 } },
+  { id: 'e7-8', source: '7', target: '8', animated: true, style: { stroke: 'var(--info)', strokeWidth: 2 } },
 ];
 
 // ─── Inner canvas (needs ReactFlowProvider context) ───────────────────────────
@@ -276,7 +276,7 @@ function BuilderCanvas() {
   // ── Connect ─────────────────────────────────────────────────────────────────
   const onConnect = useCallback((params: Connection) => {
     pushSnapshot(nodes, edges);
-    setEdges((eds) => addEdge({ ...params, animated: true, style: { stroke: '#8B5CF6', strokeWidth: 2 } }, eds));
+    setEdges((eds) => addEdge({ ...params, animated: true, style: { stroke: 'var(--accent)', strokeWidth: 2 } }, eds));
   }, [nodes, edges, pushSnapshot, setEdges]);
 
   // ── Node click & update ────────────────────────────────────────────────────
@@ -313,24 +313,31 @@ function BuilderCanvas() {
         <AICopilotOverlay onAutoAddStep={(type, label) => handleAddNode(type, label)} />
 
         {/* TOP TOOLBAR */}
-        <div className="h-14 px-4 rounded-2xl bg-[#111113] border border-[#27272A] flex items-center justify-between shrink-0 select-none shadow-xl">
+        <div
+          className="h-14 px-4 rounded-2xl border flex items-center justify-between shrink-0 select-none shadow-sm"
+          style={{ background: 'var(--bg-secondary)', borderColor: 'var(--border)' }}
+        >
           <div className="flex items-center gap-3">
-            <div className="p-1.5 rounded-lg bg-violet-600/10 border border-violet-500/20 text-violet-400">
+            <div
+              className="p-1.5 rounded-lg border"
+              style={{ background: 'var(--bg-tertiary)', borderColor: 'var(--border)', color: 'var(--accent)' }}
+            >
               <Zap size={15} />
             </div>
             <div>
-              <h1 className="text-xs font-bold text-zinc-100 uppercase tracking-wider">Visual DAG Pipeline Builder</h1>
-              <span className="text-[10px] font-mono text-zinc-500">production-backend • {nodes.length} nodes</span>
+              <h1 className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--text-primary)' }}>Visual DAG Pipeline Builder</h1>
+              <span className="text-[10px] font-mono" style={{ color: 'var(--text-muted)' }}>production-backend • {nodes.length} nodes</span>
             </div>
 
             {/* Live DAG status badge */}
             <button
               onClick={() => setValidationModalOpen(true)}
-              className={`flex items-center gap-1.5 text-[10px] font-mono px-2.5 py-1 rounded-lg border cursor-pointer transition-all ${
-                validation.valid
-                  ? 'text-emerald-400 border-emerald-500/20 bg-emerald-500/5 hover:border-emerald-500/40'
-                  : 'text-rose-400 border-rose-500/20 bg-rose-500/5 hover:border-rose-500/40'
-              }`}
+              className="flex items-center gap-1.5 text-[10px] font-mono px-2.5 py-1 rounded-lg border cursor-pointer transition-all hover:opacity-80"
+              style={{
+                background: validation.valid ? 'var(--success-dim)' : 'var(--error-dim)',
+                borderColor: validation.valid ? 'var(--success)' : 'var(--error)',
+                color: validation.valid ? 'var(--success)' : 'var(--error)',
+              }}
             >
               {validation.valid ? <CheckCircle2 size={11} /> : <AlertTriangle size={11} />}
               {validation.valid ? 'DAG Valid (Acyclic)' : `${validation.errors.length} DAG Error(s)`}
@@ -346,7 +353,7 @@ function BuilderCanvas() {
               <Redo2 size={13} />
             </Button>
 
-            <div className="h-4 w-px bg-[#27272A] mx-1" />
+            <div className="h-4 w-px mx-1" style={{ background: 'var(--border)' }} />
 
             <Button onClick={handleOpenYaml} variant="secondary" size="sm" className="gap-1.5 text-xs">
               <FileCode size={13} /><span>YAML</span>
@@ -361,7 +368,13 @@ function BuilderCanvas() {
             </Button>
 
             {/* REAL RUN BUTTON */}
-            <Button onClick={handleRealTrigger} isLoading={isTriggering} variant="primary" size="sm" className="gap-1.5 text-xs bg-violet-600 hover:bg-violet-500 text-white font-semibold">
+            <Button
+              onClick={handleRealTrigger}
+              isLoading={isTriggering}
+              variant="primary"
+              size="sm"
+              className="gap-1.5 text-xs font-semibold"
+            >
               <Zap size={13} /><span>Trigger Real Run</span>
             </Button>
 
@@ -372,7 +385,10 @@ function BuilderCanvas() {
         </div>
 
         {/* WORKSPACE */}
-        <div className="flex-1 flex min-h-0 rounded-2xl border border-[#27272A] overflow-hidden bg-[#09090B] relative shadow-2xl">
+        <div
+          className="flex-1 flex min-h-0 rounded-2xl border overflow-hidden relative shadow-sm"
+          style={{ background: 'var(--bg-primary)', borderColor: 'var(--border)' }}
+        >
           <NodePalette onAddNode={handleAddNode} />
 
           {/* CANVAS */}
@@ -386,11 +402,11 @@ function BuilderCanvas() {
               onNodeClick={onNodeClick}
               nodeTypes={nodeTypes}
               fitView
-              className="bg-[#09090B]"
+              className="bg-transparent"
             >
-              <Background variant={BackgroundVariant.Dots} gap={24} size={1} color="#27272A" />
-              <Controls className="!bg-[#111113] !border-[#27272A] !text-zinc-300 !rounded-xl !shadow-2xl" />
-              <MiniMap className="!bg-[#111113] !border-[#27272A] !rounded-xl !shadow-2xl" nodeColor="#3F3F46" />
+              <Background variant={BackgroundVariant.Dots} gap={24} size={1} color="var(--border)" />
+              <Controls className="!rounded-xl shadow-md" style={{ background: 'var(--bg-secondary)', borderColor: 'var(--border)', color: 'var(--text-primary)' }} />
+              <MiniMap className="!rounded-xl shadow-md" style={{ background: 'var(--bg-secondary)', borderColor: 'var(--border)' }} nodeColor="var(--border-bright)" />
             </ReactFlow>
 
             {/* AI Auto Builder floating bottom input */}
@@ -411,10 +427,13 @@ function BuilderCanvas() {
         {/* MODAL: VIEW & EXPORT YAML */}
         <Dialog open={yamlModalOpen} onClose={() => setYamlModalOpen(false)} title="Compiled Pipeline Specification (YAML)">
           <div className="space-y-4">
-            <p className="text-xs text-zinc-400 font-sans">
-              Real-time declarative workflow compiled from your visual DAG nodes via <code className="font-mono text-violet-400">DAGCompiler</code>.
+            <p className="text-xs font-sans" style={{ color: 'var(--text-muted)' }}>
+              Real-time declarative workflow compiled from your visual DAG nodes via <code className="font-mono" style={{ color: 'var(--accent)' }}>DAGCompiler</code>.
             </p>
-            <div className="h-80 rounded-xl overflow-hidden border border-[#27272A] bg-[#09090B]">
+            <div
+              className="h-80 rounded-xl overflow-hidden border"
+              style={{ background: 'var(--bg-primary)', borderColor: 'var(--border)' }}
+            >
               <MonacoEditor
                 language="yaml"
                 value={generatedYaml}
@@ -429,7 +448,7 @@ function BuilderCanvas() {
               />
             </div>
             <div className="flex items-center justify-between pt-2">
-              <span className="text-[10px] font-mono text-zinc-500">
+              <span className="text-[10px] font-mono" style={{ color: 'var(--text-muted)' }}>
                 {validation.valid ? '✓ Ready for NestJS runner execution' : '⚠ Validation errors present'}
               </span>
               <div className="flex items-center gap-2">
@@ -447,15 +466,18 @@ function BuilderCanvas() {
         {/* MODAL: DAG VALIDATION REPORT */}
         <Dialog open={validationModalOpen} onClose={() => setValidationModalOpen(false)} title="DAG Graph Health & Execution Plan">
           <div className="space-y-4 font-sans text-xs">
-            <div className={`p-4 rounded-xl border flex items-start gap-3 ${
-              validation.valid
-                ? 'bg-emerald-950/20 border-emerald-800/40 text-emerald-300'
-                : 'bg-rose-950/20 border-rose-800/40 text-rose-300'
-            }`}>
-              {validation.valid ? <CheckCircle2 size={18} className="shrink-0 text-emerald-400" /> : <XCircle size={18} className="shrink-0 text-rose-400" />}
+            <div
+              className="p-4 rounded-xl border flex items-start gap-3"
+              style={{
+                background: validation.valid ? 'var(--success-dim)' : 'var(--error-dim)',
+                borderColor: validation.valid ? 'var(--success)' : 'var(--error)',
+                color: validation.valid ? 'var(--success)' : 'var(--error)',
+              }}
+            >
+              {validation.valid ? <CheckCircle2 size={18} className="shrink-0" /> : <XCircle size={18} className="shrink-0" />}
               <div>
                 <h4 className="font-bold text-sm">{validation.valid ? 'DAG is Valid & Acyclic' : 'DAG Contains Structural Errors'}</h4>
-                <p className="text-xs text-zinc-300 mt-1">
+                <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>
                   {validation.valid
                     ? 'All dependencies resolve cleanly using Kahn’s Topological Sort with zero cycles.'
                     : 'The pipeline cannot execute until structural issues are resolved.'}
@@ -465,11 +487,11 @@ function BuilderCanvas() {
 
             {validation.errors.length > 0 && (
               <div className="space-y-2">
-                <span className="font-bold uppercase tracking-wider text-rose-400 text-[10px]">Errors</span>
+                <span className="font-bold uppercase tracking-wider text-[10px]" style={{ color: 'var(--error)' }}>Errors</span>
                 <ul className="space-y-1">
                   {validation.errors.map((err, i) => (
-                    <li key={i} className="flex items-center gap-2 text-rose-300">
-                      <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+                    <li key={i} className="flex items-center gap-2" style={{ color: 'var(--error)' }}>
+                      <span className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--error)' }} />
                       <span>{err}</span>
                     </li>
                   ))}
@@ -479,11 +501,11 @@ function BuilderCanvas() {
 
             {validation.warnings.length > 0 && (
               <div className="space-y-2">
-                <span className="font-bold uppercase tracking-wider text-amber-400 text-[10px]">Warnings</span>
+                <span className="font-bold uppercase tracking-wider text-[10px]" style={{ color: 'var(--warning)' }}>Warnings</span>
                 <ul className="space-y-1">
                   {validation.warnings.map((w, i) => (
-                    <li key={i} className="flex items-center gap-2 text-amber-300">
-                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                    <li key={i} className="flex items-center gap-2" style={{ color: 'var(--warning)' }}>
+                      <span className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--warning)' }} />
                       <span>{w}</span>
                     </li>
                   ))}
@@ -492,17 +514,26 @@ function BuilderCanvas() {
             )}
 
             {validation.executionOrder.length > 0 && (
-              <div className="space-y-2 pt-2 border-t border-[#27272A]">
-                <span className="font-bold uppercase tracking-wider text-zinc-400 text-[10px]">Execution Order ({validation.executionOrder.length} Steps)</span>
+              <div className="space-y-2 pt-2 border-t" style={{ borderColor: 'var(--border)' }}>
+                <span className="font-bold uppercase tracking-wider text-[10px]" style={{ color: 'var(--text-muted)' }}>
+                  Execution Order ({validation.executionOrder.length} Steps)
+                </span>
                 <div className="flex flex-wrap items-center gap-2 font-mono text-[11px]">
                   {validation.executionOrder.map((id, i) => {
                     const node = nodes.find((n) => n.id === id);
                     return (
                       <React.Fragment key={id}>
-                        <span className="px-2 py-1 rounded-lg bg-[#111113] border border-[#27272A] text-zinc-300">
+                        <span
+                          className="px-2 py-1 rounded-lg border"
+                          style={{
+                            background: 'var(--bg-tertiary)',
+                            borderColor: 'var(--border)',
+                            color: 'var(--text-primary)',
+                          }}
+                        >
                           {i + 1}. {String(node?.data?.label ?? id)}
                         </span>
-                        {i < validation.executionOrder.length - 1 && <ArrowRight size={11} className="text-zinc-600" />}
+                        {i < validation.executionOrder.length - 1 && <ArrowRight size={11} style={{ color: 'var(--text-muted)' }} />}
                       </React.Fragment>
                     );
                   })}

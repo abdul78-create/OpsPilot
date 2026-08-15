@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { Dialog } from '../ui/dialog';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
-import { History, GitCommit, RotateCcw, Plus, Trash2, Edit3 } from 'lucide-react';
+import { History, GitCommit, RotateCcw, Plus, Edit3 } from 'lucide-react';
 
 export interface PipelineGitHistoryProps {
   open: boolean;
@@ -50,7 +50,7 @@ export function PipelineGitHistory({ open, onClose, onRestoreVersion }: Pipeline
   return (
     <Dialog open={open} onClose={onClose} title="Pipeline Git & Version History" className="max-w-2xl">
       <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
-        <p className="text-xs text-slate-400">
+        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
           Every workflow save creates an immutable version commit. Compare diffs and restore any version.
         </p>
 
@@ -58,49 +58,62 @@ export function PipelineGitHistory({ open, onClose, onRestoreVersion }: Pipeline
           {history.map((h) => (
             <div
               key={h.version}
-              onClick={() => setSelectedVersion(h.version)}
-              className={`p-4 rounded-xl bg-slate-950 border transition-all cursor-pointer ${
-                selectedVersion === h.version ? 'border-blue-500 ring-1 ring-blue-500/30' : 'border-slate-800'
-              }`}
+              className="p-4 rounded-xl border transition-all"
+              style={{
+                background: h.isCurrent ? 'var(--bg-secondary)' : 'var(--bg-tertiary)',
+                borderColor: h.isCurrent ? 'var(--accent)' : 'var(--border)',
+              }}
             >
               <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2 font-mono text-xs">
-                  <GitCommit size={14} className="text-slate-400" />
-                  <span className="font-bold text-slate-100">{h.version}</span>
-                  <span className="text-slate-500">•</span>
-                  <span className="text-slate-400">{h.author}</span>
-                  <span className="text-slate-500">•</span>
-                  <span className="text-slate-500">{h.time}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-mono font-bold" style={{ color: 'var(--text-primary)' }}>{h.version}</span>
+                  {h.isCurrent && (
+                    <span
+                      className="text-[10px] font-mono px-1.5 py-0.5 rounded border"
+                      style={{
+                        background: 'var(--success-dim)',
+                        borderColor: 'var(--success)',
+                        color: 'var(--success)',
+                      }}
+                    >
+                      Active
+                    </span>
+                  )}
+                  <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>• {h.author}</span>
+                  <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>({h.time})</span>
                 </div>
-                {h.isCurrent ? (
-                  <Badge status="healthy">● Current Active</Badge>
-                ) : (
+
+                {!h.isCurrent && (
                   <Button
-                    variant="secondary"
+                    variant="ghost"
                     size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
+                    onClick={() => {
                       onRestoreVersion(h.version);
                       onClose();
                     }}
-                    className="gap-1"
+                    className="gap-1 text-xs"
                   >
                     <RotateCcw size={12} />
-                    <span>Restore {h.version}</span>
+                    <span>Restore</span>
                   </Button>
                 )}
               </div>
 
-              <p className="text-xs text-slate-200 font-medium mb-3 leading-relaxed">{h.commitMsg}</p>
+              <p className="text-xs mb-3" style={{ color: 'var(--text-primary)' }}>{h.commitMsg}</p>
 
-              {/* Diffs */}
-              <div className="space-y-1.5 pt-2 border-t border-slate-900 font-mono text-[11px]">
+              <div className="space-y-1 pt-2 border-t text-[11px]" style={{ borderColor: 'var(--border)' }}>
                 {h.changes.map((c, i) => (
-                  <div key={i} className="flex items-center gap-2">
-                    {c.type === 'add' && <Plus size={12} className="text-emerald-400" />}
-                    {c.type === 'edit' && <Edit3 size={12} className="text-amber-400" />}
-                    {c.type === 'delete' && <Trash2 size={12} className="text-rose-400" />}
-                    <span className="text-slate-300">{c.text}</span>
+                  <div key={i} className="flex items-center gap-2" style={{ color: 'var(--text-secondary)' }}>
+                    {c.type === 'add' ? (
+                      <span className="flex items-center gap-1 font-mono" style={{ color: 'var(--success)' }}>
+                        <Plus size={11} /> added
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1 font-mono" style={{ color: 'var(--info)' }}>
+                        <Edit3 size={11} /> modified
+                      </span>
+                    )}
+                    <span>{c.text}</span>
                   </div>
                 ))}
               </div>

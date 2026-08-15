@@ -20,7 +20,6 @@ import { TerminalStream } from '@/components/ui/terminal-stream';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-
 function timeAgo(d?: string) {
   if (!d) return '—';
   const diff = Date.now() - new Date(d).getTime();
@@ -45,21 +44,21 @@ function pipelineShortName(name?: string) {
 
 function jobStatusIcon(status: PipelineJob['status']) {
   switch (status) {
-    case 'SUCCESS':   return <CheckCircle2 size={14} className="text-emerald-400 shrink-0" />;
-    case 'FAILED':    return <XCircle size={14} className="text-rose-400 shrink-0" />;
-    case 'RUNNING':   return <Loader2 size={14} className="text-blue-400 animate-spin shrink-0" />;
-    case 'QUEUED':    return <Circle size={14} className="text-amber-400 shrink-0" />;
-    case 'CANCELLED': return <XSquare size={14} className="text-slate-500 shrink-0" />;
-    case 'SKIPPED':   return <ChevronRight size={14} className="text-slate-600 shrink-0" />;
+    case 'SUCCESS':   return <CheckCircle2 size={14} className="shrink-0" style={{ color: 'var(--success)' }} />;
+    case 'FAILED':    return <XCircle size={14} className="shrink-0" style={{ color: 'var(--error)' }} />;
+    case 'RUNNING':   return <Loader2 size={14} className="animate-spin shrink-0" style={{ color: 'var(--info)' }} />;
+    case 'QUEUED':    return <Circle size={14} className="shrink-0" style={{ color: 'var(--warning)' }} />;
+    case 'CANCELLED': return <XSquare size={14} className="shrink-0" style={{ color: 'var(--text-muted)' }} />;
+    case 'SKIPPED':   return <ChevronRight size={14} className="shrink-0" style={{ color: 'var(--text-muted)' }} />;
   }
 }
 
 function logLevelColor(level: string) {
   switch (level) {
-    case 'ERROR': return 'text-rose-400';
-    case 'WARN':  return 'text-amber-400';
-    case 'DEBUG': return 'text-slate-500';
-    default:      return 'text-slate-400';
+    case 'ERROR': return 'var(--error)';
+    case 'WARN':  return 'var(--warning)';
+    case 'DEBUG': return 'var(--text-muted)';
+    default:      return 'var(--text-secondary)';
   }
 }
 
@@ -72,137 +71,51 @@ function StepTimeline({
 
   return (
     <div className="flex flex-col gap-0.5">
-      {jobs.map((job, i) => {
+      {jobs.map((job) => {
         const isActive = activeJob === job.id;
         const pct = totalDuration > 0 ? ((job.durationSeconds ?? 0) / totalDuration) * 100 : 0;
         return (
           <div key={job.id}>
             <button
               onClick={() => onSelect(job.id)}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-left group ${
-                isActive
-                  ? 'bg-blue-600/10 border border-blue-500/20'
-                  : 'hover:bg-slate-800/50 border border-transparent'
-              }`}
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-left group"
+              style={{
+                background: isActive ? 'var(--bg-secondary)' : 'transparent',
+                borderColor: isActive ? 'var(--border)' : 'transparent',
+                borderWidth: '1px',
+              }}
             >
               {jobStatusIcon(job.status)}
               <div className="flex-1 min-w-0">
-                <div className={`text-[11px] font-semibold truncate ${isActive ? 'text-blue-300' : 'text-slate-200'}`}>
+                <div
+                  className="text-[11px] font-semibold truncate"
+                  style={{ color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)' }}
+                >
                   {job.name}
                 </div>
-                <div className="text-[9px] text-slate-600 uppercase tracking-wider">{job.stage}</div>
+                <div className="text-[9px] uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+                  {job.stage}
+                </div>
               </div>
-              <div className="text-[10px] font-mono text-slate-500 shrink-0">
+              <div className="text-[10px] font-mono shrink-0" style={{ color: 'var(--text-muted)' }}>
                 {formatDuration(job.durationSeconds)}
               </div>
             </button>
             {/* Duration bar */}
             {pct > 0 && (
-              <div className="mx-3 h-0.5 bg-slate-800 rounded overflow-hidden mb-0.5">
+              <div className="mx-3 h-0.5 rounded overflow-hidden mb-0.5" style={{ background: 'var(--bg-tertiary)' }}>
                 <div
-                  className={`h-full rounded transition-all ${
-                    job.status === 'SUCCESS' ? 'bg-emerald-500/50'
-                    : job.status === 'FAILED' ? 'bg-rose-500/50'
-                    : job.status === 'RUNNING' ? 'bg-blue-500/50 animate-pulse'
-                    : 'bg-slate-700'
-                  }`}
-                  style={{ width: `${Math.max(pct, 2)}%` }}
+                  className="h-full rounded transition-all"
+                  style={{
+                    width: `${Math.max(pct, 2)}%`,
+                    background: job.status === 'SUCCESS' ? 'var(--success)' : job.status === 'FAILED' ? 'var(--error)' : 'var(--accent)',
+                  }}
                 />
               </div>
             )}
           </div>
         );
       })}
-    </div>
-  );
-}
-
-// ─── Log Viewer ───────────────────────────────────────────────────────────────
-
-function LogViewer({ logs, jobId }: { logs: LogEntry[]; jobId: string | null }) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [autoScroll, setAutoScroll] = useState(true);
-  const [search, setSearch] = useState('');
-  const [copied, setCopied] = useState(false);
-
-  const jobLogs = jobId ? logs.filter(l => l.jobId === jobId) : logs;
-  const filtered = !search ? jobLogs : jobLogs.filter(l =>
-    l.message.toLowerCase().includes(search.toLowerCase())
-  );
-
-  useEffect(() => {
-    if (autoScroll && containerRef.current) {
-      containerRef.current.scrollTop = containerRef.current.scrollHeight;
-    }
-  }, [filtered, autoScroll]);
-
-  const copyAll = async () => {
-    await navigator.clipboard.writeText(filtered.map(l => `[${l.level}] ${l.message}`).join('\n'));
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const downloadLogs = () => {
-    const blob = new Blob([filtered.map(l => `[${l.timestamp}] [${l.level}] ${l.message}`).join('\n')], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = `run-logs-${jobId ?? 'all'}.txt`; a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  return (
-    <div className="flex flex-col h-full">
-      {/* Toolbar */}
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-slate-800 shrink-0">
-        <Terminal size={12} className="text-slate-500" />
-        <span className="text-[10px] text-slate-500 font-mono">{filtered.length} lines</span>
-        <div className="flex-1">
-          <input
-            type="text"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Filter logs..."
-            className="w-full bg-transparent text-[10px] text-slate-200 placeholder-slate-700 focus:outline-none font-mono"
-          />
-        </div>
-        <button
-          onClick={() => setAutoScroll(v => !v)}
-          className={`text-[9px] font-mono px-2 py-0.5 rounded border transition-colors ${
-            autoScroll ? 'border-blue-700 text-blue-400' : 'border-slate-800 text-slate-500'
-          }`}
-        >
-          {autoScroll ? '⬇ Auto' : 'Manual'}
-        </button>
-        <button onClick={copyAll} className="text-[9px] font-mono text-slate-500 hover:text-slate-300 border border-slate-800 px-2 py-0.5 rounded transition-colors">
-          {copied ? '✓' : <Copy size={9} />}
-        </button>
-        <button onClick={downloadLogs} className="text-[9px] font-mono text-slate-500 hover:text-slate-300 border border-slate-800 px-2 py-0.5 rounded transition-colors">
-          <Download size={9} />
-        </button>
-      </div>
-
-      {/* Log lines */}
-      <div
-        ref={containerRef}
-        onScroll={e => {
-          const el = e.currentTarget;
-          const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
-          setAutoScroll(atBottom);
-        }}
-        className="flex-1 overflow-y-auto font-mono text-[11px] leading-relaxed bg-slate-950 p-3 space-y-0.5"
-      >
-        {filtered.length === 0 ? (
-          <p className="text-slate-700">No log entries{search ? ' matching filter' : ''}.</p>
-        ) : (
-          filtered.map((l, i) => (
-            <div key={l.id ?? i} className="flex gap-2 group hover:bg-slate-900/50 rounded px-1">
-              <span className="text-slate-700 shrink-0 select-none">{new Date(l.timestamp).toISOString().slice(11, 19)}</span>
-              <span className={`shrink-0 w-10 ${logLevelColor(l.level)}`}>{l.level.slice(0, 4)}</span>
-              <span className="text-slate-300 break-all">{l.message}</span>
-            </div>
-          ))
-        )}
-      </div>
     </div>
   );
 }
@@ -288,16 +201,15 @@ export function RunDetailPage({ runId }: RunDetailPageProps) {
     }
   };
 
-
   if (loading) {
     return (
       <div className="flex flex-col h-full">
         <div className="flex items-center gap-3 mb-4">
-          <div className="w-32 h-4 bg-slate-800 rounded animate-pulse" />
+          <div className="w-32 h-4 rounded animate-pulse" style={{ background: 'var(--bg-tertiary)' }} />
         </div>
         <div className="flex-1 grid grid-cols-[280px_1fr] gap-3">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl animate-pulse" />
-          <div className="bg-slate-900 border border-slate-800 rounded-xl animate-pulse" />
+          <div className="border rounded-xl animate-pulse" style={{ background: 'var(--bg-secondary)', borderColor: 'var(--border)' }} />
+          <div className="border rounded-xl animate-pulse" style={{ background: 'var(--bg-secondary)', borderColor: 'var(--border)' }} />
         </div>
       </div>
     );
@@ -305,10 +217,12 @@ export function RunDetailPage({ runId }: RunDetailPageProps) {
 
   if (!run) {
     return (
-      <div className="flex flex-col items-center justify-center h-full gap-3 text-slate-500">
+      <div className="flex flex-col items-center justify-center h-full gap-3" style={{ color: 'var(--text-muted)' }}>
         <AlertCircle size={32} className="opacity-40" />
         <p className="text-sm">Run not found: <code className="font-mono text-xs">{runId}</code></p>
-        <button onClick={() => router.push('/runs')} className="text-xs text-blue-400 hover:text-blue-300">← Back to Runs</button>
+        <button onClick={() => router.push('/runs')} className="text-xs hover:opacity-80 transition-opacity" style={{ color: 'var(--accent)' }}>
+          ← Back to Runs
+        </button>
       </div>
     );
   }
@@ -321,20 +235,31 @@ export function RunDetailPage({ runId }: RunDetailPageProps) {
     <div className="flex flex-col h-[calc(100vh-5.5rem)] space-y-3">
 
       {/* Header */}
-      <div className="h-14 px-4 rounded-xl bg-slate-900 border border-slate-800 flex items-center gap-3 shrink-0">
+      <div
+        className="h-14 px-4 rounded-xl border flex items-center gap-3 shrink-0"
+        style={{ background: 'var(--bg-secondary)', borderColor: 'var(--border)' }}
+      >
         <button
           onClick={() => router.push('/runs')}
-          className="flex items-center gap-1 text-[11px] text-slate-500 hover:text-slate-300 transition-colors"
+          className="flex items-center gap-1 text-[11px] transition-colors"
+          style={{ color: 'var(--text-muted)' }}
         >
           <ChevronLeft size={13} /> Runs
         </button>
-        <div className="w-px h-4 bg-slate-800" />
+        <div className="w-px h-4" style={{ background: 'var(--border)' }} />
 
-        <code className="text-[11px] font-mono text-slate-400">{runId}</code>
+        <code className="text-[11px] font-mono" style={{ color: 'var(--text-secondary)' }}>{runId}</code>
         <StatusPill status={run.status} />
 
         {isLive && (
-          <span className="text-[10px] font-mono text-blue-300 border border-blue-800/40 bg-blue-900/20 px-2 py-0.5 rounded-full animate-pulse">
+          <span
+            className="text-[10px] font-mono border px-2 py-0.5 rounded-full animate-pulse"
+            style={{
+              background: 'var(--info-dim)',
+              borderColor: 'var(--info)',
+              color: 'var(--info)',
+            }}
+          >
             live
           </span>
         )}
@@ -342,23 +267,24 @@ export function RunDetailPage({ runId }: RunDetailPageProps) {
         <div className="flex-1" />
 
         {run.branch && (
-          <span className="text-[10px] font-mono text-slate-500 flex items-center gap-1">
+          <span className="text-[10px] font-mono flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>
             <GitBranch size={10} /> {run.branch}
           </span>
         )}
         {run.commitSha && (
-          <span className="text-[10px] font-mono text-slate-500 flex items-center gap-1">
+          <span className="text-[10px] font-mono flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>
             <GitCommit size={10} /> {run.commitSha.slice(0, 7)}
           </span>
         )}
-        <span className="text-[10px] font-mono text-slate-500 flex items-center gap-1">
+        <span className="text-[10px] font-mono flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>
           <Clock size={10} /> {formatDuration(run.durationSeconds)}
         </span>
 
         <div className="flex items-center gap-2">
           <button
             onClick={load}
-            className="flex items-center gap-1 text-[11px] text-slate-500 hover:text-slate-300 transition-colors"
+            className="flex items-center gap-1 text-[11px] transition-colors"
+            style={{ color: 'var(--text-muted)' }}
           >
             <RefreshCw size={12} className={isLive ? 'animate-spin' : ''} />
           </button>
@@ -366,7 +292,12 @@ export function RunDetailPage({ runId }: RunDetailPageProps) {
           <button
             onClick={handleAnalyze}
             disabled={analyzing}
-            className="flex items-center gap-1.5 text-[11px] text-purple-300 hover:text-purple-200 border border-purple-800/40 bg-purple-900/10 px-3 py-1.5 rounded-lg transition-colors"
+            className="flex items-center gap-1.5 text-[11px] border px-3 py-1.5 rounded-lg transition-colors font-semibold"
+            style={{
+              background: 'var(--bg-tertiary)',
+              borderColor: 'var(--border)',
+              color: 'var(--text-primary)',
+            }}
           >
             {analyzing ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
             AI Analyze
@@ -376,7 +307,12 @@ export function RunDetailPage({ runId }: RunDetailPageProps) {
             <button
               onClick={handleCancel}
               disabled={cancelling}
-              className="flex items-center gap-1.5 text-[11px] text-rose-300 hover:text-rose-200 border border-rose-800/40 bg-rose-900/10 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+              className="flex items-center gap-1.5 text-[11px] border px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50 font-semibold"
+              style={{
+                background: 'var(--error-dim)',
+                borderColor: 'var(--error)',
+                color: 'var(--error)',
+              }}
             >
               {cancelling ? <Loader2 size={12} className="animate-spin" /> : <XSquare size={12} />}
               Cancel
@@ -387,42 +323,60 @@ export function RunDetailPage({ runId }: RunDetailPageProps) {
 
       {/* AI Root Cause Analysis Report Card */}
       {aiReport && (
-        <div className="p-4 bg-purple-950/20 border border-purple-800/40 rounded-xl text-xs space-y-3 shrink-0 animate-fade-in">
+        <div
+          className="p-4 border rounded-xl text-xs space-y-3 shrink-0"
+          style={{
+            background: 'var(--bg-secondary)',
+            borderColor: 'var(--border-bright)',
+            boxShadow: 'var(--shadow-sm)',
+          }}
+        >
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 font-bold text-purple-300">
-              <Sparkles size={15} className="text-purple-400 animate-pulse" />
+            <div className="flex items-center gap-2 font-bold" style={{ color: 'var(--text-primary)' }}>
+              <Sparkles size={15} style={{ color: 'var(--accent)' }} />
               <span>AI Root Cause Analysis (RCA)</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-purple-900/40 border border-purple-700/50 text-purple-200">
+              <span
+                className="px-2 py-0.5 rounded text-[10px] font-mono border"
+                style={{ background: 'var(--bg-tertiary)', borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
+              >
                 {Math.round((aiReport.confidenceScore ?? 0.95) * 100)}% Confidence
               </span>
-              <span className={`px-2 py-0.5 rounded text-[10px] font-bold font-mono uppercase ${
-                aiReport.riskLevel === 'CRITICAL' ? 'bg-red-950 text-red-300 border border-red-800' :
-                aiReport.riskLevel === 'HIGH' ? 'bg-amber-950 text-amber-300 border border-amber-800' :
-                'bg-blue-950 text-blue-300 border border-blue-800'
-              }`}>
+              <span
+                className="px-2 py-0.5 rounded text-[10px] font-bold font-mono uppercase border"
+                style={{
+                  background: aiReport.riskLevel === 'CRITICAL' ? 'var(--error-dim)' : 'var(--warning-dim)',
+                  borderColor: aiReport.riskLevel === 'CRITICAL' ? 'var(--error)' : 'var(--warning)',
+                  color: aiReport.riskLevel === 'CRITICAL' ? 'var(--error)' : 'var(--warning)',
+                }}
+              >
                 {aiReport.riskLevel ?? 'MEDIUM'} Risk
               </span>
             </div>
           </div>
 
-          <div className="space-y-1.5 text-zinc-300">
-            <p className="font-semibold text-zinc-100">{aiReport.summary}</p>
+          <div className="space-y-1.5">
+            <p className="font-semibold" style={{ color: 'var(--text-primary)' }}>{aiReport.summary}</p>
             {aiReport.rootCause && (
-              <div className="p-2.5 rounded-lg bg-[#09090B] border border-purple-900/50 font-mono text-[11px] text-purple-200">
-                <strong className="text-purple-400">Root Cause:</strong> {aiReport.rootCause}
+              <div
+                className="p-2.5 rounded-lg border font-mono text-[11px]"
+                style={{ background: 'var(--bg-tertiary)', borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
+              >
+                <strong style={{ color: 'var(--text-primary)' }}>Root Cause:</strong> {aiReport.rootCause}
               </div>
             )}
           </div>
 
           {Array.isArray(aiReport.recommendations) && aiReport.recommendations.length > 0 && (
             <div className="space-y-1">
-              <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Recommended Fixes</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+                Recommended Fixes
+              </span>
               <ul className="space-y-1">
                 {aiReport.recommendations.map((rec, i) => (
-                  <li key={i} className="flex items-start gap-2 text-zinc-300 text-[11px]">
-                    <span className="text-purple-400 font-bold">•</span>
+                  <li key={i} className="flex items-start gap-2 text-[11px]" style={{ color: 'var(--text-secondary)' }}>
+                    <span style={{ color: 'var(--accent)' }}>•</span>
                     <span>{rec}</span>
                   </li>
                 ))}
@@ -434,33 +388,46 @@ export function RunDetailPage({ runId }: RunDetailPageProps) {
 
       {/* AI Error / Unavailable State */}
       {aiError && !aiReport && (
-        <div className="p-3.5 bg-amber-950/20 border border-amber-800/40 rounded-xl text-xs text-amber-300 flex items-center justify-between shrink-0">
+        <div
+          className="p-3.5 border rounded-xl text-xs flex items-center justify-between shrink-0"
+          style={{
+            background: 'var(--warning-dim)',
+            borderColor: 'var(--warning)',
+            color: 'var(--warning)',
+          }}
+        >
           <div className="flex items-center gap-2">
-            <AlertCircle size={15} className="text-amber-400 shrink-0" />
+            <AlertCircle size={15} className="shrink-0" />
             <span><strong>AI Analysis Unavailable:</strong> {aiError}</span>
           </div>
           <button
             onClick={() => setAiError(null)}
-            className="text-[10px] text-zinc-400 hover:text-white underline font-mono"
+            className="text-[10px] underline font-mono cursor-pointer"
+            style={{ color: 'var(--text-primary)' }}
           >
             Dismiss
           </button>
         </div>
       )}
 
-
       {/* Main layout: Step Timeline + Log Viewer */}
       <div className="flex-1 min-h-0 grid grid-cols-[260px_1fr] gap-3">
 
         {/* Step Timeline */}
-        <div className="bg-slate-900 border border-slate-800 rounded-xl flex flex-col overflow-hidden">
-          <div className="h-9 px-3 border-b border-slate-800 flex items-center justify-between shrink-0">
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Steps</span>
-            <span className="text-[10px] font-mono text-slate-600">{successJobs}/{jobs.length} done</span>
+        <div
+          className="border rounded-xl flex flex-col overflow-hidden"
+          style={{ background: 'var(--bg-secondary)', borderColor: 'var(--border)' }}
+        >
+          <div
+            className="h-9 px-3 border-b flex items-center justify-between shrink-0"
+            style={{ borderColor: 'var(--border)' }}
+          >
+            <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Steps</span>
+            <span className="text-[10px] font-mono" style={{ color: 'var(--text-muted)' }}>{successJobs}/{jobs.length} done</span>
           </div>
 
           {jobs.length === 0 ? (
-            <div className="flex-1 flex items-center justify-center text-slate-600 text-xs">
+            <div className="flex-1 flex items-center justify-center text-xs" style={{ color: 'var(--text-muted)' }}>
               No steps recorded
             </div>
           ) : (
@@ -474,7 +441,7 @@ export function RunDetailPage({ runId }: RunDetailPageProps) {
           )}
 
           {/* Run metadata */}
-          <div className="border-t border-slate-800 p-3 space-y-1.5 shrink-0">
+          <div className="border-t p-3 space-y-1.5 shrink-0" style={{ borderColor: 'var(--border)' }}>
             {[
               { label: 'Triggered by', value: run.triggeredBy ?? '—' },
               { label: 'Queued',       value: timeAgo(run.queuedAt) },
@@ -482,27 +449,40 @@ export function RunDetailPage({ runId }: RunDetailPageProps) {
               { label: 'Duration',     value: formatDuration(run.durationSeconds) },
             ].map(({ label, value }) => (
               <div key={label} className="flex justify-between text-[10px]">
-                <span className="text-slate-600">{label}</span>
-                <span className="text-slate-400 font-mono">{value}</span>
+                <span style={{ color: 'var(--text-muted)' }}>{label}</span>
+                <span className="font-mono" style={{ color: 'var(--text-secondary)' }}>{value}</span>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Log Panel — XTermPanel (canvas) for completed runs, TerminalStream (SSE) for live */}
-        <div className="bg-[#09090B] border border-[#27272A] rounded-2xl overflow-hidden flex flex-col">
+        {/* Log Panel */}
+        <div
+          className="border rounded-2xl overflow-hidden flex flex-col"
+          style={{ background: 'var(--bg-primary)', borderColor: 'var(--border)' }}
+        >
           {/* Toolbar */}
-          <div className="flex items-center gap-2 px-4 py-2 border-b border-[#27272A] shrink-0 bg-[#111113]">
+          <div
+            className="flex items-center gap-2 px-4 py-2 border-b shrink-0"
+            style={{ background: 'var(--bg-secondary)', borderColor: 'var(--border)' }}
+          >
             <div className="flex items-center gap-1.5">
-              <div className="w-2.5 h-2.5 rounded-full bg-[#EF4444]/60" />
-              <div className="w-2.5 h-2.5 rounded-full bg-[#EAB308]/60" />
-              <div className="w-2.5 h-2.5 rounded-full bg-[#22C55E]/60" />
+              <div className="w-2.5 h-2.5 rounded-full" style={{ background: 'var(--error)' }} />
+              <div className="w-2.5 h-2.5 rounded-full" style={{ background: 'var(--warning)' }} />
+              <div className="w-2.5 h-2.5 rounded-full" style={{ background: 'var(--success)' }} />
             </div>
-            <span className="flex-1 text-center text-[11px] font-mono text-zinc-600">
+            <span className="flex-1 text-center text-[11px] font-mono" style={{ color: 'var(--text-muted)' }}>
               {isLive ? 'live stream' : `${logs.filter(l => !activeJobId || l.jobId === activeJobId).length} lines`}
             </span>
             {isLive && (
-              <span className="text-[10px] font-mono text-emerald-400 border border-emerald-500/20 bg-emerald-500/5 px-2 py-0.5 rounded-md animate-pulse">
+              <span
+                className="text-[10px] font-mono border px-2 py-0.5 rounded-md animate-pulse"
+                style={{
+                  background: 'var(--success-dim)',
+                  borderColor: 'var(--success)',
+                  color: 'var(--success)',
+                }}
+              >
                 ● streaming
               </span>
             )}
@@ -511,12 +491,8 @@ export function RunDetailPage({ runId }: RunDetailPageProps) {
           {/* Canvas surface */}
           <div className="flex-1 min-h-0">
             {isLive ? (
-              // Live run — SSE streaming terminal
-              <TerminalStream
-                runId={runId}
-              />
+              <TerminalStream runId={runId} />
             ) : (
-              // Completed run — hardware-accelerated canvas with pre-buffered lines
               <XTermPanel
                 lines={formatLogLines(
                   activeJobId

@@ -33,7 +33,7 @@ function ansiColorize(line: string): string {
 
 /**
  * XTermPanel — hardware-accelerated XTerm.js canvas for pre-buffered log lines.
- * Supports up to 50,000 lines of scrollback. Theme matches OpsPilot's zinc-900 dark design.
+ * Supports up to 50,000 lines of scrollback.
  */
 export function XTermPanel({ lines, stream = true }: XTermPanelProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -58,27 +58,27 @@ export function XTermPanel({ lines, stream = true }: XTermPanelProps) {
 
       terminal = new Terminal({
         theme: {
-          background: '#09090B',
-          foreground: '#E4E4E7',
-          cursor: '#7C3AED',
-          cursorAccent: '#09090B',
-          selectionBackground: '#7C3AED40',
-          black: '#09090B',
-          brightBlack: '#3F3F46',
-          red: '#EF4444',
-          brightRed: '#F87171',
-          green: '#22C55E',
-          brightGreen: '#4ADE80',
-          yellow: '#EAB308',
-          brightYellow: '#FACC15',
-          blue: '#3B82F6',
-          brightBlue: '#60A5FA',
-          magenta: '#A855F7',
-          brightMagenta: '#C084FC',
-          cyan: '#06B6D4',
-          brightCyan: '#22D3EE',
-          white: '#E4E4E7',
-          brightWhite: '#F4F4F5',
+          background: '#09090b',
+          foreground: '#e4e4e7',
+          cursor: '#a1a1aa',
+          cursorAccent: '#09090b',
+          selectionBackground: 'rgba(255,255,255,0.15)',
+          black: '#09090b',
+          brightBlack: '#3f3f46',
+          red: '#ef4444',
+          brightRed: '#f87171',
+          green: '#22c55e',
+          brightGreen: '#4ade80',
+          yellow: '#eab308',
+          brightYellow: '#facc15',
+          blue: '#60a5fa',
+          brightBlue: '#93c5fd',
+          magenta: '#d4d4d8',
+          brightMagenta: '#f4f4f5',
+          cyan: '#06b6d4',
+          brightCyan: '#22d3ee',
+          white: '#e4e4e7',
+          brightWhite: '#ffffff',
         },
         fontFamily: '"JetBrains Mono", "Geist Mono", "Cascadia Code", "Fira Code", monospace',
         fontSize: 12.5,
@@ -100,55 +100,47 @@ export function XTermPanel({ lines, stream = true }: XTermPanelProps) {
       termRef.current = terminal;
       fitRef.current = fitAddon;
 
-      // Banner
-      terminal.writeln('\x1b[1;35m▸ OpsPilot Build Log\x1b[0m  \x1b[2m(hardware-accelerated · 50k lines scrollback)\x1b[0m');
-      terminal.writeln('\x1b[2m─────────────────────────────────────────────────\x1b[0m');
-      terminal.writeln('');
+      // Welcome header
+      terminal.writeln('\x1b[2m--- OpsPilot Execution Terminal (Hardware Accelerated) ---\x1b[0m');
 
-      if (stream) {
-        let delay = 0;
-        lines.forEach((line, i) => {
-          const t = setTimeout(() => {
-            // Line number prefix
-            const num = String(i + 1).padStart(4, ' ');
-            terminal.writeln(`\x1b[2m${num}\x1b[0m  ${ansiColorize(line)}`);
-          }, delay);
-          streamTimersRef.current.push(t);
-          // Variable delay: faster for large batches
-          delay += lines.length > 100 ? 30 : 120 + Math.random() * 60;
-        });
-      } else {
-        lines.forEach((line, i) => {
-          const num = String(i + 1).padStart(4, ' ');
-          terminal.writeln(`\x1b[2m${num}\x1b[0m  ${ansiColorize(line)}`);
-        });
+      if (!stream || lines.length === 0) {
+        // Fast dump without delay
+        lines.forEach(l => terminal.writeln(ansiColorize(l)));
+        return;
       }
 
-      // Resize observer
-      const ro = new ResizeObserver(() => fitAddon.fit());
-      if (containerRef.current) ro.observe(containerRef.current);
-      return () => ro.disconnect();
+      // Realistic staggered stream playback
+      lines.forEach((line, i) => {
+        const delay = Math.min(i * 12, 1200); // capped at 1.2s max total replay
+        const t = setTimeout(() => {
+          if (termRef.current) {
+            terminal.writeln(ansiColorize(line));
+          }
+        }, delay);
+        streamTimersRef.current.push(t);
+      });
     }
 
     init();
 
+    const ro = new ResizeObserver(() => {
+      try { fitRef.current?.fit(); } catch { /* ignore */ }
+    });
+    ro.observe(containerRef.current);
+
     return () => {
+      ro.disconnect();
       streamTimersRef.current.forEach(clearTimeout);
       termRef.current?.dispose();
+      termRef.current = null;
     };
-    // Re-run when lines change (new step selected)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [JSON.stringify(lines)]);
+  }, [lines, stream]);
 
   return (
-    <>
-      <style>{`
-        .xterm { height: 100%; }
-        .xterm-viewport { overflow-y: auto !important; }
-        .xterm-screen { padding: 6px 8px; }
-        .xterm .xterm-rows { font-feature-settings: "liga" 1, "calt" 1; }
-      `}</style>
-      <div ref={containerRef} className="w-full h-full" style={{ minHeight: 0 }} />
-    </>
+    <div
+      ref={containerRef}
+      className="w-full h-full min-h-[320px] p-2 select-text"
+      style={{ background: 'var(--bg-primary)' }}
+    />
   );
 }

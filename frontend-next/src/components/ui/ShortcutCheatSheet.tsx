@@ -22,35 +22,61 @@ export function ShortcutCheatSheet({ open, onClose }: ShortcutCheatSheetProps) {
 
   return (
     <div
-      className="fixed inset-0 z-[100] bg-[#09090B]/85 backdrop-blur-md flex items-center justify-center p-4 transition-opacity duration-200"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 transition-opacity duration-200 backdrop-blur-md"
+      style={{ background: 'rgba(0,0,0,0.6)' }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="w-full max-w-md bg-[#111113] border border-[#27272A] rounded-xl shadow-2xl overflow-hidden animate-slide-up">
+      <div
+        className="w-full max-w-md border rounded-xl overflow-hidden animate-slide-up"
+        style={{
+          background: 'var(--bg-secondary)',
+          borderColor: 'var(--border)',
+          boxShadow: 'var(--shadow-md)',
+        }}
+      >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[#1C1C1F]">
+        <div
+          className="flex items-center justify-between px-5 py-4 border-b"
+          style={{ background: 'var(--bg-tertiary)', borderColor: 'var(--border)' }}
+        >
           <div className="flex items-center gap-2">
-            <Keyboard size={16} className="text-violet-400" />
-            <h2 className="text-sm font-semibold text-white">Keyboard Shortcuts</h2>
+            <Keyboard size={16} style={{ color: 'var(--accent)' }} />
+            <h2 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Keyboard Shortcuts</h2>
           </div>
-          <button onClick={onClose} className="p-1 rounded hover:bg-zinc-800 text-zinc-500 hover:text-zinc-200 transition-colors">
+          <button
+            onClick={onClose}
+            className="p-1 rounded transition-colors"
+            style={{ color: 'var(--text-muted)' }}
+          >
             <X size={15} />
           </button>
         </div>
 
         {/* Content */}
         <div className="p-5 space-y-4">
-          <div className="divide-y divide-[#1C1C1F]">
+          <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
             {SHORTCUTS.map((item, i) => (
-              <div key={i} className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
-                <span className="text-xs text-zinc-400 font-medium">{item.description}</span>
+              <div
+                key={i}
+                className="flex items-center justify-between py-3 first:pt-0 last:pb-0"
+                style={{ borderColor: 'var(--border)' }}
+              >
+                <span className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>{item.description}</span>
                 <div className="flex items-center gap-1">
                   {item.keys.map((k, idx) => (
                     <React.Fragment key={idx}>
-                      <kbd className="text-[10px] font-mono bg-[#18181B] text-zinc-300 px-2 py-0.5 rounded border border-[#27272A] shadow">
+                      <kbd
+                        className="text-[10px] font-mono px-2 py-0.5 rounded border"
+                        style={{
+                          background: 'var(--bg-primary)',
+                          borderColor: 'var(--border)',
+                          color: 'var(--text-primary)',
+                        }}
+                      >
                         {k}
                       </kbd>
                       {idx < item.keys.length - 1 && item.keys[0] !== '⌘ K' && (
-                        <span className="text-[10px] text-zinc-600 font-semibold">then</span>
+                        <span className="text-[10px] font-semibold" style={{ color: 'var(--text-muted)' }}>then</span>
                       )}
                     </React.Fragment>
                   ))}
@@ -61,8 +87,13 @@ export function ShortcutCheatSheet({ open, onClose }: ShortcutCheatSheetProps) {
         </div>
 
         {/* Footer */}
-        <div className="bg-[#18181B] px-5 py-3 border-t border-[#1C1C1F] text-center">
-          <p className="text-[10px] text-zinc-500 font-medium">Type any combination above to navigate rapidly.</p>
+        <div
+          className="px-5 py-3 border-t text-center"
+          style={{ background: 'var(--bg-tertiary)', borderColor: 'var(--border)' }}
+        >
+          <p className="text-[10px] font-medium" style={{ color: 'var(--text-muted)' }}>
+            Type any combination above to navigate rapidly.
+          </p>
         </div>
       </div>
     </div>

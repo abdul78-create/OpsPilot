@@ -70,7 +70,6 @@ function generatePipelineFromPrompt(prompt: string): GeneratedPipeline {
       nodeList.push({ type: 'deploy', label: target, subtext: 'production environment' });
     } else {
       nodeList.push({ type: 'deploy', label: 'Container Registry Push', subtext: 'docker.io/workspace' });
-
     }
 
     nodeList.push({ type: 'notification', label: 'Slack Webhook', subtext: '#deployments' });
@@ -89,7 +88,7 @@ function generatePipelineFromPrompt(prompt: string): GeneratedPipeline {
     source: node.id,
     target: nodes[i + 1].id,
     animated: true,
-    style: { stroke: '#64748b', strokeWidth: 2 },
+    style: { stroke: 'var(--border-bright)', strokeWidth: 2 },
   }));
 
   return { nodes, edges };
@@ -129,16 +128,22 @@ export function AIAutoBuilder({ onGenerate }: AIAutoBuilderProps) {
 
   return (
     <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 w-full max-w-2xl px-4 select-none">
-      <div className="rounded-2xl bg-slate-900/95 border border-slate-700/80 backdrop-blur-xl shadow-2xl overflow-hidden">
+      <div
+        className="rounded-2xl border backdrop-blur-xl shadow-2xl overflow-hidden"
+        style={{
+          background: 'var(--bg-overlay)',
+          borderColor: 'var(--border)',
+        }}
+      >
         {/* Input row */}
         <div className="flex items-center gap-3 px-4 py-3">
           <div className="flex items-center gap-2 shrink-0">
             {thinking ? (
-              <Loader2 size={16} className="text-blue-400 animate-spin" />
+              <Loader2 size={15} className="animate-spin" style={{ color: 'var(--accent)' }} />
             ) : (
-              <Sparkles size={16} className="text-blue-400" />
+              <Sparkles size={15} style={{ color: 'var(--accent)' }} />
             )}
-            <span className="text-xs font-bold text-blue-300">AI Auto Builder</span>
+            <span className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>AI Auto Builder</span>
           </div>
 
           <input
@@ -149,13 +154,20 @@ export function AIAutoBuilder({ onGenerate }: AIAutoBuilderProps) {
             onKeyDown={handleKey}
             placeholder="Describe your pipeline… e.g. 'Deploy my Go API to K8s with Trivy scan'"
             disabled={thinking}
-            className="flex-1 bg-transparent text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none disabled:opacity-50"
+            className="flex-1 bg-transparent text-xs focus:outline-none disabled:opacity-50"
+            style={{
+              color: 'var(--text-primary)',
+            }}
           />
 
           <button
             onClick={handleGenerate}
             disabled={!prompt.trim() || thinking}
-            className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-bold hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            style={{
+              background: 'var(--accent)',
+              color: 'var(--accent-fg)',
+            }}
           >
             {thinking ? 'Generating…' : <>Generate <ArrowRight size={12} /></>}
           </button>
@@ -168,7 +180,12 @@ export function AIAutoBuilder({ onGenerate }: AIAutoBuilderProps) {
               <button
                 key={ex}
                 onClick={() => { setPrompt(ex); inputRef.current?.focus(); }}
-                className="text-[10px] text-slate-400 hover:text-slate-200 bg-slate-950 border border-slate-800 hover:border-slate-600 rounded-full px-2.5 py-1 transition-colors"
+                className="text-[10px] rounded-full px-2.5 py-1 transition-colors border hover:opacity-80"
+                style={{
+                  background: 'var(--bg-tertiary)',
+                  borderColor: 'var(--border)',
+                  color: 'var(--text-muted)',
+                }}
               >
                 {ex}
               </button>
@@ -178,8 +195,11 @@ export function AIAutoBuilder({ onGenerate }: AIAutoBuilderProps) {
 
         {thinking && (
           <div className="px-4 pb-3">
-            <div className="h-1 bg-slate-800 rounded-full overflow-hidden">
-              <div className="h-full bg-blue-500 rounded-full animate-[pulse_1s_ease-in-out_infinite] w-2/3" />
+            <div className="h-1 rounded-full overflow-hidden" style={{ background: 'var(--border)' }}>
+              <div
+                className="h-full rounded-full animate-pulse w-2/3"
+                style={{ background: 'var(--accent)' }}
+              />
             </div>
           </div>
         )}

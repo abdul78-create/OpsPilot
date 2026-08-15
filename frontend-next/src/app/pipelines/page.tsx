@@ -80,22 +80,29 @@ export default function PipelinesPage() {
       <div className="flex flex-col h-[calc(100vh-5.5rem)] space-y-3">
 
         {/* Header */}
-        <div className="h-14 px-4 rounded-xl bg-[#111113] border border-[#27272A] flex items-center justify-between shrink-0">
+        <div className="h-14 px-4 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border)] flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
-            <GitBranch size={16} className="text-violet-400" />
-            <h1 className="text-sm font-bold text-zinc-100">Pipelines</h1>
-            <span className="text-[10px] font-mono text-zinc-500 border border-[#27272A] px-2 py-0.5 rounded-full">{stats.total} total</span>
+            <GitBranch size={15} className="text-[var(--text-muted)]" />
+            <h1 className="text-sm font-bold text-[var(--text-primary)]">Pipelines</h1>
+            <span className="text-[10px] font-mono text-[var(--text-muted)] border border-[var(--border)] px-2 py-0.5 rounded-full">
+              {stats.total} total
+            </span>
             {stats.running > 0 && (
-              <span className="text-[10px] font-mono text-violet-300 border border-violet-800/40 bg-violet-900/20 px-2 py-0.5 rounded-full animate-pulse">{stats.running} running</span>
+              <span className="text-[10px] font-mono text-[var(--info)] border border-[var(--border)] bg-[var(--info-dim)] px-2 py-0.5 rounded-full animate-pulse">
+                {stats.running} running
+              </span>
             )}
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={load} className="flex items-center gap-1.5 text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors">
+            <button
+              onClick={load}
+              className="flex items-center gap-1.5 text-[11px] text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors"
+            >
               <RefreshCw size={12} className={loading ? 'animate-spin' : ''} /> Refresh
             </button>
             <button
               onClick={() => router.push('/builder')}
-              className="flex items-center gap-1.5 text-[11px] bg-violet-600 hover:bg-violet-500 text-white px-3 py-1.5 rounded-lg font-semibold transition-colors"
+              className="flex items-center gap-1.5 text-[11px] bg-[var(--accent)] text-[var(--accent-fg)] px-3 py-1.5 rounded-lg font-semibold transition-opacity hover:opacity-80"
             >
               <Plus size={12} /> New Pipeline
             </button>
@@ -105,15 +112,15 @@ export default function PipelinesPage() {
         {/* Stats */}
         <div className="grid grid-cols-3 gap-3 shrink-0">
           {[
-            { label: 'Total', value: stats.total, icon: Activity, color: 'text-zinc-400' },
-            { label: 'Running', value: stats.running, icon: Loader2, color: 'text-violet-400' },
-            { label: 'Passing', value: stats.passing, icon: CheckCircle2, color: 'text-emerald-400' },
+            { label: 'Total', value: stats.total, icon: Activity, color: 'text-[var(--text-muted)]' },
+            { label: 'Running', value: stats.running, icon: Loader2, color: 'text-[var(--info)]' },
+            { label: 'Passing', value: stats.passing, icon: CheckCircle2, color: 'text-[var(--success)]' },
           ].map(({ label, value, icon: Icon, color }) => (
-            <div key={label} className="bg-[#111113] border border-[#27272A] rounded-xl p-3 flex items-center gap-3">
-              <Icon size={16} className={color} />
+            <div key={label} className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl p-3 flex items-center gap-3">
+              <Icon size={15} className={color} />
               <div>
-                <div className="text-[10px] text-zinc-500 uppercase tracking-wider">{label}</div>
-                <div className="text-xl font-bold text-zinc-100 font-mono">{value}</div>
+                <div className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider">{label}</div>
+                <div className="text-xl font-bold text-[var(--text-primary)] font-mono">{value}</div>
               </div>
             </div>
           ))}
@@ -125,8 +132,8 @@ export default function PipelinesPage() {
         </div>
 
         {/* Table */}
-        <div className="flex-1 min-h-0 bg-[#111113] border border-[#27272A] rounded-xl overflow-hidden flex flex-col">
-          <div className="h-9 px-4 border-b border-[#27272A] flex items-center gap-4 text-[10px] font-bold text-zinc-500 uppercase tracking-wider shrink-0 bg-[#18181B]/40">
+        <div className="flex-1 min-h-0 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl overflow-hidden flex flex-col">
+          <div className="h-9 px-4 border-b border-[var(--border)] flex items-center gap-4 text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider shrink-0 bg-[var(--bg-tertiary)]">
             <span className="flex-1">Pipeline</span>
             <span className="w-28">Repository</span>
             <span className="w-24 text-right">Success Rate</span>
@@ -144,7 +151,10 @@ export default function PipelinesPage() {
                 title="No pipelines found"
                 description="Create your first pipeline from the Builder"
                 action={
-                  <button onClick={() => router.push('/builder')} className="text-xs text-violet-400 hover:text-violet-300 border border-violet-800/40 px-3 py-1.5 rounded-lg transition-colors">
+                  <button
+                    onClick={() => router.push('/builder')}
+                    className="text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border)] px-3 py-1.5 rounded-lg transition-colors"
+                  >
                     Open Builder
                   </button>
                 }
@@ -154,30 +164,30 @@ export default function PipelinesPage() {
                 <div
                   key={p.id}
                   onClick={() => router.push(`/runs?pipelineId=${p.id}`)}
-                  className="h-14 px-4 border-b border-[#27272A]/60 flex items-center gap-4 text-xs cursor-pointer hover:bg-[#18181B]/35 transition-colors group"
+                  className="h-14 px-4 border-b border-[var(--border)] flex items-center gap-4 text-xs cursor-pointer hover:bg-[var(--bg-tertiary)] transition-colors group"
                 >
                   <div className="flex-1 min-w-0">
-                    <div className="font-semibold text-zinc-200 group-hover:text-white truncate">{p.name}</div>
+                    <div className="font-semibold text-[var(--text-secondary)] group-hover:text-[var(--text-primary)] truncate">{p.name}</div>
                     {p.branch && (
-                      <div className="text-[10px] font-mono text-zinc-500 flex items-center gap-1 mt-0.5">
+                      <div className="text-[10px] font-mono text-[var(--text-muted)] flex items-center gap-1 mt-0.5">
                         <GitBranch size={9} /> {p.branch}
                       </div>
                     )}
                   </div>
 
-                  <div className="w-28 text-[10px] font-mono text-zinc-400 truncate">
+                  <div className="w-28 text-[10px] font-mono text-[var(--text-muted)] truncate">
                     {p.repositoryUrl?.replace('https://github.com/', '') ?? '—'}
                   </div>
 
                   <div className="w-24 text-right">
                     {p.successRate !== undefined ? (
-                      <span className={`text-[11px] font-bold font-mono ${p.successRate >= 80 ? 'text-emerald-400' : p.successRate >= 50 ? 'text-amber-400' : 'text-rose-400'}`}>
+                      <span className={`text-[11px] font-bold font-mono ${p.successRate >= 80 ? 'text-[var(--success)]' : p.successRate >= 50 ? 'text-[var(--warning)]' : 'text-[var(--error)]'}`}>
                         {p.successRate.toFixed(0)}%
                       </span>
-                    ) : <span className="text-zinc-600">—</span>}
+                    ) : <span className="text-[var(--text-muted)]">—</span>}
                   </div>
 
-                  <div className="w-24 text-right font-mono text-[10px] text-zinc-500 flex items-center justify-end gap-1">
+                  <div className="w-24 text-right font-mono text-[10px] text-[var(--text-muted)] flex items-center justify-end gap-1">
                     <Clock size={10} /> {timeAgo(p.lastRunAt)}
                   </div>
 
@@ -189,7 +199,7 @@ export default function PipelinesPage() {
                     <button
                       onClick={() => handleTrigger(p)}
                       disabled={triggering === p.id}
-                      className="flex items-center gap-1 text-[10px] font-semibold text-white bg-violet-600 hover:bg-violet-500 px-2.5 py-1 rounded-lg transition-colors disabled:opacity-50"
+                      className="flex items-center gap-1 text-[10px] font-semibold bg-[var(--accent)] text-[var(--accent-fg)] px-2.5 py-1 rounded-lg transition-opacity hover:opacity-80 disabled:opacity-50"
                     >
                       {triggering === p.id ? <Loader2 size={10} className="animate-spin" /> : <Play size={10} />}
                       Run

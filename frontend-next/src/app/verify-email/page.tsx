@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { CheckCircle2, XCircle, ArrowRight, Loader2 } from 'lucide-react';
 
 type State = 'loading' | 'success' | 'error';
 
@@ -25,7 +26,7 @@ function VerifyEmailContent() {
 
     const verify = async () => {
       try {
-        const apiBase = process.env.NEXT_PUBLIC_API_URL || '';
+        const apiBase = process.env.NEXT_PUBLIC_API_URL || 'https://opspilot-backend-nq7l.onrender.com';
         const res = await fetch(`${apiBase}/v1/auth/verify-email`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -58,111 +59,136 @@ function VerifyEmailContent() {
 
   if (state === 'loading') {
     return (
-      <>
-        <div style={{ width: 80, height: 80, borderRadius: '50%', background: 'rgba(73,75,214,0.1)', border: '1px solid rgba(73,75,214,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px', position: 'relative' }}>
-          <div style={{ position: 'absolute', inset: 0, background: 'rgba(128,131,255,0.1)', borderRadius: '50%', filter: 'blur(8px)' }} />
-          <svg style={{ animation: 'spin 1s linear infinite', position: 'relative', zIndex: 1 }} width="32" height="32" viewBox="0 0 24 24" fill="none">
-            <circle cx="12" cy="12" r="10" stroke="#c0c1ff" strokeWidth="3" strokeDasharray="30" strokeDashoffset="10"/>
-          </svg>
+      <div className="text-center space-y-4">
+        <div
+          className="w-14 h-14 rounded-full flex items-center justify-center mx-auto border"
+          style={{ background: 'var(--bg-tertiary)', borderColor: 'var(--border)' }}
+        >
+          <Loader2 size={26} className="animate-spin" style={{ color: 'var(--text-secondary)' }} />
         </div>
-        <h2 style={{ fontSize: 22, fontWeight: 700, color: '#e4e1e5', textAlign: 'center', marginBottom: 8 }}>Verifying your identity…</h2>
-        <p style={{ fontSize: 14, color: '#908fa0', textAlign: 'center' }}>This will only take a moment.</p>
-      </>
+        <div className="space-y-1">
+          <h2 className="text-lg font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>
+            Verifying your identity…
+          </h2>
+          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+            Validating security token with OpsPilot auth service.
+          </p>
+        </div>
+      </div>
     );
   }
 
   if (state === 'success') {
     return (
-      <>
-        <div style={{ width: 80, height: 80, borderRadius: '50%', background: 'rgba(74,225,118,0.08)', border: '1px solid rgba(74,225,118,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>
-          <span style={{ fontSize: 36, color: '#4ae176' }}>✓</span>
+      <div className="text-center space-y-4">
+        <div
+          className="w-14 h-14 rounded-full flex items-center justify-center mx-auto border"
+          style={{ background: 'var(--success-dim)', borderColor: 'var(--success)', color: 'var(--success)' }}
+        >
+          <CheckCircle2 size={28} />
         </div>
-        <h2 style={{ fontSize: 22, fontWeight: 700, color: '#e4e1e5', textAlign: 'center', marginBottom: 12 }}>Email verified!</h2>
-        <p style={{ fontSize: 14, color: '#908fa0', textAlign: 'center', marginBottom: 28 }}>Your account is now active. You&apos;re signed in and ready to go.</p>
-        <div style={{ textAlign: 'center' }}>
+        <div className="space-y-1">
+          <h2 className="text-lg font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>
+            Email verified
+          </h2>
+          <p className="text-xs" style={{ color: 'var(--text-muted)', lineHeight: '1.6' }}>
+            Your account is now activated. You&apos;re signed in and ready to access your DevOps workspaces.
+          </p>
+        </div>
+        <div className="pt-2">
           <Link
             id="verify-go-dashboard"
             href="/dashboard"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '12px 32px', background: '#494bd6', color: '#fff', borderRadius: 8, fontSize: 13, fontWeight: 500, textDecoration: 'none' }}
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-semibold"
+            style={{ background: 'var(--accent)', color: 'var(--accent-fg)' }}
           >
-            Go to Dashboard →
+            <span>Go to Dashboard</span>
+            <ArrowRight size={14} />
           </Link>
         </div>
-      </>
+      </div>
     );
   }
 
   return (
-    <>
-      <div style={{ width: 80, height: 80, borderRadius: '50%', background: 'rgba(255,180,171,0.05)', border: '1px solid rgba(255,180,171,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>
-        <span style={{ fontSize: 36, color: '#ffb4ab' }}>✖</span>
+    <div className="text-center space-y-4">
+      <div
+        className="w-14 h-14 rounded-full flex items-center justify-center mx-auto border"
+        style={{ background: 'var(--error-dim)', borderColor: 'var(--error)', color: 'var(--error)' }}
+      >
+        <XCircle size={28} />
       </div>
-      <h2 style={{ fontSize: 22, fontWeight: 700, color: '#e4e1e5', textAlign: 'center', marginBottom: 12 }}>Verification failed</h2>
-      <p style={{ fontSize: 13, color: '#908fa0', textAlign: 'center', lineHeight: 1.6, marginBottom: 28 }}>{message}</p>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'center' }}>
-        <Link href="/register" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '12px 28px', background: '#494bd6', color: '#fff', borderRadius: 8, fontSize: 13, fontWeight: 500, textDecoration: 'none' }}>
-          Register again
+      <div className="space-y-1">
+        <h2 className="text-lg font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>
+          Verification failed
+        </h2>
+        <p className="text-xs" style={{ color: 'var(--text-muted)', lineHeight: '1.6' }}>
+          {message}
+        </p>
+      </div>
+      <div className="pt-2 flex flex-col sm:flex-row gap-2 justify-center">
+        <Link
+          href="/register"
+          className="inline-flex items-center justify-center px-4 py-2 rounded-xl text-xs font-semibold"
+          style={{ background: 'var(--accent)', color: 'var(--accent-fg)' }}
+        >
+          Create New Account
         </Link>
-        <Link href="/login" style={{ fontSize: 13, color: '#908fa0', textDecoration: 'none' }}>Back to sign in</Link>
+        <Link
+          href="/login"
+          className="inline-flex items-center justify-center px-4 py-2 rounded-xl text-xs font-semibold border"
+          style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
+        >
+          Sign in
+        </Link>
       </div>
-    </>
+    </div>
   );
 }
 
 export default function VerifyEmailPage() {
   return (
-    <>
-      <style>{`
-        body { background: #09090B; color: #e4e1e5; overflow-x: hidden; }
-        .ambient {
-          position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -1;
-          background: radial-gradient(circle at 50% -20%, rgba(128,131,255,0.15), rgba(19,19,22,0) 70%);
-        }
-        .dot-grid {
-          position: absolute; inset: 0; z-index: 0; opacity: 0.1; pointer-events: none;
-          background-image: radial-gradient(#464554 1px, transparent 1px);
-          background-size: 24px 24px;
-        }
-        .card-edge {
-          background: linear-gradient(180deg,#3F3F46 0%,#27272A 100%);
-          padding: 1px; border-radius: 12px;
-          box-shadow: 0px 8px 32px rgba(0,0,0,0.8);
-        }
-        .card-inner { background: #111113; border-radius: 11px; padding: 48px 40px; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-      `}</style>
+    <div
+      className="min-h-screen flex items-center justify-center p-6"
+      style={{ background: 'var(--bg-primary)', color: 'var(--text-primary)', fontFamily: 'Inter, system-ui, sans-serif' }}
+    >
+      <div className="w-full max-w-md space-y-6">
 
-      <div className="ambient" />
-
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden', fontFamily: 'Inter, sans-serif' }}>
-        <div className="dot-grid" />
-
-        <div style={{ width: '100%', maxWidth: 420, padding: '0 16px', position: 'relative', zIndex: 1 }}>
-          {/* Brand */}
-          <div style={{ textAlign: 'center', marginBottom: 32 }}>
-            <h1 style={{ fontSize: 36, fontWeight: 700, color: '#e4e1e5', letterSpacing: '-0.03em', marginBottom: 8 }}>OpsPilot</h1>
-            <p style={{ fontSize: 14, color: '#908fa0' }}>Enterprise Security Protocol</p>
-          </div>
-
-          <div className="card-edge">
-            <div className="card-inner">
-              <Suspense fallback={
-                <div style={{ textAlign: 'center', padding: 32 }}>
-                  <svg style={{ animation: 'spin 1s linear infinite', margin: 'auto' }} width="32" height="32" viewBox="0 0 24 24" fill="none">
-                    <circle cx="12" cy="12" r="10" stroke="#c0c1ff" strokeWidth="3" strokeDasharray="30" strokeDashoffset="10"/>
-                  </svg>
-                </div>
-              }>
-                <VerifyEmailContent />
-              </Suspense>
+        {/* Brand */}
+        <div className="text-center space-y-2">
+          <Link href="/" className="inline-flex items-center gap-2 text-decoration-none">
+            <div
+              className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm"
+              style={{ background: 'var(--accent)', color: 'var(--accent-fg)' }}
+            >
+              OP
             </div>
-          </div>
-
-          <div style={{ textAlign: 'center', marginTop: 20 }}>
-            <Link href="/login" style={{ fontSize: 12, color: '#464554', textDecoration: 'none' }}>Return to Login</Link>
-          </div>
+            <span className="text-base font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>
+              OpsPilot
+            </span>
+          </Link>
+          <p className="text-xs tracking-wider uppercase font-semibold" style={{ color: 'var(--text-muted)' }}>
+            Security Protocol
+          </p>
         </div>
+
+        {/* Card */}
+        <div
+          className="rounded-2xl p-8 border"
+          style={{ background: 'var(--bg-secondary)', borderColor: 'var(--border)', boxShadow: 'var(--shadow-md)' }}
+        >
+          <Suspense
+            fallback={
+              <div className="flex justify-center p-8">
+                <Loader2 size={24} className="animate-spin" style={{ color: 'var(--text-muted)' }} />
+              </div>
+            }
+          >
+            <VerifyEmailContent />
+          </Suspense>
+        </div>
+
       </div>
-    </>
+    </div>
   );
 }

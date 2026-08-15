@@ -40,27 +40,27 @@ export function TerminalStream({
 
     const term = new Terminal({
       theme: {
-        background: '#09090B',
-        foreground: '#E4E4E7',
-        cursor: '#7C3AED',
-        cursorAccent: '#09090B',
-        selectionBackground: '#7C3AED40',
-        black: '#09090B',
-        brightBlack: '#3F3F46',
-        red: '#EF4444',
-        brightRed: '#F87171',
-        green: '#22C55E',
-        brightGreen: '#4ADE80',
-        yellow: '#EAB308',
-        brightYellow: '#FACC15',
-        blue: '#3B82F6',
-        brightBlue: '#60A5FA',
-        magenta: '#A855F7',
-        brightMagenta: '#C084FC',
-        cyan: '#06B6D4',
-        brightCyan: '#22D3EE',
-        white: '#E4E4E7',
-        brightWhite: '#F4F4F5',
+        background: '#09090b',
+        foreground: '#e4e4e7',
+        cursor: '#a1a1aa',
+        cursorAccent: '#09090b',
+        selectionBackground: 'rgba(255,255,255,0.15)',
+        black: '#09090b',
+        brightBlack: '#3f3f46',
+        red: '#ef4444',
+        brightRed: '#f87171',
+        green: '#22c55e',
+        brightGreen: '#4ade80',
+        yellow: '#eab308',
+        brightYellow: '#facc15',
+        blue: '#60a5fa',
+        brightBlue: '#93c5fd',
+        magenta: '#d4d4d8',
+        brightMagenta: '#f4f4f5',
+        cyan: '#06b6d4',
+        brightCyan: '#22d3ee',
+        white: '#e4e4e7',
+        brightWhite: '#ffffff',
       },
       fontFamily: '"JetBrains Mono", "Geist Mono", "Fira Code", monospace',
       fontSize: 12.5,
@@ -82,7 +82,7 @@ export function TerminalStream({
     fitAddonRef.current = fitAddon;
 
     // Welcome banner
-    term.writeln('\x1b[1;35m▸ OpsPilot Build Terminal \x1b[0m\x1b[2m(hardware-accelerated canvas)\x1b[0m');
+    term.writeln('\x1b[1;37m▸ OpsPilot Build Terminal \x1b[0m\x1b[2m(hardware-accelerated canvas)\x1b[0m');
     term.writeln('\x1b[2m─────────────────────────────────────────────────\x1b[0m');
     term.writeln('\x1b[2mConnecting to build log stream...\x1b[0m');
 
@@ -100,146 +100,155 @@ export function TerminalStream({
       ? localStorage.getItem('opspilot_token') ?? ''
       : '';
 
-    const url = `${apiBase}/v1/runs/${runId}/logs/stream?token=${token}`;
-    const source = new EventSource(url);
-    sseRef.current = source;
+    const streamUrl = `${apiBase}/v1/pipelines/runs/${runId}/logs/stream?token=${encodeURIComponent(token)}`;
 
-    source.onopen = () => {
+    const sse = new EventSource(streamUrl);
+    sseRef.current = sse;
+
+    sse.onopen = () => {
       setConnected(true);
-      terminalRef.current?.writeln(
-        `\x1b[2m\r\n✓ Stream connected · Run: \x1b[0m\x1b[36m${runId.slice(0, 8)}...\x1b[0m`
-      );
-      terminalRef.current?.writeln(
-        '\x1b[2m─────────────────────────────────────────────────\x1b[0m\r\n'
-      );
+      terminalRef.current?.writeln('\x1b[32m✔ Log stream connected\x1b[0m');
     };
 
-    source.onmessage = (event) => {
+    sse.onmessage = (event) => {
       try {
-        const parsed = JSON.parse(event.data);
-        const payload = parsed.data ?? parsed;
-        const message: string = typeof payload === 'string' ? payload : (payload.message ?? payload.content ?? JSON.stringify(payload));
-        const level: string = (payload.level ?? 'INFO').toUpperCase();
-        const ts: string = payload.timestamp
-          ? new Date(payload.timestamp).toISOString().split('T')[1].slice(0, 8)
-          : new Date().toISOString().split('T')[1].slice(0, 8);
-
-        let levelColor = '\x1b[2m';
-        if (level === 'ERROR') levelColor = '\x1b[31m';
-        else if (level === 'WARN') levelColor = '\x1b[33m';
-        else if (level === 'SUCCESS') levelColor = '\x1b[32m';
-        else if (level === 'DEBUG') levelColor = '\x1b[35m';
-
-        const line = `\x1b[2m${ts}\x1b[0m ${levelColor}${level.padEnd(7)}\x1b[0m ${message}`;
-        terminalRef.current?.writeln(line);
-        logBufferRef.current.push(`[${ts}] ${level.padEnd(7)} ${message}`);
+        const payload = JSON.parse(event.data);
+        const rawLine = typeof payload === 'string' ? payload : (payload.message ?? payload.log ?? event.data);
+        logBufferRef.current.push(rawLine);
         setLineCount((c) => c + 1);
+        terminalRef.current?.writeln(rawLine);
       } catch {
-        terminalRef.current?.writeln(event.data);
         logBufferRef.current.push(event.data);
         setLineCount((c) => c + 1);
+        terminalRef.current?.writeln(event.data);
       }
     };
 
-    source.onerror = () => {
+    sse.onerror = () => {
       setConnected(false);
-      if (source.readyState === EventSource.CLOSED) {
-        terminalRef.current?.writeln(
-          '\r\n\x1b[2m─────────────────────────────────────────────────\x1b[0m'
-        );
-        terminalRef.current?.writeln('\x1b[32m✓ Stream complete\x1b[0m\r\n');
-      }
+      terminalRef.current?.writeln('\x1b[33m⚠ Stream disconnected or build completed\x1b[0m');
+      sse.close();
     };
 
     return () => {
-      source.close();
+      sse.close();
       sseRef.current = null;
     };
   }, [runId, apiBase]);
 
-  // ── Resize observer to keep terminal filling container ────────────────────
+  // ── Auto-resize observer ──────────────────────────────────────────────────
   useEffect(() => {
-    if (!containerRef.current || !fitAddonRef.current) return;
+    if (!containerRef.current) return;
     const ro = new ResizeObserver(() => fitAddonRef.current?.fit());
     ro.observe(containerRef.current);
     return () => ro.disconnect();
   }, []);
 
-  // ── Copy logs to clipboard ────────────────────────────────────────────────
-  const handleCopy = useCallback(async () => {
-    await navigator.clipboard.writeText(logBufferRef.current.join('\n'));
+  const handleCopyLogs = useCallback(async () => {
+    const text = logBufferRef.current.join('\n');
+    await navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }, []);
 
   return (
     <div
-      className={`flex flex-col rounded-2xl border border-[#27272A] overflow-hidden bg-[#09090B] shadow-2xl transition-all duration-200 ${
-        isFullscreen ? 'fixed inset-4 z-50' : height == null ? 'h-full' : ''
+      className={`flex flex-col border rounded-xl overflow-hidden transition-all duration-200 ${
+        isFullscreen ? 'fixed inset-4 z-[9999]' : ''
       }`}
-      style={isFullscreen ? undefined : height != null ? { height: `${height}px` } : undefined}
+      style={{
+        height: isFullscreen ? 'calc(100vh - 2rem)' : height,
+        background: 'var(--bg-primary)',
+        borderColor: 'var(--border)',
+        boxShadow: 'var(--shadow-md)',
+      }}
     >
-      {/* Terminal Toolbar */}
-      <div className="flex items-center justify-between px-4 py-2 bg-[#111113] border-b border-[#27272A] shrink-0">
-        {/* Traffic lights */}
+      {/* Terminal Title Bar */}
+      <div
+        className="flex items-center justify-between px-4 py-2 border-b select-none shrink-0"
+        style={{ background: 'var(--bg-secondary)', borderColor: 'var(--border)' }}
+      >
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-[#EF4444]/70 hover:bg-[#EF4444] transition-colors cursor-pointer" onClick={onClose} />
-          <div className="w-3 h-3 rounded-full bg-[#EAB308]/70 hover:bg-[#EAB308] transition-colors cursor-pointer" />
-          <div className="w-3 h-3 rounded-full bg-[#22C55E]/70 hover:bg-[#22C55E] transition-colors cursor-pointer" onClick={() => setIsFullscreen(!isFullscreen)} />
-        </div>
-
-        {/* Center label */}
-        <div className="flex items-center gap-2 text-[11px] text-zinc-500 font-mono">
-          <span className="text-zinc-600">run://{runId?.slice(0, 8)}</span>
-          {lineCount > 0 && (
-            <span className="text-zinc-600">· {lineCount.toLocaleString()} lines</span>
-          )}
-        </div>
-
-        {/* Actions */}
-        <div className="flex items-center gap-2">
-          {/* Connection status */}
-          <div className={`flex items-center gap-1.5 text-[10px] font-mono px-2 py-0.5 rounded-md border ${
-            connected
-              ? 'text-emerald-400 border-emerald-500/20 bg-emerald-500/5'
-              : 'text-zinc-500 border-zinc-700/30 bg-zinc-800/20'
-          }`}>
-            {connected ? <Wifi size={10} /> : <WifiOff size={10} />}
-            {connected ? 'live' : 'closed'}
+          {/* Traffic lights */}
+          <div className="flex items-center gap-1.5 mr-2">
+            <div className="w-2.5 h-2.5 rounded-full" style={{ background: 'var(--error)' }} />
+            <div className="w-2.5 h-2.5 rounded-full" style={{ background: 'var(--warning)' }} />
+            <div className="w-2.5 h-2.5 rounded-full" style={{ background: 'var(--success)' }} />
           </div>
 
+          <span className="text-xs font-mono font-medium" style={{ color: 'var(--text-secondary)' }}>
+            run:{runId.slice(0, 8)}
+          </span>
+
+          {/* Connection badge */}
+          <div className="flex items-center gap-1 ml-2">
+            {connected ? (
+              <span
+                className="flex items-center gap-1 text-[10px] font-mono border px-2 py-0.5 rounded-full"
+                style={{
+                  background: 'var(--success-dim)',
+                  borderColor: 'var(--success)',
+                  color: 'var(--success)',
+                }}
+              >
+                <Wifi size={9} /> LIVE
+              </span>
+            ) : (
+              <span
+                className="flex items-center gap-1 text-[10px] font-mono border px-2 py-0.5 rounded-full"
+                style={{
+                  background: 'var(--bg-tertiary)',
+                  borderColor: 'var(--border)',
+                  color: 'var(--text-muted)',
+                }}
+              >
+                <WifiOff size={9} /> DISCONNECTED
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-mono" style={{ color: 'var(--text-muted)' }}>
+            {lineCount.toLocaleString()} lines
+          </span>
+
+          {/* Copy logs */}
           <button
-            onClick={handleCopy}
-            title="Copy all logs"
-            className="p-1.5 rounded-lg text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 transition-all"
+            onClick={handleCopyLogs}
+            className="p-1 rounded transition-colors"
+            style={{ color: 'var(--text-muted)' }}
+            title="Copy entire log output"
           >
-            {copied ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
+            {copied ? <Check size={12} style={{ color: 'var(--success)' }} /> : <Copy size={12} />}
           </button>
+
+          {/* Fullscreen toggle */}
           <button
-            onClick={() => setIsFullscreen(!isFullscreen)}
-            title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
-            className="p-1.5 rounded-lg text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 transition-all"
+            onClick={() => setIsFullscreen((f) => !f)}
+            className="p-1 rounded transition-colors"
+            style={{ color: 'var(--text-muted)' }}
+            title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
           >
-            {isFullscreen ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
+            {isFullscreen ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
           </button>
+
+          {/* Close button (optional) */}
           {onClose && (
             <button
               onClick={onClose}
-              title="Close terminal"
-              className="p-1.5 rounded-lg text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 transition-all"
+              className="p-1 rounded transition-colors"
+              style={{ color: 'var(--text-muted)' }}
+              title="Close Terminal"
             >
-              <X size={13} />
+              <X size={12} />
             </button>
           )}
         </div>
       </div>
 
-      {/* XTerm.js Canvas Surface */}
-      <div
-        ref={containerRef}
-        className="flex-1 min-h-0 p-3 overflow-hidden"
-        style={{ contain: 'strict' }}
-      />
+      {/* Terminal Canvas Container */}
+      <div ref={containerRef} className="flex-1 p-2 overflow-hidden" />
     </div>
   );
 }

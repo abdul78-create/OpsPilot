@@ -77,11 +77,9 @@ export default function SettingsPage() {
         id: '3fdaca7b-c8e4-4be4-ba50-e1a2085ac913',
         name: 'Production Workspace',
         slug: 'production-workspace',
-
         status: 'ACTIVE',
         createdAt: new Date().toISOString(),
       });
-
     } finally {
       setLoading(false);
     }
@@ -123,20 +121,29 @@ export default function SettingsPage() {
 
   return (
     <DeveloperShell>
-      <div className="flex flex-col h-[calc(100vh-5.5rem)] space-y-4 animate-fade-in">
+      <div className="flex flex-col h-[calc(100vh-5.5rem)] space-y-4">
 
         {/* Top Header Bar */}
-        <div className="h-14 px-4 rounded-xl bg-[#111113] border border-[#27272A] flex items-center justify-between shrink-0">
+        <div
+          className="h-14 px-4 rounded-xl border flex items-center justify-between shrink-0"
+          style={{ background: 'var(--bg-secondary)', borderColor: 'var(--border)' }}
+        >
           <div className="flex items-center gap-3">
-            <Settings size={16} className="text-violet-400" />
-            <h1 className="text-sm font-bold text-zinc-100">Organization Settings</h1>
-            <span className="text-[10px] font-mono text-zinc-500 border border-[#27272A] px-2 py-0.5 rounded-full">
+            <Settings size={15} style={{ color: 'var(--text-muted)' }} />
+            <h1 className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>Organization Settings</h1>
+            <span
+              className="text-[10px] font-mono border px-2 py-0.5 rounded-full"
+              style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}
+            >
               {org?.name ?? 'Production Workspace'}
             </span>
           </div>
 
           {/* Navigation Tabs */}
-          <div className="flex gap-1 bg-[#09090B] p-1 rounded-lg border border-[#27272A]">
+          <div
+            className="flex gap-1 p-1 rounded-lg border"
+            style={{ background: 'var(--bg-tertiary)', borderColor: 'var(--border)' }}
+          >
             {[
               { id: 'general', label: 'General', icon: Building },
               { id: 'team', label: 'Team & Access', icon: Users },
@@ -149,9 +156,12 @@ export default function SettingsPage() {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as any)}
-                  className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium transition-colors ${
-                    isActive ? 'bg-violet-600 text-white font-semibold shadow' : 'text-zinc-400 hover:text-zinc-200'
-                  }`}
+                  className="flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium transition-all"
+                  style={{
+                    background: isActive ? 'var(--accent)' : 'transparent',
+                    color: isActive ? 'var(--accent-fg)' : 'var(--text-muted)',
+                    fontWeight: isActive ? 600 : 400,
+                  }}
                 >
                   <Icon size={13} />
                   <span>{tab.label}</span>
@@ -162,61 +172,95 @@ export default function SettingsPage() {
         </div>
 
         {/* Main Content Area */}
-        <div className="flex-1 min-h-0 bg-[#111113] border border-[#27272A] rounded-xl p-6 overflow-y-auto">
+        <div
+          className="flex-1 min-h-0 border rounded-xl p-6 overflow-y-auto"
+          style={{ background: 'var(--bg-secondary)', borderColor: 'var(--border)' }}
+        >
 
           {/* TAB 1: GENERAL */}
           {activeTab === 'general' && (
             <div className="max-w-2xl space-y-6">
               <div>
-                <h2 className="text-sm font-bold text-zinc-100 mb-1">Organization Profile</h2>
-                <p className="text-xs text-zinc-400">Manage organization identity, slug, and subscription details.</p>
+                <h2 className="text-sm font-bold mb-1" style={{ color: 'var(--text-primary)' }}>Organization Profile</h2>
+                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Manage organization identity, slug, and subscription details.</p>
               </div>
 
               <div className="space-y-4 pt-2">
                 <div>
-                  <label className="text-[10px] text-zinc-500 uppercase tracking-wider block mb-1">Organization Name</label>
+                  <label className="text-[10px] uppercase tracking-wider block mb-1 font-semibold" style={{ color: 'var(--text-muted)' }}>
+                    Organization Name
+                  </label>
                   <input
                     type="text"
                     defaultValue={org?.name ?? 'Production Workspace'}
-                    className="w-full bg-[#09090B] border border-[#27272A] rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:border-violet-500/50"
+                    className="w-full border rounded-lg px-3 py-2 text-xs focus:outline-none"
+                    style={{
+                      background: 'var(--bg-tertiary)',
+                      borderColor: 'var(--border)',
+                      color: 'var(--text-primary)',
+                    }}
                   />
                 </div>
 
-
                 <div>
-                  <label className="text-[10px] text-zinc-500 uppercase tracking-wider block mb-1">Slug ID</label>
+                  <label className="text-[10px] uppercase tracking-wider block mb-1 font-semibold" style={{ color: 'var(--text-muted)' }}>
+                    Slug ID
+                  </label>
                   <input
                     type="text"
                     defaultValue={org?.slug ?? 'production-workspace'}
-
                     disabled
-                    className="w-full bg-[#09090B]/60 border border-[#27272A]/80 rounded-lg px-3 py-2 text-xs text-zinc-500 font-mono"
+                    className="w-full border rounded-lg px-3 py-2 text-xs font-mono opacity-70"
+                    style={{
+                      background: 'var(--bg-primary)',
+                      borderColor: 'var(--border)',
+                      color: 'var(--text-muted)',
+                    }}
                   />
                 </div>
 
                 <div>
-                  <label className="text-[10px] text-zinc-500 uppercase tracking-wider block mb-1">Organization ID</label>
+                  <label className="text-[10px] uppercase tracking-wider block mb-1 font-semibold" style={{ color: 'var(--text-muted)' }}>
+                    Organization ID
+                  </label>
                   <div className="flex items-center gap-2">
                     <input
                       type="text"
                       value={org?.id ?? '3fdaca7b-c8e4-4be4-ba50-e1a2085ac913'}
                       readOnly
-                      className="flex-1 bg-[#09090B] border border-[#27272A] rounded-lg px-3 py-2 text-xs text-zinc-400 font-mono"
+                      className="flex-1 border rounded-lg px-3 py-2 text-xs font-mono"
+                      style={{
+                        background: 'var(--bg-primary)',
+                        borderColor: 'var(--border)',
+                        color: 'var(--text-secondary)',
+                      }}
                     />
                     <CopyButton text={org?.id ?? '3fdaca7b-c8e4-4be4-ba50-e1a2085ac913'} label="Copy ID" />
                   </div>
                 </div>
 
-                <div className="pt-4 border-t border-[#27272A]">
-                  <div className="flex items-center justify-between p-4 rounded-xl bg-[#09090B] border border-[#27272A]">
+                <div className="pt-4 border-t" style={{ borderColor: 'var(--border)' }}>
+                  <div
+                    className="flex items-center justify-between p-4 rounded-xl border"
+                    style={{ background: 'var(--bg-tertiary)', borderColor: 'var(--border)' }}
+                  >
                     <div>
-                      <div className="text-xs font-bold text-zinc-200 flex items-center gap-2">
-                        <Sparkles size={14} className="text-violet-400" />
+                      <div className="text-xs font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+                        <Sparkles size={14} style={{ color: 'var(--accent)' }} />
                         OpsPilot Pro Plan (Unlimited Concurrent Builds)
                       </div>
-                      <div className="text-[11px] text-zinc-500 mt-0.5">5 Worker Threads · High-Performance Execution Engine</div>
+                      <div className="text-[11px] mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                        5 Worker Threads · High-Performance Execution Engine
+                      </div>
                     </div>
-                    <span className="text-[10px] font-mono font-bold text-emerald-400 bg-emerald-950/40 border border-emerald-800/50 px-2.5 py-1 rounded-full">
+                    <span
+                      className="text-[10px] font-mono font-bold border px-2.5 py-1 rounded-full"
+                      style={{
+                        background: 'var(--success-dim)',
+                        borderColor: 'var(--success)',
+                        color: 'var(--success)',
+                      }}
+                    >
                       Active
                     </span>
                   </div>
@@ -230,39 +274,58 @@ export default function SettingsPage() {
             <div className="max-w-3xl space-y-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-sm font-bold text-zinc-100 mb-1">Team Members & Access Control</h2>
-                  <p className="text-xs text-zinc-400">Manage team role permissions (RBAC) and send invitations.</p>
+                  <h2 className="text-sm font-bold mb-1" style={{ color: 'var(--text-primary)' }}>Team Members & Access Control</h2>
+                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Manage team role permissions (RBAC) and send invitations.</p>
                 </div>
                 <button
                   onClick={() => setShowInviteForm(v => !v)}
-                  className="flex items-center gap-1.5 text-xs bg-violet-600 hover:bg-violet-500 text-white px-3 py-1.5 rounded-lg font-semibold transition-colors"
+                  className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg font-semibold transition-opacity hover:opacity-80"
+                  style={{ background: 'var(--accent)', color: 'var(--accent-fg)' }}
                 >
                   <Plus size={13} /> Invite Member
                 </button>
               </div>
 
-              {/* Invite Form Modal / Inline */}
+              {/* Invite Form */}
               {showInviteForm && (
-                <form onSubmit={handleSendInvite} className="p-4 bg-[#09090B] border border-[#27272A] rounded-xl space-y-3 animate-slide-up">
-                  <p className="text-xs font-bold text-zinc-200">Invite New Teammate</p>
+                <form
+                  onSubmit={handleSendInvite}
+                  className="p-4 border rounded-xl space-y-3"
+                  style={{ background: 'var(--bg-tertiary)', borderColor: 'var(--border)' }}
+                >
+                  <p className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>Invite New Teammate</p>
                   <div className="grid grid-cols-3 gap-3">
                     <div className="col-span-2">
-                      <label className="text-[10px] text-zinc-500 uppercase tracking-wider block mb-1">Email Address</label>
+                      <label className="text-[10px] uppercase tracking-wider block mb-1 font-semibold" style={{ color: 'var(--text-muted)' }}>
+                        Email Address
+                      </label>
                       <input
                         type="email"
                         value={inviteEmail}
                         onChange={e => setInviteEmail(e.target.value)}
                         placeholder="colleague@company.com"
                         required
-                        className="w-full bg-[#111113] border border-[#27272A] rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:border-violet-500/50"
+                        className="w-full border rounded-lg px-3 py-2 text-xs focus:outline-none"
+                        style={{
+                          background: 'var(--bg-primary)',
+                          borderColor: 'var(--border)',
+                          color: 'var(--text-primary)',
+                        }}
                       />
                     </div>
                     <div>
-                      <label className="text-[10px] text-zinc-500 uppercase tracking-wider block mb-1">Role</label>
+                      <label className="text-[10px] uppercase tracking-wider block mb-1 font-semibold" style={{ color: 'var(--text-muted)' }}>
+                        Role
+                      </label>
                       <select
                         value={inviteRole}
                         onChange={e => setInviteRole(e.target.value as any)}
-                        className="w-full bg-[#111113] border border-[#27272A] rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:border-violet-500/50"
+                        className="w-full border rounded-lg px-3 py-2 text-xs focus:outline-none"
+                        style={{
+                          background: 'var(--bg-primary)',
+                          borderColor: 'var(--border)',
+                          color: 'var(--text-primary)',
+                        }}
                       >
                         <option value="ADMIN">ADMIN</option>
                         <option value="MEMBER">MEMBER</option>
@@ -274,14 +337,16 @@ export default function SettingsPage() {
                     <button
                       type="button"
                       onClick={() => setShowInviteForm(false)}
-                      className="px-3 py-1.5 text-xs text-zinc-400 border border-[#27272A] rounded-lg"
+                      className="px-3 py-1.5 text-xs border rounded-lg transition-colors"
+                      style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
                       disabled={inviting}
-                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-violet-600 hover:bg-violet-500 text-white font-bold rounded-lg"
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-opacity hover:opacity-80 disabled:opacity-50"
+                      style={{ background: 'var(--accent)', color: 'var(--accent-fg)' }}
                     >
                       {inviting ? <Loader2 size={12} className="animate-spin" /> : <Mail size={12} />}
                       Send Invitation
@@ -292,25 +357,44 @@ export default function SettingsPage() {
 
               {/* Members Table */}
               <div className="space-y-3">
-                <div className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider">Active Members ({members.length})</div>
-                <div className="bg-[#09090B] border border-[#27272A] rounded-xl overflow-hidden divide-y divide-[#27272A]/60">
+                <div className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+                  Active Members ({members.length})
+                </div>
+                <div
+                  className="border rounded-xl overflow-hidden divide-y"
+                  style={{ background: 'var(--bg-tertiary)', borderColor: 'var(--border)' }}
+                >
                   {members.map(m => (
-                    <div key={m.id} className="p-3.5 flex items-center justify-between text-xs">
+                    <div key={m.id} className="p-3.5 flex items-center justify-between text-xs" style={{ borderColor: 'var(--border)' }}>
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-violet-600/20 text-violet-300 font-bold flex items-center justify-center border border-violet-500/30">
+                        <div
+                          className="w-8 h-8 rounded-full font-bold flex items-center justify-center border text-xs"
+                          style={{
+                            background: 'var(--bg-secondary)',
+                            borderColor: 'var(--border)',
+                            color: 'var(--text-primary)',
+                          }}
+                        >
                           {m.name.slice(0, 1)}
                         </div>
                         <div>
-                          <div className="font-semibold text-zinc-200">{m.name}</div>
-                          <div className="text-[10px] text-zinc-500 font-mono">{m.email}</div>
+                          <div className="font-semibold" style={{ color: 'var(--text-primary)' }}>{m.name}</div>
+                          <div className="text-[10px] font-mono" style={{ color: 'var(--text-muted)' }}>{m.email}</div>
                         </div>
                       </div>
 
                       <div className="flex items-center gap-3">
-                        <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded border border-[#27272A] bg-[#111113] text-zinc-300">
+                        <span
+                          className="text-[10px] font-mono font-bold px-2 py-0.5 rounded border"
+                          style={{
+                            borderColor: 'var(--border)',
+                            background: 'var(--bg-secondary)',
+                            color: 'var(--text-secondary)',
+                          }}
+                        >
                           {m.role}
                         </span>
-                        <span className="text-[10px] text-zinc-500 font-mono">Joined {m.joinedAt}</span>
+                        <span className="text-[10px] font-mono" style={{ color: 'var(--text-muted)' }}>Joined {m.joinedAt}</span>
                       </div>
                     </div>
                   ))}
@@ -320,25 +404,41 @@ export default function SettingsPage() {
               {/* Pending Invitations */}
               {invites.length > 0 && (
                 <div className="space-y-3 pt-2">
-                  <div className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider">Pending Invitations ({invites.length})</div>
-                  <div className="bg-[#09090B] border border-[#27272A] rounded-xl overflow-hidden divide-y divide-[#27272A]/60 animate-fade-in">
+                  <div className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+                    Pending Invitations ({invites.length})
+                  </div>
+                  <div
+                    className="border rounded-xl overflow-hidden divide-y"
+                    style={{ background: 'var(--bg-tertiary)', borderColor: 'var(--border)' }}
+                  >
                     {invites.map(inv => (
-                      <div key={inv.id} className="p-3.5 flex items-center justify-between text-xs">
+                      <div key={inv.id} className="p-3.5 flex items-center justify-between text-xs" style={{ borderColor: 'var(--border)' }}>
                         <div className="flex items-center gap-3">
-                          <Mail size={14} className="text-amber-400" />
+                          <Mail size={14} style={{ color: 'var(--warning)' }} />
                           <div>
-                            <div className="font-semibold text-zinc-200">{inv.email}</div>
-                            <div className="text-[10px] text-zinc-500 font-mono">Invited {inv.invitedAt}</div>
+                            <div className="font-semibold" style={{ color: 'var(--text-primary)' }}>{inv.email}</div>
+                            <div className="text-[10px] font-mono" style={{ color: 'var(--text-muted)' }}>Invited {inv.invitedAt}</div>
                           </div>
                         </div>
 
                         <div className="flex items-center gap-3">
-                          <span className="text-[10px] font-mono text-amber-300 bg-amber-950/40 border border-amber-800/50 px-2 py-0.5 rounded">
+                          <span
+                            className="text-[10px] font-mono border px-2 py-0.5 rounded"
+                            style={{
+                              background: 'var(--warning-dim)',
+                              borderColor: 'var(--warning)',
+                              color: 'var(--warning)',
+                            }}
+                          >
                             {inv.role} (PENDING)
                           </span>
                           <button
                             onClick={() => handleRevokeInvite(inv.id)}
-                            className="text-[10px] text-rose-400 hover:text-rose-300 border border-rose-800/40 px-2 py-1 rounded"
+                            className="text-[10px] border px-2 py-1 rounded transition-colors"
+                            style={{
+                              borderColor: 'var(--error)',
+                              color: 'var(--error)',
+                            }}
                           >
                             Revoke
                           </button>
@@ -355,48 +455,65 @@ export default function SettingsPage() {
           {activeTab === 'github' && (
             <div className="max-w-2xl space-y-6">
               <div>
-                <h2 className="text-sm font-bold text-zinc-100 mb-1">GitHub App Integration</h2>
-                <p className="text-xs text-zinc-400">Connect OpsPilot to your GitHub organization for automatic webhook delivery and JWT authentication.</p>
+                <h2 className="text-sm font-bold mb-1" style={{ color: 'var(--text-primary)' }}>GitHub App Integration</h2>
+                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Connect OpsPilot to your GitHub organization for automatic webhook delivery and JWT authentication.</p>
               </div>
 
-              <div className="p-4 rounded-xl bg-[#09090B] border border-[#27272A] space-y-4">
+              <div
+                className="p-5 rounded-xl border space-y-4"
+                style={{ background: 'var(--bg-tertiary)', borderColor: 'var(--border)' }}
+              >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-xl bg-[#111113] text-zinc-200">
+                    <div
+                      className="p-2 rounded-xl border"
+                      style={{ background: 'var(--bg-secondary)', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
+                    >
                       <GithubIcon size={20} />
                     </div>
 
                     <div>
-                      <div className="text-xs font-bold text-zinc-200">OpsPilot GitHub App</div>
-                      <div className="text-[10px] text-zinc-500">Auto-provisions pipelines, verifies HMAC signatures, and syncs branches</div>
+                      <div className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>OpsPilot GitHub App</div>
+                      <div className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Auto-provisions pipelines, verifies HMAC signatures, and syncs branches</div>
                     </div>
                   </div>
-                  <span className="text-[10px] font-mono font-bold text-emerald-400 bg-emerald-950/40 border border-emerald-800/50 px-2.5 py-1 rounded-full">
+                  <span
+                    className="text-[10px] font-mono font-bold border px-2.5 py-1 rounded-full"
+                    style={{
+                      background: 'var(--success-dim)',
+                      borderColor: 'var(--success)',
+                      color: 'var(--success)',
+                    }}
+                  >
                     Connected
                   </span>
                 </div>
 
-                <div className="space-y-2 pt-2 border-t border-[#27272A] text-xs">
+                <div className="space-y-2 pt-2 border-t text-xs" style={{ borderColor: 'var(--border)' }}>
                   <div className="flex justify-between text-[11px]">
-                    <span className="text-zinc-500">Webhook Endpoint URL:</span>
-                    <code className="text-violet-400 font-mono">http://localhost/v1/webhooks/github</code>
+                    <span style={{ color: 'var(--text-muted)' }}>Webhook Endpoint URL:</span>
+                    <code className="font-mono font-semibold" style={{ color: 'var(--accent)' }}>http://localhost/v1/webhooks/github</code>
                   </div>
                   <div className="flex justify-between text-[11px]">
-                    <span className="text-zinc-500">HMAC Webhook Secret:</span>
-                    <span className="font-mono text-zinc-400">••••••••••••••••</span>
+                    <span style={{ color: 'var(--text-muted)' }}>HMAC Webhook Secret:</span>
+                    <span className="font-mono" style={{ color: 'var(--text-secondary)' }}>••••••••••••••••</span>
                   </div>
                 </div>
 
                 <div className="pt-2 flex justify-end">
                   <button
                     onClick={handleConnectGitHub}
-                    className="flex items-center gap-2 text-xs font-bold bg-[#18181B] hover:bg-zinc-800 text-zinc-100 px-4 py-2 rounded-lg transition-colors border border-[#27272A]"
+                    className="flex items-center gap-2 text-xs font-bold px-4 py-2 rounded-lg transition-colors border"
+                    style={{
+                      background: 'var(--bg-secondary)',
+                      borderColor: 'var(--border)',
+                      color: 'var(--text-primary)',
+                    }}
                   >
                     <GithubIcon size={14} />
-                    Manage Installations on GitHub
+                    <span>Manage Installations on GitHub</span>
                     <ExternalLink size={12} />
                   </button>
-
                 </div>
               </div>
             </div>
@@ -406,45 +523,66 @@ export default function SettingsPage() {
           {activeTab === 'notifications' && (
             <div className="max-w-2xl space-y-6">
               <div>
-                <h2 className="text-sm font-bold text-zinc-100 mb-1">Notification Preferences</h2>
-                <p className="text-xs text-zinc-400">Configure build failure alerts, Slack webhooks, and email digests.</p>
+                <h2 className="text-sm font-bold mb-1" style={{ color: 'var(--text-primary)' }}>Notification Preferences</h2>
+                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Configure build failure alerts, Slack webhooks, and email digests.</p>
               </div>
 
               <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 rounded-xl bg-[#09090B] border border-[#27272A]">
+                <div
+                  className="flex items-center justify-between p-4 rounded-xl border"
+                  style={{ background: 'var(--bg-tertiary)', borderColor: 'var(--border)' }}
+                >
                   <div>
-                    <div className="text-xs font-bold text-zinc-200">Email Failure Notifications</div>
-                    <div className="text-[11px] text-zinc-500 mt-0.5">Receive immediate email alerts when a build stage fails</div>
+                    <div className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>Email Failure Notifications</div>
+                    <div className="text-[11px] mt-0.5" style={{ color: 'var(--text-muted)' }}>Receive immediate email alerts when a build stage fails</div>
                   </div>
                   <button
                     onClick={() => setEmailAlerts(v => !v)}
-                    className={`w-10 h-5 rounded-full transition-colors relative ${emailAlerts ? 'bg-violet-600' : 'bg-zinc-800'}`}
+                    className="w-10 h-5 rounded-full transition-colors relative cursor-pointer"
+                    style={{ background: emailAlerts ? 'var(--accent)' : 'var(--border)' }}
                   >
-                    <span className={`w-3.5 h-3.5 rounded-full bg-white absolute top-0.75 transition-all ${emailAlerts ? 'right-0.75' : 'left-0.75'}`} />
+                    <span
+                      className="w-3.5 h-3.5 rounded-full bg-white absolute top-0.75 transition-all"
+                      style={{ right: emailAlerts ? '3px' : 'auto', left: emailAlerts ? 'auto' : '3px' }}
+                    />
                   </button>
                 </div>
 
-                <div className="flex items-center justify-between p-4 rounded-xl bg-[#09090B] border border-[#27272A]">
+                <div
+                  className="flex items-center justify-between p-4 rounded-xl border"
+                  style={{ background: 'var(--bg-tertiary)', borderColor: 'var(--border)' }}
+                >
                   <div>
-                    <div className="text-xs font-bold text-zinc-200">Slack Webhook Alerts</div>
-                    <div className="text-[11px] text-zinc-500 mt-0.5">Post pipeline status updates to Slack channel</div>
+                    <div className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>Slack Webhook Alerts</div>
+                    <div className="text-[11px] mt-0.5" style={{ color: 'var(--text-muted)' }}>Post pipeline status updates to Slack channel</div>
                   </div>
                   <button
                     onClick={() => setSlackAlerts(v => !v)}
-                    className={`w-10 h-5 rounded-full transition-colors relative ${slackAlerts ? 'bg-violet-600' : 'bg-zinc-800'}`}
+                    className="w-10 h-5 rounded-full transition-colors relative cursor-pointer"
+                    style={{ background: slackAlerts ? 'var(--accent)' : 'var(--border)' }}
                   >
-                    <span className={`w-3.5 h-3.5 rounded-full bg-white absolute top-0.75 transition-all ${slackAlerts ? 'right-0.75' : 'left-0.75'}`} />
+                    <span
+                      className="w-3.5 h-3.5 rounded-full bg-white absolute top-0.75 transition-all"
+                      style={{ right: slackAlerts ? '3px' : 'auto', left: slackAlerts ? 'auto' : '3px' }}
+                    />
                   </button>
                 </div>
 
                 {slackAlerts && (
-                  <div className="animate-slide-up">
-                    <label className="text-[10px] text-zinc-500 uppercase tracking-wider block mb-1">Slack Incoming Webhook URL</label>
+                  <div>
+                    <label className="text-[10px] uppercase tracking-wider block mb-1 font-semibold" style={{ color: 'var(--text-muted)' }}>
+                      Slack Incoming Webhook URL
+                    </label>
                     <input
                       type="url"
                       value={webhookUrl}
                       onChange={e => setWebhookUrl(e.target.value)}
-                      className="w-full bg-[#09090B] border border-[#27272A] rounded-lg px-3 py-2 text-xs text-zinc-200 font-mono focus:outline-none focus:border-violet-500/50"
+                      className="w-full border rounded-lg px-3 py-2 text-xs font-mono focus:outline-none"
+                      style={{
+                        background: 'var(--bg-tertiary)',
+                        borderColor: 'var(--border)',
+                        color: 'var(--text-primary)',
+                      }}
                     />
                   </div>
                 )}

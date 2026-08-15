@@ -59,36 +59,51 @@ export function TemplateMarketplace({ open, onClose, onSelectTemplate }: Templat
   return (
     <Dialog open={open} onClose={onClose} title="Pipeline Template Marketplace" className="max-w-2xl">
       <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
-        <p className="text-xs text-slate-400">
-          Load pre-configured, production-tested pipeline templates in 1 click.
+        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+          Select a verified production template to instantiate a ready-to-run pipeline DAG instantly.
         </p>
 
         <div className="grid grid-cols-1 gap-3">
-          {templates.map((tpl) => (
+          {templates.map((t) => (
             <div
-              key={tpl.id}
-              onClick={() => {
-                onSelectTemplate(tpl.id);
-                onClose();
+              key={t.id}
+              className="p-4 rounded-xl border transition-all flex items-start justify-between gap-4 group"
+              style={{
+                background: 'var(--bg-tertiary)',
+                borderColor: 'var(--border)',
               }}
-              className="p-4 rounded-xl bg-slate-950 border border-slate-800 hover:border-blue-500/80 transition-all flex items-start justify-between gap-4 group cursor-pointer"
             >
-              <div className="space-y-1.5 min-w-0">
+              <div className="space-y-1.5 flex-1">
                 <div className="flex items-center gap-2">
-                  <h4 className="text-xs font-bold text-slate-100 group-hover:text-blue-400 transition-colors">
-                    {tpl.title}
-                  </h4>
-                  <Badge status="neutral">{tpl.tag}</Badge>
+                  <h4 className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>{t.title}</h4>
+                  <span
+                    className="text-[10px] font-mono px-2 py-0.5 rounded border"
+                    style={{
+                      background: 'var(--bg-primary)',
+                      borderColor: 'var(--border)',
+                      color: 'var(--accent)',
+                    }}
+                  >
+                    {t.tag}
+                  </span>
                 </div>
-                <p className="text-[11px] text-slate-400 leading-relaxed">{tpl.description}</p>
-                <div className="flex items-center gap-3 text-[10px] font-mono text-slate-500 pt-1">
-                  <span>{tpl.steps} Steps</span>
+                <p className="text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{t.description}</p>
+                <div className="flex items-center gap-4 text-[10px] pt-1" style={{ color: 'var(--text-muted)' }}>
+                  <span>{t.steps} steps</span>
                   <span>•</span>
-                  <span>Est. {tpl.estimatedTime}</span>
+                  <span>Est. runtime: {t.estimatedTime}</span>
                 </div>
               </div>
 
-              <Button variant="secondary" size="sm" className="shrink-0 gap-1 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  onSelectTemplate(t.id);
+                  onClose();
+                }}
+                className="gap-1 text-xs shrink-0 self-center"
+              >
                 <span>Use Template</span>
                 <ArrowRight size={12} />
               </Button>

@@ -29,27 +29,39 @@ const SECURITY_POSTURE = [
 
 export default function SecurityPosturePage() {
   return (
-    <div className="min-h-screen bg-[#09090B] text-zinc-100 flex flex-col justify-between">
+    <div
+      className="min-h-screen flex flex-col justify-between"
+      style={{ background: 'var(--bg-primary)', color: 'var(--text-primary)', fontFamily: 'Inter, system-ui, sans-serif' }}
+    >
       {/* Navbar */}
-      <header className="h-16 border-b border-[#27272A] bg-[#111113]/80 backdrop-blur-md sticky top-0 z-50 flex items-center justify-between px-8">
-        <Link href="/" className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-violet-600 to-blue-600 flex items-center justify-center font-bold text-white shadow-lg">
+      <header
+        className="h-16 border-b sticky top-0 z-50 flex items-center justify-between px-8 backdrop-blur-md"
+        style={{ background: 'var(--bg-primary)', borderColor: 'var(--border)' }}
+      >
+        <Link href="/" className="flex items-center gap-3 text-decoration-none">
+          <div
+            className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs"
+            style={{ background: 'var(--accent)', color: 'var(--accent-fg)' }}
+          >
             OP
           </div>
-          <span className="font-bold text-sm text-white tracking-tight">OpsPilot</span>
+          <span className="font-bold text-sm tracking-tight" style={{ color: 'var(--text-primary)' }}>
+            OpsPilot
+          </span>
         </Link>
 
-        <div className="flex items-center gap-6 text-xs font-semibold text-zinc-400">
-          <Link href="/" className="hover:text-white transition-colors">Home</Link>
-          <Link href="/features" className="hover:text-white transition-colors">Features</Link>
-          <Link href="/pricing" className="hover:text-white transition-colors">Pricing</Link>
-          <Link href="/docs" className="hover:text-white transition-colors">Docs</Link>
-          <Link href="/security" className="text-white font-bold">Security</Link>
+        <div className="flex items-center gap-6 text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>
+          <Link href="/" className="hover:opacity-80 transition-opacity">Home</Link>
+          <Link href="/features" className="hover:opacity-80 transition-opacity">Features</Link>
+          <Link href="/pricing" className="hover:opacity-80 transition-opacity">Pricing</Link>
+          <Link href="/docs" className="hover:opacity-80 transition-opacity">Docs</Link>
+          <Link href="/security" className="font-bold" style={{ color: 'var(--text-primary)' }}>Security</Link>
         </div>
 
         <Link
           href="/register"
-          className="text-xs bg-gradient-to-r from-violet-600 to-blue-600 hover:from-violet-500 hover:to-blue-500 text-white font-bold px-4 py-2 rounded-xl transition-all shadow-lg"
+          className="text-xs font-bold px-4 py-2 rounded-xl transition-opacity hover:opacity-80"
+          style={{ background: 'var(--accent)', color: 'var(--accent-fg)' }}
         >
           Get Started
         </Link>
@@ -58,45 +70,60 @@ export default function SecurityPosturePage() {
       {/* Main Body */}
       <main className="max-w-5xl mx-auto w-full py-16 px-6 space-y-12">
         <div className="text-center space-y-4 max-w-2xl mx-auto">
-          <span className="text-xs font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-3 py-1 rounded-full uppercase tracking-wider">
-            Enterprise Security Posture
+          <span
+            className="text-[11px] font-bold border px-3 py-1 rounded-full uppercase tracking-wider font-mono"
+            style={{ background: 'var(--bg-secondary)', borderColor: 'var(--border)', color: 'var(--text-secondary)' }}
+          >
+            Security Architecture
           </span>
-          <h1 className="text-4xl font-extrabold text-white tracking-tight">
-            Security & Cryptographic Data Protection
+          <h1 className="text-4xl font-extrabold tracking-tight" style={{ color: 'var(--text-primary)' }}>
+            Cryptographic Protection & Trust Boundaries
           </h1>
-          <p className="text-sm text-zinc-400 leading-relaxed">
-            OpsPilot enforces defense-in-depth security across every layer of the platform — from encrypted secrets storage to tenant isolation boundaries and container runtimes.
+          <p className="text-sm leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+            OpsPilot enforces defense-in-depth security across every layer of the platform — from encrypted secrets storage to tenant isolation boundaries and ephemeral container runtimes.
           </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {SECURITY_POSTURE.map((sec, i) => (
-            <div key={i} className="p-6 rounded-2xl bg-[#111113] border border-[#27272A] space-y-3 shadow-xl">
-              <div className="p-3 w-fit rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
+            <div
+              key={i}
+              className="p-6 rounded-2xl border space-y-3 shadow-sm transition-all"
+              style={{ background: 'var(--bg-secondary)', borderColor: 'var(--border)' }}
+            >
+              <div
+                className="p-2.5 w-fit rounded-xl border"
+                style={{ background: 'var(--bg-tertiary)', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
+              >
                 <sec.icon size={20} />
               </div>
-              <h3 className="text-base font-bold text-white">{sec.title}</h3>
-              <p className="text-xs text-zinc-400 leading-relaxed">{sec.desc}</p>
+              <h3 className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>{sec.title}</h3>
+              <p className="text-xs leading-relaxed" style={{ color: 'var(--text-muted)' }}>{sec.desc}</p>
             </div>
           ))}
         </div>
 
-        <div className="p-8 rounded-2xl bg-[#111113] border border-[#27272A] flex flex-col md:flex-row items-center justify-between gap-6">
+        <div
+          className="p-8 rounded-2xl border flex flex-col md:flex-row items-center justify-between gap-6"
+          style={{ background: 'var(--bg-secondary)', borderColor: 'var(--border)' }}
+        >
           <div className="space-y-1">
-            <h3 className="text-lg font-bold text-white">Need SOC2 or Security Penetration Audit Reports?</h3>
-            <p className="text-xs text-zinc-400">Our team provides full compliance documentation and security whitepapers for enterprise deployments.</p>
+            <h3 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>Need SOC2 or Security Penetration Audit Reports?</h3>
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Our team provides full compliance documentation and security whitepapers for enterprise deployments.</p>
           </div>
           <Link
             href="/docs"
-            className="py-3 px-5 rounded-xl bg-gradient-to-r from-violet-600 to-blue-600 hover:from-violet-500 hover:to-blue-500 text-white text-xs font-bold transition-all shadow-lg shrink-0"
+            className="py-3 px-5 rounded-xl text-xs font-bold transition-opacity hover:opacity-80 shrink-0 flex items-center gap-1.5"
+            style={{ background: 'var(--accent)', color: 'var(--accent-fg)' }}
           >
-            Read Security Whitepaper <ArrowRight size={14} className="inline ml-1" />
+            <span>Read Documentation</span>
+            <ArrowRight size={14} />
           </Link>
         </div>
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-[#27272A] bg-[#111113] py-8 text-center text-xs text-zinc-500">
+      <footer className="border-t py-8 text-center text-xs" style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
         OpsPilot SaaS Platform · Enterprise Security & Compliance
       </footer>
     </div>

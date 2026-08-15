@@ -4,8 +4,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { DeveloperShell } from '@/components/layout/DeveloperShell';
 import {
-  Activity, Clock, RefreshCw, Play, CheckCircle2, XCircle, Loader2,
-  Circle, Filter, Search, GitCommit, GitBranch, ChevronRight, X, Download, AlertTriangle,
+  Activity, Clock, RefreshCw, CheckCircle2, XCircle, Loader2,
+  GitCommit, GitBranch, ChevronRight, AlertTriangle, Search,
 } from 'lucide-react';
 
 import { listAllRuns, cancelRun, PipelineRun } from '@/lib/apiClient';
@@ -31,28 +31,26 @@ function shortRepo(url?: string) {
 /* ── Status Pill ───────────────────────────────── */
 type RunStatus = 'SUCCESS' | 'FAILED' | 'RUNNING' | 'QUEUED' | 'CANCELLED' | 'TIMEOUT';
 
-const STATUS_CFG: Record<RunStatus, { color: string; bg: string; border: string; dot: string; icon: React.ElementType }> = {
-  SUCCESS:   { color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', dot: 'bg-emerald-400', icon: CheckCircle2 },
-  FAILED:    { color: 'text-red-400',     bg: 'bg-red-500/10',     border: 'border-red-500/20',     dot: 'bg-red-400',     icon: XCircle },
-  RUNNING:   { color: 'text-blue-400',    bg: 'bg-blue-500/10',    border: 'border-blue-500/20',    dot: 'bg-blue-400 animate-pulse', icon: RefreshCw },
-  QUEUED:    { color: 'text-amber-400',   bg: 'bg-amber-500/10',   border: 'border-amber-500/20',   dot: 'bg-amber-400',   icon: Clock },
-  CANCELLED: { color: 'text-zinc-400',    bg: 'bg-zinc-500/10',    border: 'border-zinc-500/20',    dot: 'bg-zinc-400',    icon: AlertTriangle },
-  TIMEOUT:   { color: 'text-orange-400',  bg: 'bg-orange-500/10',  border: 'border-orange-500/20',  dot: 'bg-orange-400',  icon: AlertTriangle },
+const STATUS_CFG: Record<RunStatus, { text: string; bg: string; dot: string; icon: React.ElementType }> = {
+  SUCCESS:   { text: 'text-[var(--success)]',      bg: 'bg-[var(--success-dim)]',  dot: 'bg-[var(--success)]',                    icon: CheckCircle2   },
+  FAILED:    { text: 'text-[var(--error)]',         bg: 'bg-[var(--error-dim)]',    dot: 'bg-[var(--error)]',                      icon: XCircle        },
+  RUNNING:   { text: 'text-[var(--info)]',          bg: 'bg-[var(--info-dim)]',     dot: 'bg-[var(--info)] animate-pulse',         icon: RefreshCw      },
+  QUEUED:    { text: 'text-[var(--warning)]',       bg: 'bg-[var(--warning-dim)]',  dot: 'bg-[var(--warning)]',                    icon: Clock          },
+  CANCELLED: { text: 'text-[var(--text-muted)]',   bg: 'bg-[var(--bg-tertiary)]',  dot: 'bg-[var(--text-muted)]',                 icon: AlertTriangle  },
+  TIMEOUT:   { text: 'text-[var(--warning)]',       bg: 'bg-[var(--warning-dim)]',  dot: 'bg-[var(--warning)]',                    icon: AlertTriangle  },
 };
 
 function StatusPill({ status }: { status: RunStatus }) {
   const c = STATUS_CFG[status] ?? STATUS_CFG.CANCELLED;
-  const IconComp = c.icon;
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold ${c.color} ${c.bg} border ${c.border}`}>
-      <span className={`w-1.5 h-1.5 rounded-full ${c.dot} ${status === 'RUNNING' ? 'animate-pulse-glow' : ''}`} />
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border border-[var(--border)] ${c.text} ${c.bg}`}>
+      <span className={`w-1.5 h-1.5 rounded-full ${c.dot}`} />
       {status}
     </span>
   );
 }
 
 const ALL_STATUSES: RunStatus[] = ['SUCCESS', 'FAILED', 'RUNNING', 'QUEUED', 'CANCELLED'];
-
 const PAGE_SIZE = 15;
 
 /* ── Main Page ─────────────────────────────────── */
@@ -109,39 +107,37 @@ export default function RunsPage() {
       <div className="flex flex-col h-[calc(100vh-5.5rem)] space-y-3">
 
         {/* Header */}
-        <div className="h-14 px-4 rounded-xl bg-[#111113] border border-[#27272A] flex items-center justify-between shrink-0">
+        <div className="h-14 px-4 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border)] flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
-            <Activity size={16} className="text-violet-400" />
-            <h1 className="text-sm font-bold text-zinc-100">Pipeline Runs</h1>
-            <span className="text-[10px] font-mono text-zinc-500 border border-[#27272A] px-2 py-0.5 rounded-full">
+            <Activity size={15} className="text-[var(--text-muted)]" />
+            <h1 className="text-sm font-bold text-[var(--text-primary)]">Pipeline Runs</h1>
+            <span className="text-[10px] font-mono text-[var(--text-muted)] border border-[var(--border)] px-2 py-0.5 rounded-full">
               {filtered.length} runs
             </span>
           </div>
 
-          <div className="flex items-center gap-2">
-            <button onClick={load} className="flex items-center gap-1.5 text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors">
-              <RefreshCw size={12} className={loading ? 'animate-spin' : ''} /> Refresh
-            </button>
-          </div>
+          <button onClick={load} className="flex items-center gap-1.5 text-[11px] text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors">
+            <RefreshCw size={12} className={loading ? 'animate-spin' : ''} /> Refresh
+          </button>
         </div>
 
         {/* Filters */}
         <div className="flex items-center gap-3 shrink-0">
           <div className="relative flex-1 max-w-sm">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
+            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
             <input
               type="text"
               value={search}
               onChange={e => { setSearch(e.target.value); setPage(1); }}
               placeholder="Filter by repo, branch, or commit..."
-              className="w-full pl-9 pr-3 py-1.5 rounded-lg bg-[#111113] border border-[#27272A] text-xs text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-violet-500/50"
+              className="w-full pl-9 pr-3 py-1.5 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border)] text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--border-bright)]"
             />
           </div>
 
-          <div className="flex items-center gap-1 bg-[#111113] border border-[#27272A] rounded-lg p-1">
+          <div className="flex items-center gap-1 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-lg p-1">
             <button
               onClick={() => { setStatusFilter('ALL'); setPage(1); }}
-              className={`px-2.5 py-1 rounded text-[10px] font-semibold transition-colors ${statusFilter === 'ALL' ? 'bg-[#27272A] text-white' : 'text-zinc-400 hover:text-zinc-200'}`}
+              className={`px-2.5 py-1 rounded text-[10px] font-semibold transition-colors ${statusFilter === 'ALL' ? 'bg-[var(--bg-tertiary)] text-[var(--text-primary)]' : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'}`}
             >
               ALL
             </button>
@@ -149,7 +145,7 @@ export default function RunsPage() {
               <button
                 key={s}
                 onClick={() => { setStatusFilter(s); setPage(1); }}
-                className={`px-2.5 py-1 rounded text-[10px] font-semibold transition-colors ${statusFilter === s ? 'bg-[#27272A] text-white' : 'text-zinc-400 hover:text-zinc-200'}`}
+                className={`px-2.5 py-1 rounded text-[10px] font-semibold transition-colors ${statusFilter === s ? 'bg-[var(--bg-tertiary)] text-[var(--text-primary)]' : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)]'}`}
               >
                 {s}
               </button>
@@ -157,9 +153,9 @@ export default function RunsPage() {
           </div>
         </div>
 
-        {/* Table / List */}
-        <div className="flex-1 min-h-0 bg-[#111113] border border-[#27272A] rounded-xl overflow-hidden flex flex-col">
-          <div className="h-9 px-4 border-b border-[#27272A] flex items-center gap-4 text-[10px] font-bold text-zinc-500 uppercase tracking-wider shrink-0 bg-[#18181B]/40">
+        {/* Table */}
+        <div className="flex-1 min-h-0 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl overflow-hidden flex flex-col">
+          <div className="h-9 px-4 border-b border-[var(--border)] flex items-center gap-4 text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider shrink-0 bg-[var(--bg-tertiary)]">
             <span className="w-24">Status</span>
             <span className="w-48">Repository</span>
             <span className="w-32">Branch</span>
@@ -169,53 +165,53 @@ export default function RunsPage() {
             <span className="w-16"></span>
           </div>
 
-          <div className="flex-1 overflow-y-auto divide-y divide-[#1C1C1F]">
+          <div className="flex-1 overflow-y-auto divide-y divide-[var(--border)]">
             {loading ? (
               <div className="p-4 space-y-3">
                 {Array.from({ length: 8 }).map((_, i) => (
                   <div key={i} className="flex items-center gap-4">
-                    <div className="skeleton h-5 w-20 rounded-full" />
-                    <div className="skeleton h-4 w-40 rounded" />
-                    <div className="skeleton h-4 w-24 rounded" />
-                    <div className="skeleton h-4 w-16 rounded" />
+                    <div className="h-5 w-20 rounded-full bg-[var(--bg-tertiary)] animate-pulse" />
+                    <div className="h-4 w-40 rounded bg-[var(--bg-tertiary)] animate-pulse" />
+                    <div className="h-4 w-24 rounded bg-[var(--bg-tertiary)] animate-pulse" />
+                    <div className="h-4 w-16 rounded bg-[var(--bg-tertiary)] animate-pulse" />
                   </div>
                 ))}
               </div>
             ) : paginated.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-center">
-                <Activity size={32} className="text-zinc-600 mb-2" />
-                <p className="text-sm font-medium text-zinc-400">No runs match criteria</p>
+                <Activity size={32} className="text-[var(--text-muted)] mb-2" />
+                <p className="text-sm font-medium text-[var(--text-secondary)]">No runs match criteria</p>
               </div>
             ) : (
               paginated.map(r => (
                 <div
                   key={r.id}
                   onClick={() => router.push(`/runs/${r.id}`)}
-                  className="h-12 px-4 flex items-center gap-4 text-xs cursor-pointer hover:bg-[#18181B]/35 transition-colors group"
+                  className="h-12 px-4 flex items-center gap-4 text-xs cursor-pointer hover:bg-[var(--bg-tertiary)] transition-colors group"
                 >
                   <div className="w-24">
-                    <StatusPill status={r.status} />
+                    <StatusPill status={r.status as RunStatus} />
                   </div>
 
-                  <div className="w-48 font-medium text-zinc-200 group-hover:text-white truncate">
+                  <div className="w-48 font-medium text-[var(--text-secondary)] group-hover:text-[var(--text-primary)] truncate">
                     {shortRepo(r.repositoryUrl)}
                   </div>
 
-                  <div className="w-32 font-mono text-[11px] text-zinc-400 flex items-center gap-1 truncate">
-                    <GitBranch size={10} className="text-zinc-500 shrink-0" />
+                  <div className="w-32 font-mono text-[11px] text-[var(--text-muted)] flex items-center gap-1 truncate">
+                    <GitBranch size={10} className="shrink-0" />
                     <span className="truncate">{r.branch ?? 'main'}</span>
                   </div>
 
-                  <div className="w-24 font-mono text-[11px] text-zinc-500 flex items-center gap-1">
-                    <GitCommit size={10} className="text-zinc-600 shrink-0" />
+                  <div className="w-24 font-mono text-[11px] text-[var(--text-muted)] flex items-center gap-1">
+                    <GitCommit size={10} className="shrink-0" />
                     <span>{shortSha(r.commitSha)}</span>
                   </div>
 
-                  <div className="w-24 text-right font-mono text-[11px] text-zinc-400">
+                  <div className="w-24 text-right font-mono text-[11px] text-[var(--text-muted)]">
                     {r.durationSeconds ? `${r.durationSeconds}s` : '—'}
                   </div>
 
-                  <div className="flex-1 text-right text-[11px] text-zinc-500 font-mono">
+                  <div className="flex-1 text-right text-[11px] text-[var(--text-muted)] font-mono">
                     {timeAgo(r.startedAt ?? r.createdAt)}
                   </div>
 
@@ -224,7 +220,7 @@ export default function RunsPage() {
                       <button
                         onClick={e => handleCancel(r.id, e)}
                         disabled={cancelling === r.id}
-                        className="text-[10px] text-red-400 hover:text-red-300 font-semibold px-2 py-0.5 rounded border border-red-500/30 hover:border-red-500/50 transition-colors"
+                        className="text-[10px] text-[var(--error)] hover:opacity-80 font-semibold px-2 py-0.5 rounded border border-[var(--error)] transition-opacity"
                       >
                         Cancel
                       </button>
@@ -234,6 +230,17 @@ export default function RunsPage() {
               ))
             )}
           </div>
+
+          {hasMore && (
+            <div className="p-3 border-t border-[var(--border)] flex justify-center">
+              <button
+                onClick={() => setPage(p => p + 1)}
+                className="text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors"
+              >
+                Load more ({filtered.length - paginated.length} remaining)
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </DeveloperShell>

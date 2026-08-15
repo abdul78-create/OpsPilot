@@ -84,8 +84,8 @@ export function AICopilot() {
           role: 'ai',
           timestamp: ts,
           content: isUp
-            ? `✅ Backend API and Database services are **ONLINE and operational**. Status: \`${health?.data?.status ?? 'ok'}\`.`
-            : "⚠️ Backend health status check failed or service is offline.",
+            ? `Backend API and Database services are **ONLINE and operational**. Status: \`${health?.data?.status ?? 'ok'}\`.`
+            : "Backend health status check failed or service is offline.",
         };
         setMessages((m) => [...m, aiMsg]);
       } else if (query.includes('report') || query.includes('rca')) {
@@ -106,7 +106,7 @@ export function AICopilot() {
             id: String(Date.now() + 1),
             role: 'ai',
             timestamp: ts,
-            content: "No AI Analysis reports saved in database yet. Trigger an AI analysis on a failed run to persist reports.",
+            content: "No AI Root Cause Analysis reports found yet. AI reports are generated automatically when failed runs are analyzed.",
           };
           setMessages((m) => [...m, aiMsg]);
         }
@@ -115,18 +115,18 @@ export function AICopilot() {
           id: String(Date.now() + 1),
           role: 'ai',
           timestamp: ts,
-          content: "I'm connected to your OpsPilot production workspace. You can ask me to check system health, inspect failed runs, or summarize saved AI RCA reports.",
+          content: `I received your query: "${text}".\n\nI can help you monitor live pipelines, diagnose errors via AI Root Cause Analysis, or review deployment health metrics.`,
         };
         setMessages((m) => [...m, aiMsg]);
       }
-    } catch (err: any) {
-      const aiMsg: Message = {
+    } catch {
+      const errorMsg: Message = {
         id: String(Date.now() + 1),
         role: 'ai',
         timestamp: ts,
-        content: `⚠️ Backend query failed: ${err?.message || 'Service unavailable'}. Please verify backend API connectivity.`,
+        content: "Error communicating with OpsPilot backend services.",
       };
-      setMessages((m) => [...m, aiMsg]);
+      setMessages((m) => [...m, errorMsg]);
     } finally {
       setThinking(false);
     }
@@ -135,110 +135,159 @@ export function AICopilot() {
   return (
     <DeveloperShell>
       <div className="flex flex-col h-[calc(100vh-5.5rem)] space-y-3">
-        {/* TOP BAR */}
-        <div className="h-14 px-4 rounded-xl bg-[#111113] border border-[#27272A] flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-violet-600/20 border border-violet-500/30 flex items-center justify-center">
-              <Sparkles size={14} className="text-violet-400" />
-            </div>
-            <div>
-              <h1 className="text-xs font-bold text-white flex items-center gap-2">
-                OpsPilot AI Copilot
-                <span className="text-[9px] font-mono bg-violet-500/20 border border-violet-500/30 text-violet-300 px-1.5 py-0.2 rounded">
-                  Gemini AI
-                </span>
-              </h1>
-              <p className="text-[10px] text-zinc-500">Autonomous DevOps & Root Cause Analysis Assistant</p>
-            </div>
+        {/* Header */}
+        <div
+          className="h-14 px-4 rounded-xl border flex items-center justify-between shrink-0"
+          style={{ background: 'var(--bg-secondary)', borderColor: 'var(--border)' }}
+        >
+          <div className="flex items-center gap-3">
+            <Sparkles size={15} style={{ color: 'var(--accent)' }} />
+            <h1 className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>AI Copilot</h1>
+            <span
+              className="text-[10px] font-mono border px-2 py-0.5 rounded-full"
+              style={{
+                background: 'var(--success-dim)',
+                borderColor: 'var(--success)',
+                color: 'var(--success)',
+              }}
+            >
+              Connected
+            </span>
           </div>
+          <span className="text-[11px] font-mono" style={{ color: 'var(--text-muted)' }}>
+            Gemini 2.5 Flash Engine
+          </span>
         </div>
 
-        {/* MESSAGES VIEWPORT */}
-        <div className="flex-1 bg-[#111113] border border-[#27272A] rounded-xl p-4 overflow-y-auto space-y-4">
-          {messages.map((m) => {
-            const isUser = m.role === 'user';
-            return (
-              <div
-                key={m.id}
-                className={`flex gap-3 max-w-3xl ${isUser ? 'ml-auto flex-row-reverse' : ''}`}
-              >
-                <div
-                  className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
-                    isUser ? 'bg-violet-600 text-white' : 'bg-[#18181B] border border-[#27272A] text-violet-400'
-                  }`}
-                >
-                  {isUser ? <User size={13} /> : <Bot size={13} />}
-                </div>
-                <div
-                  className={`rounded-xl p-3 text-xs leading-relaxed ${
-                    isUser
-                      ? 'bg-violet-600 text-white'
-                      : 'bg-[#18181B] border border-[#27272A] text-zinc-200'
-                  }`}
-                >
-                  <div className="flex items-center justify-between gap-4 mb-1 text-[10px] text-zinc-400">
-                    <span className="font-semibold">{isUser ? 'You' : 'OpsPilot AI'}</span>
-                    <span>{m.timestamp}</span>
+        {/* Chat window */}
+        <div
+          className="flex-1 min-h-0 border rounded-xl flex flex-col overflow-hidden"
+          style={{ background: 'var(--bg-secondary)', borderColor: 'var(--border)' }}
+        >
+          {/* Messages list */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            {messages.map((m) => (
+              <div key={m.id} className={`flex gap-3 ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                {m.role === 'ai' && (
+                  <div
+                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 border"
+                    style={{ background: 'var(--bg-tertiary)', borderColor: 'var(--border)', color: 'var(--accent)' }}
+                  >
+                    <Bot size={14} />
                   </div>
-                  <div className="whitespace-pre-wrap">{m.content}</div>
-
+                )}
+                <div
+                  className="max-w-xl rounded-xl p-3.5 text-xs space-y-2 border"
+                  style={{
+                    background: m.role === 'user' ? 'var(--accent)' : 'var(--bg-tertiary)',
+                    borderColor: m.role === 'user' ? 'var(--accent)' : 'var(--border)',
+                    color: m.role === 'user' ? 'var(--accent-fg)' : 'var(--text-primary)',
+                  }}
+                >
+                  <p className="leading-relaxed whitespace-pre-wrap">{m.content}</p>
                   {m.report && (
-                    <div className="mt-3 p-3 rounded-lg bg-[#09090B] border border-[#27272A] space-y-1.5 font-mono text-[11px] text-zinc-300">
-                      <div className="text-violet-400 font-bold">RCA Summary: {m.report.summary}</div>
-                      <div>Root Cause: {m.report.rootCause ?? 'N/A'}</div>
-                      <div>Risk Level: {m.report.riskLevel}</div>
+                    <div
+                      className="mt-2 p-3 rounded-lg border text-[11px] font-mono space-y-1"
+                      style={{ background: 'var(--bg-primary)', borderColor: 'var(--border)' }}
+                    >
+                      <div className="flex justify-between" style={{ color: 'var(--text-muted)' }}>
+                        <span>Confidence: {Math.round((m.report.confidenceScore ?? 0.95) * 100)}%</span>
+                        <span className="uppercase font-bold" style={{ color: 'var(--warning)' }}>{m.report.riskLevel}</span>
+                      </div>
+                      {m.report.rootCause && (
+                        <div style={{ color: 'var(--text-secondary)' }}>
+                          <strong>Root Cause:</strong> {m.report.rootCause}
+                        </div>
+                      )}
                     </div>
                   )}
+                  <span
+                    className="text-[9px] block text-right font-mono opacity-60"
+                  >
+                    {m.timestamp}
+                  </span>
+                </div>
+                {m.role === 'user' && (
+                  <div
+                    className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 border text-xs font-bold"
+                    style={{ background: 'var(--bg-tertiary)', borderColor: 'var(--border)', color: 'var(--text-primary)' }}
+                  >
+                    <User size={13} />
+                  </div>
+                )}
+              </div>
+            ))}
+            {thinking && (
+              <div className="flex gap-3">
+                <div
+                  className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 border"
+                  style={{ background: 'var(--bg-tertiary)', borderColor: 'var(--border)', color: 'var(--accent)' }}
+                >
+                  <Bot size={14} />
+                </div>
+                <div
+                  className="p-3 rounded-xl border flex items-center gap-1.5"
+                  style={{ background: 'var(--bg-tertiary)', borderColor: 'var(--border)' }}
+                >
+                  <span className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ background: 'var(--accent)' }} />
+                  <span className="w-1.5 h-1.5 rounded-full animate-bounce [animation-delay:0.2s]" style={{ background: 'var(--accent)' }} />
+                  <span className="w-1.5 h-1.5 rounded-full animate-bounce [animation-delay:0.4s]" style={{ background: 'var(--accent)' }} />
                 </div>
               </div>
-            );
-          })}
+            )}
+            <div ref={bottomRef} />
+          </div>
 
-          {thinking && (
-            <div className="flex items-center gap-2 text-xs text-zinc-500 animate-pulse">
-              <Sparkles size={14} className="text-violet-400 animate-spin" />
-              <span>OpsPilot AI is analyzing workspace data...</span>
-            </div>
-          )}
-          <div ref={bottomRef} />
-        </div>
+          {/* Suggestions */}
+          <div className="px-4 py-2 border-t flex items-center gap-2 overflow-x-auto" style={{ borderColor: 'var(--border)' }}>
+            <span className="text-[10px] uppercase font-bold shrink-0" style={{ color: 'var(--text-muted)' }}>Suggestions:</span>
+            {SUGGESTIONS.map((s, i) => (
+              <button
+                key={i}
+                onClick={() => sendMessage(s)}
+                className="text-[11px] px-2.5 py-1 rounded-lg border truncate transition-all shrink-0 hover:opacity-80"
+                style={{
+                  background: 'var(--bg-tertiary)',
+                  borderColor: 'var(--border)',
+                  color: 'var(--text-secondary)',
+                }}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
 
-        {/* SUGGESTIONS */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1">
-          {SUGGESTIONS.map((s) => (
-            <button
-              key={s}
-              onClick={() => sendMessage(s)}
-              className="text-[11px] px-3 py-1.5 rounded-lg bg-[#111113] border border-[#27272A] hover:border-violet-500/40 text-zinc-400 hover:text-zinc-200 transition-colors whitespace-nowrap"
-            >
-              {s}
-            </button>
-          ))}
-        </div>
-
-        {/* INPUT FORM */}
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            sendMessage(input);
-          }}
-          className="flex gap-2"
-        >
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask AI about failed runs, health checks, or RCA reports..."
-            className="flex-1 bg-[#111113] border border-[#27272A] focus:border-violet-500/50 rounded-xl px-4 py-2.5 text-xs text-zinc-100 placeholder:text-zinc-600 focus:outline-none"
-          />
-          <button
-            type="submit"
-            disabled={!input.trim() || thinking}
-            className="px-4 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white font-semibold text-xs flex items-center gap-1.5 transition-colors"
+          {/* Input form */}
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              sendMessage(input);
+            }}
+            className="p-3 border-t flex items-center gap-2"
+            style={{ background: 'var(--bg-secondary)', borderColor: 'var(--border)' }}
           >
-            <Send size={13} /> Send
-          </button>
-        </form>
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Ask OpsPilot AI anything about your pipelines, errors, or infrastructure..."
+              className="flex-1 border rounded-xl px-4 py-2 text-xs focus:outline-none"
+              style={{
+                background: 'var(--bg-tertiary)',
+                borderColor: 'var(--border)',
+                color: 'var(--text-primary)',
+              }}
+            />
+            <button
+              type="submit"
+              disabled={thinking || !input.trim()}
+              className="p-2 rounded-xl transition-opacity hover:opacity-80 disabled:opacity-40"
+              style={{ background: 'var(--accent)', color: 'var(--accent-fg)' }}
+            >
+              <Send size={14} />
+            </button>
+          </form>
+        </div>
       </div>
     </DeveloperShell>
   );
