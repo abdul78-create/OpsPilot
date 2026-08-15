@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
 import { ThemeToggle } from '../../components/ui/ThemeToggle';
+import { getApiBaseUrl } from '@/lib/apiClient';
 
 function GithubIcon({ size = 15 }: { size?: number }) {
   return (
@@ -48,13 +49,13 @@ export default function LoginPage() {
   }, []);
 
   const handleGoogleLogin = () => {
-    const apiBase = process.env.NEXT_PUBLIC_API_URL || 'https://opspilot-backend-nq7l.onrender.com';
-    window.location.href = `${apiBase}/v1/auth/google`;
+    const apiBase = getApiBaseUrl();
+    window.location.href = `${apiBase}/auth/google`;
   };
 
   const handleGitHubLogin = () => {
-    const apiBase = process.env.NEXT_PUBLIC_API_URL || 'https://opspilot-backend-nq7l.onrender.com';
-    window.location.href = `${apiBase}/v1/auth/github`;
+    const apiBase = getApiBaseUrl();
+    window.location.href = `${apiBase}/auth/github`;
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -62,8 +63,8 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
     try {
-      const apiBase = process.env.NEXT_PUBLIC_API_URL || 'https://opspilot-backend-nq7l.onrender.com';
-      const res = await fetch(`${apiBase}/v1/auth/login`, {
+      const apiBase = getApiBaseUrl();
+      const res = await fetch(`${apiBase}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),

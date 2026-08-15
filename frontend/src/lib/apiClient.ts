@@ -2,9 +2,16 @@
  * OpsPilot API Client v3 — Production NestJS Backend Interface
  */
 
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL ||
-  (typeof window !== 'undefined' ? '/v1' : 'http://localhost:3000/v1');
+export function getApiBaseUrl(): string {
+  if (process.env.NEXT_PUBLIC_API_URL) return process.env.NEXT_PUBLIC_API_URL;
+  if (typeof window !== 'undefined') {
+    if (window.location.port === '3001') return 'http://localhost:3000/v1';
+    return '/v1';
+  }
+  return 'http://localhost:3000/v1';
+}
+
+export const API_BASE = getApiBaseUrl();
 
 export const DEFAULT_ORG_ID = '3fdaca7b-c8e4-4be4-ba50-e1a2085ac913';
 export const DEFAULT_PROJECT_ID = '138ae2ae-2d30-4536-8789-267c5901f05c';

@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { CheckCircle2, XCircle, ArrowRight, Loader2 } from 'lucide-react';
 import { ThemeToggle } from '../../components/ui/ThemeToggle';
+import { getApiBaseUrl } from '@/lib/apiClient';
 
 type State = 'loading' | 'success' | 'error';
 
@@ -27,8 +28,8 @@ function VerifyEmailContent() {
 
     const verify = async () => {
       try {
-        const apiBase = process.env.NEXT_PUBLIC_API_URL || 'https://opspilot-backend-nq7l.onrender.com';
-        const res = await fetch(`${apiBase}/v1/auth/verify-email`, {
+        const apiBase = getApiBaseUrl();
+        const res = await fetch(`${apiBase}/auth/verify-email`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ token }),

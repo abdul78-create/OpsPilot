@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { Eye, EyeOff, Mail, Lock, User, MailCheck } from 'lucide-react';
 import { ThemeToggle } from '../../components/ui/ThemeToggle';
+import { getApiBaseUrl } from '@/lib/apiClient';
 
 function PasswordStrengthBar({ password }: { password: string }) {
   const checks = [
@@ -61,8 +62,8 @@ export default function RegisterPage() {
     setError('');
     setLoading(true);
     try {
-      const apiBase = process.env.NEXT_PUBLIC_API_URL || '';
-      const res = await fetch(`${apiBase}/v1/auth/register`, {
+      const apiBase = getApiBaseUrl();
+      const res = await fetch(`${apiBase}/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: form.email, password: form.password, name: form.name }),

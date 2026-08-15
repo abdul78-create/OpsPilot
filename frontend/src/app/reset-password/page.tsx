@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Lock, Eye, EyeOff, CheckCircle2, XCircle, ArrowRight, ArrowLeft, Loader2, AlertCircle } from 'lucide-react';
 import { ThemeToggle } from '../../components/ui/ThemeToggle';
+import { getApiBaseUrl } from '@/lib/apiClient';
 
 type State = 'form' | 'success' | 'error';
 
@@ -105,8 +106,8 @@ function ResetPasswordContent() {
     }
     setLoading(true);
     try {
-      const apiBase = process.env.NEXT_PUBLIC_API_URL || 'https://opspilot-backend-nq7l.onrender.com';
-      const res = await fetch(`${apiBase}/v1/auth/reset-password`, {
+      const apiBase = getApiBaseUrl();
+      const res = await fetch(`${apiBase}/auth/reset-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token, newPassword }),

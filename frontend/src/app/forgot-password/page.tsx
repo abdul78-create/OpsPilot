@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { Mail, ArrowLeft, ArrowRight, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { ThemeToggle } from '../../components/ui/ThemeToggle';
+import { getApiBaseUrl } from '@/lib/apiClient';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
@@ -16,8 +17,8 @@ export default function ForgotPasswordPage() {
     setError('');
     setLoading(true);
     try {
-      const apiBase = process.env.NEXT_PUBLIC_API_URL || 'https://opspilot-backend-nq7l.onrender.com';
-      const res = await fetch(`${apiBase}/v1/auth/forgot-password`, {
+      const apiBase = getApiBaseUrl();
+      const res = await fetch(`${apiBase}/auth/forgot-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
