@@ -25,14 +25,24 @@ export default function StorybookPage() {
     <DeveloperShell>
       <div className="space-y-8 pb-12">
         {/* Storybook Header */}
-        <div className="p-6 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
+        <div
+          className="p-6 rounded-xl border flex items-center justify-between"
+          style={{ background: 'var(--bg-secondary)', borderColor: 'var(--border)' }}
+        >
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-lg bg-slate-950 border border-slate-800 text-blue-400">
+            <div
+              className="p-2.5 rounded-lg border"
+              style={{ background: 'var(--bg-tertiary)', borderColor: 'var(--border)', color: 'var(--accent)' }}
+            >
               <BookOpen size={20} />
             </div>
             <div>
-              <h1 className="text-lg font-bold text-slate-100 tracking-tight">OpsPilot Component Catalog</h1>
-              <p className="text-xs text-slate-400 mt-0.5 font-mono">Design System Primitives & Business Components Single Source of Truth</p>
+              <h1 className="text-lg font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>
+                OpsPilot Component Catalog
+              </h1>
+              <p className="text-xs font-mono mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                Design System Primitives & Business Components Single Source of Truth
+              </p>
             </div>
           </div>
 
@@ -41,11 +51,12 @@ export default function StorybookPage() {
               <button
                 key={sec}
                 onClick={() => setActiveSection(sec as any)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold capitalize transition-all cursor-pointer ${
-                  activeSection === sec
-                    ? 'bg-slate-100 text-slate-950 shadow-sm'
-                    : 'bg-slate-950 text-slate-400 border border-slate-800 hover:text-slate-200'
-                }`}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold capitalize transition-all cursor-pointer border`}
+                style={{
+                  background: activeSection === sec ? 'var(--accent)' : 'var(--bg-tertiary)',
+                  color: activeSection === sec ? 'var(--accent-fg)' : 'var(--text-muted)',
+                  borderColor: 'var(--border)',
+                }}
               >
                 {sec}
               </button>
@@ -56,7 +67,10 @@ export default function StorybookPage() {
         {/* SECTION 1: PRIMITIVES */}
         {(activeSection === 'all' || activeSection === 'primitives') && (
           <div className="space-y-6">
-            <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-slate-800 pb-2">
+            <h2
+              className="text-xs font-bold uppercase tracking-wider border-b pb-2"
+              style={{ color: 'var(--text-muted)', borderColor: 'var(--border)' }}
+            >
               UI Primitives (`src/components/ui/`)
             </h2>
 
@@ -117,7 +131,10 @@ export default function StorybookPage() {
         {/* SECTION 2: DOMAIN BUSINESS COMPONENTS */}
         {(activeSection === 'all' || activeSection === 'domain') && (
           <div className="space-y-6">
-            <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-slate-800 pb-2">
+            <h2
+              className="text-xs font-bold uppercase tracking-wider border-b pb-2"
+              style={{ color: 'var(--text-muted)', borderColor: 'var(--border)' }}
+            >
               Domain Business Components (`src/components/domain/`)
             </h2>
 
@@ -143,7 +160,10 @@ export default function StorybookPage() {
         {/* SECTION 3: SKELETONS & EMPTY STATES */}
         {(activeSection === 'all' || activeSection === 'skeletons') && (
           <div className="space-y-6">
-            <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-slate-800 pb-2">
+            <h2
+              className="text-xs font-bold uppercase tracking-wider border-b pb-2"
+              style={{ color: 'var(--text-muted)', borderColor: 'var(--border)' }}
+            >
               Skeletons & Actionable Empty States
             </h2>
 
@@ -172,7 +192,7 @@ export default function StorybookPage() {
 
         {/* DIALOG DEMO MODAL */}
         <Dialog open={modalOpen} onClose={() => setModalOpen(false)} title="Component Showcase Modal">
-          <p className="text-xs text-slate-300">Dialog primitive tested from Storybook catalog.</p>
+          <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Dialog primitive tested from Storybook catalog.</p>
           <div className="mt-4 flex justify-end">
             <Button variant="secondary" onClick={() => setModalOpen(false)}>Close</Button>
           </div>

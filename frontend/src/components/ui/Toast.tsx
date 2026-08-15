@@ -41,27 +41,38 @@ function ToastItem({ toast: t, onDismiss }: { toast: Toast; onDismiss: () => voi
   }, [t.duration, onDismiss]);
 
   const icons: Record<ToastKind, React.ReactNode> = {
-    success: <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />,
-    error:   <XCircle size={16} className="text-rose-400 shrink-0" />,
-    warning: <AlertTriangle size={16} className="text-amber-400 shrink-0" />,
-    info:    <Info size={16} className="text-blue-400 shrink-0" />,
+    success: <CheckCircle2 size={16} className="text-[var(--success)] shrink-0" />,
+    error:   <XCircle size={16} className="text-[var(--error)] shrink-0" />,
+    warning: <AlertTriangle size={16} className="text-[var(--warning)] shrink-0" />,
+    info:    <Info size={16} className="text-[var(--info)] shrink-0" />,
   };
 
   const borders: Record<ToastKind, string> = {
-    success: 'border-emerald-800/60',
-    error:   'border-rose-800/60',
-    warning: 'border-amber-800/60',
-    info:    'border-blue-800/60',
+    success: 'var(--success)',
+    error:   'var(--error)',
+    warning: 'var(--warning)',
+    info:    'var(--info)',
   };
 
   return (
-    <div className={`flex items-start gap-3 bg-slate-900 border ${borders[t.kind]} rounded-xl px-4 py-3 shadow-2xl shadow-black/40 min-w-[280px] max-w-sm animate-in slide-in-from-right-4 fade-in duration-200`}>
+    <div
+      className="flex items-start gap-3 rounded-xl px-4 py-3 border min-w-[280px] max-w-sm transition-all duration-200"
+      style={{
+        background: 'var(--bg-secondary)',
+        borderColor: borders[t.kind],
+        boxShadow: 'var(--shadow-lg, 0 10px 25px -5px rgba(0, 0, 0, 0.2))',
+      }}
+    >
       {icons[t.kind]}
       <div className="flex-1 min-w-0">
-        <p className="text-xs font-bold text-slate-100">{t.title}</p>
-        {t.message && <p className="text-[11px] text-slate-400 mt-0.5">{t.message}</p>}
+        <p className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>{t.title}</p>
+        {t.message && <p className="text-[11px] mt-0.5" style={{ color: 'var(--text-muted)' }}>{t.message}</p>}
       </div>
-      <button onClick={onDismiss} className="p-0.5 text-slate-500 hover:text-slate-300 transition-colors shrink-0">
+      <button
+        onClick={onDismiss}
+        className="p-0.5 transition-colors shrink-0"
+        style={{ color: 'var(--text-muted)' }}
+      >
         <X size={13} />
       </button>
     </div>
