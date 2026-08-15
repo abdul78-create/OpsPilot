@@ -1,5 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
+import { ThemeToggle } from '../components/ui/ThemeToggle';
 
 /* ─── Landing Page ─────────────────────────────────────────── */
 export const dynamic = 'force-static';
@@ -99,26 +100,26 @@ const PRICING = [
 
 const FAQS = [
   {
-    q: 'How long does it take to set up?',
-    a: 'Under 5 minutes. Connect your GitHub repo, and OpsPilot auto-generates the pipeline from your code.',
+    q: 'How does OpsPilot build without YAML config?',
+    a: 'OpsPilot inspects your repository structure (package.json, Dockerfile, requirements.txt, go.mod) and compiles an optimized multi-stage build DAG automatically. You can always override or customize steps via the Visual DAG Builder.',
   },
   {
-    q: 'Do I need to write YAML or config files?',
-    a: 'No. OpsPilot scans your repository structure and builds the pipeline automatically.',
+    q: 'How does the AI Root Cause Analysis work?',
+    a: 'When a step exits non-zero, our AI engine parses the compiler or runtime error, cross-references recent diffs, and returns a surgical summary and fix suggestion.',
   },
   {
-    q: 'What languages and frameworks are supported?',
-    a: 'Node.js, Python, Go, Ruby, Java, and Rust — with Dockerfile auto-detection for any stack.',
+    q: 'Can I self-host OpsPilot?',
+    a: 'Yes. OpsPilot is fully containerized with Docker Compose. You can run the entire stack — Postgres, Redis, NestJS, Next.js, and runner engine — on your own infrastructure.',
   },
   {
     q: 'Is my source code secure?',
-    a: 'Yes. Every build runs in an ephemeral, isolated Docker container that is destroyed immediately after the run.',
+    a: 'Workspaces are ephemeral containers destroyed immediately after build completion. Secrets are encrypted using AES-256-GCM and injected in-memory only.',
   },
 ];
 
 const TERMINAL_LINES = [
   { text: '$ git push origin main', color: 'var(--text-muted)' },
-  { text: '⚡ OpsPilot detected push · Queuing run...', color: 'var(--accent)' },
+  { text: '⚡ OpsPilot detected push · Queueing run...', color: 'var(--info)' },
   { text: '▶ Cloning repository...', color: 'var(--text-secondary)' },
   { text: '✓ Clone complete (1.2s)', color: 'var(--success)' },
   { text: '▶ Installing dependencies...', color: 'var(--text-secondary)' },
@@ -141,7 +142,7 @@ export default function LandingPage() {
       {/* ── NAVBAR ─────────────────────────────── */}
       <nav
         className="fixed top-0 left-0 right-0 z-50 border-b backdrop-blur-xl"
-        style={{ background: 'var(--bg-primary)', borderColor: 'var(--border)' }}
+        style={{ background: 'var(--bg-overlay)', borderColor: 'var(--border)' }}
       >
         <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2.5 group text-decoration-none">
@@ -157,13 +158,14 @@ export default function LandingPage() {
           </Link>
 
           <div className="hidden md:flex items-center gap-7 text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>
-            <a href="#features" className="hover:opacity-80 transition-opacity">Features</a>
-            <a href="#pricing" className="hover:opacity-80 transition-opacity">Pricing</a>
-            <a href="#faq" className="hover:opacity-80 transition-opacity">FAQ</a>
-            <a href="/docs" className="hover:opacity-80 transition-opacity">Docs</a>
+            <Link href="/features" className="hover:opacity-80 transition-opacity">Features</Link>
+            <Link href="/pricing" className="hover:opacity-80 transition-opacity">Pricing</Link>
+            <Link href="/docs" className="hover:opacity-80 transition-opacity">Docs</Link>
+            <Link href="/security" className="hover:opacity-80 transition-opacity">Security</Link>
           </div>
 
           <div className="flex items-center gap-3">
+            <ThemeToggle />
             <Link
               href="/login"
               className="text-xs font-semibold hover:opacity-80 transition-opacity"
@@ -195,11 +197,13 @@ export default function LandingPage() {
             }}
           >
             <span className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--success)' }} />
-            Autonomous CI/CD — Zero YAML. Zero Config. Just git push.
+            GitHub → Build → AI RCA → Deploy → Observe
           </div>
 
-          <h1 className="text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight leading-tight" style={{ color: 'var(--text-primary)' }}>
-            Ship code faster with autonomous DevOps
+          <h1 className="text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight leading-tight space-y-1" style={{ color: 'var(--text-primary)' }}>
+            <div>Ship code.</div>
+            <div style={{ color: 'var(--text-secondary)' }}>Understand failures.</div>
+            <div>Deploy with confidence.</div>
           </h1>
 
           <p className="text-base md:text-lg max-w-2xl mx-auto leading-relaxed" style={{ color: 'var(--text-muted)' }}>
@@ -213,11 +217,11 @@ export default function LandingPage() {
               className="w-full sm:w-auto flex items-center justify-center gap-2 px-7 py-3 rounded-xl text-xs font-bold transition-opacity hover:opacity-80"
               style={{ background: 'var(--accent)', color: 'var(--accent-fg)' }}
             >
-              <span>Start deploying free</span>
+              <span>Start Building Free</span>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
             </Link>
-            <Link
-              href="/login"
+            <a
+              href="#demo"
               className="w-full sm:w-auto flex items-center justify-center gap-2 px-7 py-3 rounded-xl border text-xs font-bold transition-colors"
               style={{
                 background: 'var(--bg-secondary)',
@@ -225,12 +229,13 @@ export default function LandingPage() {
                 color: 'var(--text-primary)',
               }}
             >
-              Sign in to Console
-            </Link>
+              View Live Demo
+            </a>
           </div>
 
           {/* Terminal Demo */}
           <div
+            id="demo"
             className="max-w-2xl mx-auto rounded-xl overflow-hidden border mt-12 text-left"
             style={{ background: 'var(--bg-secondary)', borderColor: 'var(--border)', boxShadow: 'var(--shadow-md)' }}
           >

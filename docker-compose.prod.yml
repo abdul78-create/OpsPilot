@@ -122,7 +122,7 @@ services:
   # ── 5. Next.js 16 Production Frontend ───────────────────────
   frontend:
     build:
-      context: ./frontend-next
+      context: ./frontend
       dockerfile: Dockerfile
       args:
         VITE_API_URL: /v1

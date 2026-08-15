@@ -6,6 +6,7 @@ import Link from 'next/link';
 import {
   Building2, GitBranch, Shield, Rocket, ArrowRight, ArrowLeft, Check, Loader2, Sparkles, AlertCircle, CheckCircle2
 } from 'lucide-react';
+import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { createProject, createPipelineFromRepo, triggerPipeline } from '@/lib/apiClient';
 
 export default function OnboardingPage() {
@@ -101,27 +102,30 @@ export default function OnboardingPage() {
             OpsPilot Setup
           </span>
         </div>
-        <div className="flex items-center gap-2 text-xs font-medium" style={{ color: 'var(--text-muted)' }}>
-          {[
-            { num: 1, label: '1. Org' },
-            { num: 2, label: '2. GitHub' },
-            { num: 3, label: '3. Stack' },
-            { num: 4, label: '4. Deploy' },
-          ].map(s => {
-            const active = step >= s.num;
-            return (
-              <span
-                key={s.num}
-                className="px-2.5 py-1 rounded-full text-[11px] font-mono transition-colors"
-                style={{
-                  background: active ? 'var(--accent)' : 'var(--bg-tertiary)',
-                  color: active ? 'var(--accent-fg)' : 'var(--text-muted)',
-                }}
-              >
-                {s.label}
-              </span>
-            );
-          })}
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 text-xs font-medium" style={{ color: 'var(--text-muted)' }}>
+            {[
+              { num: 1, label: '1. Org' },
+              { num: 2, label: '2. GitHub' },
+              { num: 3, label: '3. Stack' },
+              { num: 4, label: '4. Deploy' },
+            ].map(s => {
+              const active = step >= s.num;
+              return (
+                <span
+                  key={s.num}
+                  className="px-2.5 py-1 rounded-full text-[11px] font-mono transition-colors"
+                  style={{
+                    background: active ? 'var(--accent)' : 'var(--bg-tertiary)',
+                    color: active ? 'var(--accent-fg)' : 'var(--text-muted)',
+                  }}
+                >
+                  {s.label}
+                </span>
+              );
+            })}
+          </div>
+          <ThemeToggle />
         </div>
       </div>
 

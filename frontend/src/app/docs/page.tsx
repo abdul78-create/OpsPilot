@@ -6,6 +6,7 @@ import {
   BookOpen, Search, ChevronRight, Terminal, GitBranch, Rocket, Shield,
   Activity, Sparkles, Key, Users, CreditCard, Copy, Check
 } from 'lucide-react';
+import { ThemeToggle } from '../../components/ui/ThemeToggle';
 
 const DOC_SECTIONS = [
   {
@@ -125,9 +126,10 @@ export default function DocsPage() {
               }}
             />
           </div>
+          <ThemeToggle />
           <Link
             href="/dashboard"
-            className="text-xs font-bold px-4 py-2 rounded-xl transition-opacity hover:opacity-80"
+            className="text-xs font-bold px-4 py-2 rounded-xl transition-opacity hover:opacity-80 shrink-0"
             style={{ background: 'var(--accent)', color: 'var(--accent-fg)' }}
           >
             Go to Console

@@ -4,6 +4,7 @@ import React, { useEffect, useState, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { CheckCircle2, XCircle, ArrowRight, Loader2 } from 'lucide-react';
+import { ThemeToggle } from '../../components/ui/ThemeToggle';
 
 type State = 'loading' | 'success' | 'error';
 
@@ -149,9 +150,12 @@ function VerifyEmailContent() {
 export default function VerifyEmailPage() {
   return (
     <div
-      className="min-h-screen flex items-center justify-center p-6"
+      className="min-h-screen flex items-center justify-center p-6 relative"
       style={{ background: 'var(--bg-primary)', color: 'var(--text-primary)', fontFamily: 'Inter, system-ui, sans-serif' }}
     >
+      <div className="absolute top-6 right-6">
+        <ThemeToggle />
+      </div>
       <div className="w-full max-w-md space-y-6">
 
         {/* Brand */}

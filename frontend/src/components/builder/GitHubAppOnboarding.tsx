@@ -26,7 +26,7 @@ export function GitHubAppOnboarding({ open, onClose, onSelectRepo }: GitHubAppOn
 
   const repos: RepoItem[] = [
     { name: 'workspace/backend-api', branch: 'main', stack: ['Node.js 22', 'Docker', 'K8s', 'Jest'], lastCommit: '2h ago', isInstalled: true },
-    { name: 'workspace/frontend-next', branch: 'main', stack: ['Next.js 15', 'Tailwind', 'Vercel'], lastCommit: '4h ago', isInstalled: true },
+    { name: 'workspace/frontend', branch: 'main', stack: ['Next.js 16', 'Tailwind', 'Vercel'], lastCommit: '4h ago', isInstalled: true },
     { name: 'workspace/data-worker', branch: 'main', stack: ['Python 3.11', 'FastAPI', 'Redis'], lastCommit: '1d ago', isInstalled: true },
   ];
 

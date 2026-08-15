@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { Eye, EyeOff, Mail, Lock, User, MailCheck } from 'lucide-react';
+import { ThemeToggle } from '../../components/ui/ThemeToggle';
 
 function PasswordStrengthBar({ password }: { password: string }) {
   const checks = [
@@ -123,17 +124,20 @@ export default function RegisterPage() {
 
   // ── Register Form ──
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '32px 24px', fontFamily: 'Inter, system-ui, sans-serif' }}>
+    <div className="relative" style={{ minHeight: '100vh', background: 'var(--bg-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '32px 24px', fontFamily: 'Inter, system-ui, sans-serif' }}>
+      <div className="absolute top-6 right-6">
+        <ThemeToggle />
+      </div>
       <div style={{ width: '100%', maxWidth: 400 }}>
 
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 44, height: 44, borderRadius: 11, background: 'var(--text-primary)', marginBottom: 16 }}>
+          <Link href="/" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 44, height: 44, borderRadius: 11, background: 'var(--text-primary)', marginBottom: 16, textDecoration: 'none' }}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
               <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"
                 stroke="var(--accent-fg)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
-          </div>
+          </Link>
           <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6 }}>Create your account</h1>
           <p style={{ fontSize: 14, color: 'var(--text-muted)' }}>Join high-performance engineering teams.</p>
         </div>

@@ -69,8 +69,8 @@ OpsPilot can be deployed to:
    - Set Environment Variables: `JWT_SECRET`, `GITHUB_WEBHOOK_SECRET`, `DATABASE_URL`, `REDIS_URL`
 
 4. **Static Site (Frontend Dashboard)**:
-   - Build Command: `npm --prefix frontend-next run build`
-   - Publish Directory: `frontend-next/out`
+   - Build Command: `npm --prefix frontend run build`
+   - Publish Directory: `frontend/out`
    - Rewrite Rule: `/*` → `/index.html`
 
 ---
@@ -95,7 +95,7 @@ server {
     ssl_certificate_key /etc/letsencrypt/live/app.opspilot.io/privkey.pem;
 
     location / {
-        root /opt/opspilot/frontend-next/out;
+        root /opt/opspilot/frontend/out;
         try_files $uri $uri.html /index.html;
     }
 

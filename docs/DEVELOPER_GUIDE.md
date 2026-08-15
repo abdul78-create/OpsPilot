@@ -17,7 +17,7 @@ Version 1.0.0 · Last Updated: August 2026
 npm install
 
 # Frontend dependencies
-cd frontend-next
+cd frontend
 npm install
 cd ..
 ```
@@ -43,7 +43,7 @@ npx prisma db seed
 npm run start:dev
 
 # Terminal 2 — Next.js Frontend Dev Server (Port 3001)
-npm --prefix frontend-next run dev
+npm --prefix frontend run dev
 ```
 
 ---
@@ -74,7 +74,7 @@ npx jest src/core/context/opentelemetry-tracing.integration.spec.ts
 
 ```bash
 # Test frontend static export & TypeScript compilation
-npm --prefix frontend-next run build
+npm --prefix frontend run build
 ```
 
 ---

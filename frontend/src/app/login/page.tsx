@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
+import { ThemeToggle } from '../../components/ui/ThemeToggle';
 
 function GithubIcon({ size = 15 }: { size?: number }) {
   return (
@@ -158,18 +159,23 @@ export default function LoginPage() {
       </div>
 
       {/* ── Right Panel: Auth Form ── */}
-      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '32px 24px' }}>
+      <div className="relative" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '32px 24px' }}>
+        <div className="absolute top-6 right-6">
+          <ThemeToggle />
+        </div>
         <div style={{ width: '100%', maxWidth: 380 }}>
 
           {/* Mobile logo */}
           <div className="flex lg:hidden" style={{ alignItems: 'center', gap: 8, marginBottom: 32 }}>
-            <div style={{ width: 28, height: 28, borderRadius: 7, background: 'var(--text-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
-                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"
-                  stroke="var(--accent-fg)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </div>
-            <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>OpsPilot</span>
+            <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
+              <div style={{ width: 28, height: 28, borderRadius: 7, background: 'var(--text-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                  <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"
+                    stroke="var(--accent-fg)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
+              <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>OpsPilot</span>
+            </Link>
           </div>
 
           {/* Header */}

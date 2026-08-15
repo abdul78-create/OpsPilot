@@ -3,6 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { Shield, Key, Lock, CheckCircle2, FileText, ArrowRight, RefreshCw, Server } from 'lucide-react';
+import { ThemeToggle } from '../../components/ui/ThemeToggle';
 
 const SECURITY_POSTURE = [
   {
@@ -58,13 +59,23 @@ export default function SecurityPosturePage() {
           <Link href="/security" className="font-bold" style={{ color: 'var(--text-primary)' }}>Security</Link>
         </div>
 
-        <Link
-          href="/register"
-          className="text-xs font-bold px-4 py-2 rounded-xl transition-opacity hover:opacity-80"
-          style={{ background: 'var(--accent)', color: 'var(--accent-fg)' }}
-        >
-          Get Started
-        </Link>
+        <div className="flex items-center gap-3">
+          <ThemeToggle />
+          <Link
+            href="/login"
+            className="text-xs font-semibold hover:opacity-80 transition-opacity"
+            style={{ color: 'var(--text-secondary)' }}
+          >
+            Sign in
+          </Link>
+          <Link
+            href="/register"
+            className="text-xs font-bold px-4 py-2 rounded-xl transition-opacity hover:opacity-80"
+            style={{ background: 'var(--accent)', color: 'var(--accent-fg)' }}
+          >
+            Get started
+          </Link>
+        </div>
       </header>
 
       {/* Main Body */}

@@ -26,5 +26,5 @@
     }
   },
   "include": ["src/**/*", "test/**/*"],
-  "exclude": ["node_modules", "dist", "frontend", "frontend-next"]
+  "exclude": ["node_modules", "dist", "frontend"]
 }

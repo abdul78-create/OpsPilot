@@ -99,7 +99,7 @@ services:
   # ── Next.js 15 Frontend (Nginx) ────────────────────────────
   frontend:
     build:
-      context: ./frontend-next
+      context: ./frontend
       dockerfile: Dockerfile
       args:
         # Nginx proxies /v1/ to backend, so the browser uses a relative path

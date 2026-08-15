@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { CheckCircle2, ArrowRight, ShieldCheck, Zap } from 'lucide-react';
+import { ThemeToggle } from '../../components/ui/ThemeToggle';
 
 const PRICING_TIERS = [
   {
@@ -94,13 +95,23 @@ export default function PublicPricingPage() {
           <Link href="/security" className="hover:opacity-80 transition-opacity">Security</Link>
         </div>
 
-        <Link
-          href="/register"
-          className="text-xs font-bold px-4 py-2 rounded-xl transition-opacity hover:opacity-80"
-          style={{ background: 'var(--accent)', color: 'var(--accent-fg)' }}
-        >
-          Get Started
-        </Link>
+        <div className="flex items-center gap-3">
+          <ThemeToggle />
+          <Link
+            href="/login"
+            className="text-xs font-semibold hover:opacity-80 transition-opacity"
+            style={{ color: 'var(--text-secondary)' }}
+          >
+            Sign in
+          </Link>
+          <Link
+            href="/register"
+            className="text-xs font-bold px-4 py-2 rounded-xl transition-opacity hover:opacity-80"
+            style={{ background: 'var(--accent)', color: 'var(--accent-fg)' }}
+          >
+            Get started
+          </Link>
+        </div>
       </header>
 
       {/* Hero */}

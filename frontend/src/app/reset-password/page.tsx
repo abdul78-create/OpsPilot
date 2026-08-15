@@ -4,6 +4,7 @@ import React, { useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Lock, Eye, EyeOff, CheckCircle2, XCircle, ArrowRight, ArrowLeft, Loader2, AlertCircle } from 'lucide-react';
+import { ThemeToggle } from '../../components/ui/ThemeToggle';
 
 type State = 'form' | 'success' | 'error';
 
@@ -363,9 +364,12 @@ function ResetPasswordContent() {
 export default function ResetPasswordPage() {
   return (
     <div
-      className="min-h-screen flex items-center justify-center p-6"
+      className="min-h-screen flex items-center justify-center p-6 relative"
       style={{ background: 'var(--bg-primary)', color: 'var(--text-primary)', fontFamily: 'Inter, system-ui, sans-serif' }}
     >
+      <div className="absolute top-6 right-6">
+        <ThemeToggle />
+      </div>
       <div className="w-full max-w-md space-y-6">
 
         {/* Brand */}
