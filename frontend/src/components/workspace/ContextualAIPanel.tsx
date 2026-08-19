@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { Node } from '@xyflow/react';
-import { Sparkles, Zap, AlertTriangle, ShieldCheck, Send, ChevronRight, TrendingDown, Clock, CheckCircle2 } from 'lucide-react';
+import { Sparkles, Zap, AlertTriangle, Send, ChevronRight, CheckCircle2 } from 'lucide-react';
 import { AIApplyDiffDrawer } from './AIApplyDiffDrawer';
 
 // ─── Contextual AI content per node type ─────────────────────────────────────

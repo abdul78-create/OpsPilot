@@ -1,19 +1,18 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { DeveloperShell } from '@/components/layout/DeveloperShell';
 import {
   CheckCircle2, XCircle, Loader2, Circle, XSquare,
-  GitBranch, GitCommit, Clock, ChevronLeft, Download,
-  RefreshCw, Play, AlertCircle, ChevronDown, ChevronRight,
-  Terminal, Sparkles, Copy, RotateCcw,
+  ChevronLeft, AlertCircle, ChevronRight,
+  GitBranch, GitCommit, Clock, RefreshCw, Sparkles,
 } from 'lucide-react';
 import {
-  getPipelineRun, fetchRunLogs, cancelRun, analyzeRun,
-  formatLogLines, PipelineRun, PipelineJob, LogEntry, AiAnalysisReport,
+  getPipelineRun, fetchRunLogs, cancelRun, analyzeRun, formatLogLines,
+  PipelineRun, PipelineJob, LogEntry, AiAnalysisReport,
 } from '@/lib/apiClient';
-import { StatusPill, CopyButton } from '@/components/ui/Primitives';
+import { StatusPill } from '@/components/ui/Primitives';
 import { useToast } from '@/components/ui/Toast';
 import { XTermPanel } from '@/components/ui/XTermPanel';
 import { TerminalStream } from '@/components/ui/terminal-stream';
@@ -31,15 +30,9 @@ function timeAgo(d?: string) {
 }
 
 function formatDuration(secs?: number) {
-  if (!secs) return '—';
+  if (secs === undefined || secs === null) return '—';
   if (secs < 60) return `${secs}s`;
   return `${Math.floor(secs / 60)}m ${secs % 60}s`;
-}
-
-function pipelineShortName(name?: string) {
-  if (!name) return 'Pipeline';
-  const m = name.match(/Build:\s*https?:\/\/github\.com\/([^/\s]+\/[^/\s]+)/);
-  return m ? m[1] : name;
 }
 
 function jobStatusIcon(status: PipelineJob['status']) {
@@ -50,15 +43,6 @@ function jobStatusIcon(status: PipelineJob['status']) {
     case 'QUEUED':    return <Circle size={14} className="shrink-0" style={{ color: 'var(--warning)' }} />;
     case 'CANCELLED': return <XSquare size={14} className="shrink-0" style={{ color: 'var(--text-muted)' }} />;
     case 'SKIPPED':   return <ChevronRight size={14} className="shrink-0" style={{ color: 'var(--text-muted)' }} />;
-  }
-}
-
-function logLevelColor(level: string) {
-  switch (level) {
-    case 'ERROR': return 'var(--error)';
-    case 'WARN':  return 'var(--warning)';
-    case 'DEBUG': return 'var(--text-muted)';
-    default:      return 'var(--text-secondary)';
   }
 }
 

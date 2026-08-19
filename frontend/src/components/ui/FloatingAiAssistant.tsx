@@ -1,8 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Sparkles, X, Send, Bot, Terminal, ChevronRight, Zap, Code, Shield } from 'lucide-react';
-import { useToast } from './Toast';
+import { Sparkles, X, Send, Bot, Terminal, Code, Shield } from 'lucide-react';
 
 export function FloatingAiAssistant() {
   const [open, setOpen] = useState(false);
@@ -12,7 +11,6 @@ export function FloatingAiAssistant() {
   ]);
   const [typing, setTyping] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const { toast } = useToast();
 
   const QUICK_PROMPTS = [
     { label: 'Analyze build', icon: Terminal, prompt: 'Analyze my last failed pipeline execution and locate the errors.' },

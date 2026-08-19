@@ -90,7 +90,7 @@ export function TerminalStream({
       term.dispose();
       terminalRef.current = null;
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── SSE log stream connection ─────────────────────────────────────────────
   useEffect(() => {

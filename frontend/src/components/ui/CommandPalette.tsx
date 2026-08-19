@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import {
   LayoutDashboard, GitBranch, PlayCircle, Rocket, Sparkles, Settings,
   Search, ArrowRight, Zap, Bot, KeyRound, Terminal, Plus, RotateCcw,
-  Activity, FileText, Shield, CreditCard, BookOpen, Users, Home,
+  Activity, FileText, Shield, CreditCard, BookOpen,
 } from 'lucide-react';
 import { useToast } from './Toast';
 import { triggerPipeline, DEFAULT_PIPELINE_ID } from '@/lib/apiClient';
@@ -49,8 +49,11 @@ export function CommandPalette({ onOpenSecretModal }: CommandPaletteProps) {
   // ── Focus on open ─────────────────────────────────────────────────────────
   useEffect(() => {
     if (open) {
-      setInput('');
-      setTimeout(() => inputRef.current?.focus(), 50);
+      const timer = setTimeout(() => {
+        setInput('');
+        inputRef.current?.focus();
+      }, 10);
+      return () => clearTimeout(timer);
     }
   }, [open]);
 

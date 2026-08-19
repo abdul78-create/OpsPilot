@@ -3,8 +3,7 @@
 import React from 'react';
 import { Dialog } from '../ui/dialog';
 import { Button } from '../ui/button';
-import { Badge } from '../ui/badge';
-import { Layers, Zap, Rocket, Box, CheckCircle2, ArrowRight } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 
 export interface TemplateMarketplaceProps {
   open: boolean;

@@ -1,9 +1,7 @@
-'use client';
-
 import React, { useState } from 'react';
 import { Dialog } from '../ui/dialog';
 import { Button } from '../ui/button';
-import { Share2, Copy, Check, GitFork, ExternalLink } from 'lucide-react';
+import { Copy, Check, GitFork, ExternalLink } from 'lucide-react';
 
 export interface PublicShareModalProps {
   open: boolean;

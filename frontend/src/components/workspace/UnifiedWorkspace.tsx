@@ -43,8 +43,8 @@ import { checkBackendHealth } from '../../lib/apiClient';
 import { useUndoRedo } from '../../hooks/useUndoRedo';
 import { Badge } from '../ui/badge';
 import {
-  Play, Zap, History, Share2, Layers,
-  Undo2, Redo2, RotateCcw, Terminal, Bot,
+  Play, Zap, Layers,
+  Undo2, Redo2, RotateCcw, Terminal,
   SplitSquareHorizontal, GitPullRequest, FolderGit2, FileCode, GitBranch, Server, HardDrive, Command,
 } from 'lucide-react';
 import Link from 'next/link';

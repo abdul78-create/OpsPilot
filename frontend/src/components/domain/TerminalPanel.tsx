@@ -1,5 +1,5 @@
 import * as React from "react"
-import { Terminal, Play, Pause, RotateCcw, Maximize2 } from "lucide-react"
+import { Terminal, Pause, RotateCcw, Maximize2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface TerminalPanelProps {

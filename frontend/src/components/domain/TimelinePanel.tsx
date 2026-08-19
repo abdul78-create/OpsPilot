@@ -1,5 +1,4 @@
 import * as React from "react"
-import { CheckCircle2, Clock, PlayCircle } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface TimelineStep {

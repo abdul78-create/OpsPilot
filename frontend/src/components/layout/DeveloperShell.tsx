@@ -48,7 +48,7 @@ export function DeveloperShell({ children }: DeveloperShellProps) {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       let token = localStorage.getItem('opspilot_token');
-      let userData = localStorage.getItem('opspilot_user');
+      const userData = localStorage.getItem('opspilot_user');
 
       if (!token) {
         if (process.env.NODE_ENV === 'development') {

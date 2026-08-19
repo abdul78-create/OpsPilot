@@ -552,8 +552,9 @@ export async function fetchRepositoryTree(
   path: string = '',
   ref: string = 'main',
 ) {
+  const query = new URLSearchParams({ path, ref }).toString();
   return apiFetch<{ data: GitHubFileItem[] }>(
-    `/projects/${projectId}/repositories/${repositoryId}/tree`,
+    `/projects/${projectId}/repositories/${repositoryId}/tree?${query}`,
     {
       method: 'GET',
     },
@@ -566,8 +567,9 @@ export async function fetchRepositoryFile(
   path: string = 'package.json',
   ref: string = 'main',
 ) {
+  const query = new URLSearchParams({ path, ref }).toString();
   return apiFetch<{ data: GitHubFileContent }>(
-    `/projects/${projectId}/repositories/${repositoryId}/file`,
+    `/projects/${projectId}/repositories/${repositoryId}/file?${query}`,
     {
       method: 'GET',
     },

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { MessageSquare, Users, User, X, Send } from 'lucide-react';
+import { MessageSquare, X, Send } from 'lucide-react';
 import { Badge } from '../ui/badge';
 
 interface UserPresence {

@@ -112,7 +112,7 @@ export function DeliveryWorkspace() {
                     return (
                       <button
                         key={tab.id}
-                        onClick={() => setActiveTab(tab.id as any)}
+                        onClick={() => setActiveTab(tab.id as 'overview' | 'logs' | 'ai' | 'variables')}
                         className={`flex items-center gap-2 px-3 py-1.5 rounded-md font-semibold transition-all cursor-pointer ${
                           isActive
                             ? 'bg-slate-950 text-slate-100 border border-slate-800'

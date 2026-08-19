@@ -1,10 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Dialog } from '../ui/dialog';
 import { Button } from '../ui/button';
-import { Badge } from '../ui/badge';
-import { History, GitCommit, RotateCcw, Plus, Edit3 } from 'lucide-react';
+import { RotateCcw, Plus, Edit3 } from 'lucide-react';
 
 export interface PipelineGitHistoryProps {
   open: boolean;
@@ -13,7 +12,6 @@ export interface PipelineGitHistoryProps {
 }
 
 export function PipelineGitHistory({ open, onClose, onRestoreVersion }: PipelineGitHistoryProps) {
-  const [selectedVersion, setSelectedVersion] = useState('v31');
 
   const history = [
     {

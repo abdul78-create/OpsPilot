@@ -36,11 +36,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<Theme>('dark');
   const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>('dark');
 
-  // Init on mount — read from localStorage
+  // Init on mount — sync with DOM
   useEffect(() => {
     const stored = (localStorage.getItem(STORAGE_KEY) as Theme) || 'dark';
-    setThemeState(stored);
     const resolved = stored === 'system' ? getSystemTheme() : stored;
+    setThemeState(stored);
     setResolvedTheme(resolved);
     applyTheme(resolved);
   }, []);
