@@ -268,14 +268,23 @@ describe('OpsPilot 15-Point Reliability, Chaos & Security Hardening Matrix', () 
         '..\\..\\Windows\\System32\\config\\SAM',
         'artifacts/../../../secret.env',
         '/var/run/docker.sock',
+        '../../../root/.ssh/id_rsa',
       ];
 
       function isPathSafe(baseDir: string, targetPath: string): boolean {
-        const resolved = path.resolve(baseDir, targetPath);
-        return resolved.startsWith(path.resolve(baseDir));
+        if (targetPath.includes('\0')) return false;
+        const normalizedTarget = targetPath.replace(/\\/g, '/');
+        const resolvedBase = path.resolve(baseDir);
+        const resolvedTarget = path.resolve(resolvedBase, normalizedTarget);
+        const relative = path.relative(resolvedBase, resolvedTarget);
+
+        if (relative.startsWith('..') || path.isAbsolute(relative) || relative === '') {
+          return false;
+        }
+        return resolvedTarget.startsWith(resolvedBase + path.sep);
       }
 
-      const workspaceDir = 'C:\\opspilot-workspaces\\run_101';
+      const workspaceDir = path.resolve(process.cwd(), 'opspilot-workspaces', 'run_101');
       for (const p of maliciousPaths) {
         const safe = isPathSafe(workspaceDir, p);
         expect(safe).toBe(false);
