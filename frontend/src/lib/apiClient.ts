@@ -219,6 +219,49 @@ export async function checkBackendHealth() {
   }
 }
 
+/**
+ * Fetches live service health from the Observability health monitoring endpoint.
+ * Response shape: { status: 'ok'|'degraded', timestamp: string, details: { database, eventBus, queue } }
+ * This is the custom probe (real DB + Redis ping), distinct from the Terminus /health endpoint.
+ */
+export interface ServiceHealthStatus {
+  status: 'ok' | 'degraded' | 'down';
+  timestamp: string;
+  details: {
+    database: string;
+    eventBus: string;
+    queue: string;
+  };
+}
+
+export async function fetchServiceHealth(): Promise<ServiceHealthStatus> {
+  try {
+    // The observability HealthMonitoringController returns the DTO directly (no data wrapper)
+    const raw = await apiFetch<ServiceHealthStatus | { data: ServiceHealthStatus }>('/health');
+    // Handle both wrapped and unwrapped shapes defensively
+    if ('details' in raw) return raw as ServiceHealthStatus;
+    const wrapped = raw as { data: ServiceHealthStatus };
+    if (wrapped.data && 'details' in wrapped.data) return wrapped.data;
+    // Terminus fallback: map info → details
+    const terminus = raw as unknown as { data: { status: string; info: Record<string, { status: string }> } };
+    return {
+      status: terminus.data?.status === 'ok' ? 'ok' : 'degraded',
+      timestamp: new Date().toISOString(),
+      details: {
+        database: terminus.data?.info?.database?.status ?? 'unknown',
+        eventBus: terminus.data?.info?.eventBus?.status  ?? 'up',
+        queue:    terminus.data?.info?.queue?.status     ?? 'unknown',
+      },
+    };
+  } catch {
+    return {
+      status: 'down',
+      timestamp: new Date().toISOString(),
+      details: { database: 'down', eventBus: 'down', queue: 'down' },
+    };
+  }
+}
+
 // ─── Organizations ────────────────────────────────────────────────────────────
 
 export async function getCurrentOrganization() {

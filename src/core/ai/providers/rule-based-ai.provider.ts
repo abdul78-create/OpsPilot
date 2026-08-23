@@ -23,6 +23,9 @@ export class RuleBasedAiProvider implements IAiProvider {
     let riskLevel: AiRiskLevel = AiRiskLevel.MEDIUM;
     const recommendations: string[] = [];
 
+    let suggestedPatch: string | undefined;
+    const suggestedCommands: string[] = [];
+
     if (
       allLogMessages.toLowerCase().includes('permission denied') ||
       allLogMessages.toLowerCase().includes('eacces')
@@ -34,6 +37,8 @@ export class RuleBasedAiProvider implements IAiProvider {
       recommendations.push(
         'Ensure required scripts have `chmod +x` permissions in build workflow.',
       );
+      suggestedCommands.push('chmod +x scripts/*.sh');
+      suggestedPatch = `--- a/pipeline.yml\n+++ b/pipeline.yml\n@@ -5,2 +5,3 @@\n+    - run: chmod +x ./entrypoint.sh\n     - run: ./entrypoint.sh`;
     } else if (
       allLogMessages.toLowerCase().includes('timeout') ||
       allLogMessages.toLowerCase().includes('timed out')
@@ -44,6 +49,8 @@ export class RuleBasedAiProvider implements IAiProvider {
       recommendations.push(
         'Increase step timeout configuration or split heavy build tasks into parallel jobs.',
       );
+      suggestedCommands.push('opspilot pipeline update --timeout 1800');
+      suggestedPatch = `--- a/pipeline.yml\n+++ b/pipeline.yml\n@@ -3,2 +3,2 @@\n-  timeoutMinutes: 10\n+  timeoutMinutes: 30`;
     } else if (
       allLogMessages.toLowerCase().includes('syntaxerror') ||
       allLogMessages.toLowerCase().includes('cannot find module')
@@ -53,11 +60,15 @@ export class RuleBasedAiProvider implements IAiProvider {
       riskLevel = AiRiskLevel.LOW;
       recommendations.push('Verify lockfile integrity (`package-lock.json` or `yarn.lock`).');
       recommendations.push('Run `npm ci` locally to reproduce build resolution failure.');
+      suggestedCommands.push('npm install');
+      suggestedCommands.push('npm run build');
+      suggestedPatch = `--- a/package.json\n+++ b/package.json\n@@ -15,1 +15,2 @@\n+    "typescript": "^5.0.0"\n`;
     } else {
       recommendations.push('Review detailed step execution logs for unhandled exception trace.');
       recommendations.push(
         'Ensure environment variables and secret dependencies are defined in target environment.',
       );
+      suggestedCommands.push('opspilot logs export --run-id ' + context.runId);
     }
 
     return {
@@ -66,6 +77,8 @@ export class RuleBasedAiProvider implements IAiProvider {
       confidenceScore,
       riskLevel,
       recommendations,
+      suggestedPatch,
+      suggestedCommands: suggestedCommands.length > 0 ? suggestedCommands : undefined,
     };
   }
 

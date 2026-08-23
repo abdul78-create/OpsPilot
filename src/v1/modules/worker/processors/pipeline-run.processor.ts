@@ -133,6 +133,14 @@ export class PipelineRunProcessor extends WorkerHost implements OnApplicationBoo
 
         const anyFailed = results.some((j) => j.status === JobStatus.FAILED);
         if (anyFailed) {
+          // Mark remaining unstarted jobs in downstream stages as SKIPPED
+          await this.prisma.pipelineJob.updateMany({
+            where: {
+              pipelineRunId,
+              status: JobStatus.QUEUED,
+            },
+            data: { status: JobStatus.SKIPPED },
+          });
           throw new Error(`Stage '${stage}' had one or more failed jobs`);
         }
       }

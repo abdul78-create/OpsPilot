@@ -13,6 +13,12 @@ export class AiOrchestrationRepository extends BaseRepository<
     super(prismaService, 'aiAnalysisReport');
   }
 
+  override async findById(id: string): Promise<AiAnalysisReport | null> {
+    return this.prismaService.aiAnalysisReport.findUnique({
+      where: { id },
+    });
+  }
+
   async findByOrganization(organizationId: string, type?: string): Promise<AiAnalysisReport[]> {
     const where: Prisma.AiAnalysisReportWhereInput = { organizationId };
     if (type) {

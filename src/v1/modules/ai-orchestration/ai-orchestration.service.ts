@@ -1,8 +1,9 @@
-import { Injectable, Logger, NotFoundException, Inject } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, Inject, Optional } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { AiOrchestrationRepository } from './ai-orchestration.repository';
 import { PrismaService } from '../../../core/database/prisma.service';
 import { IAiProvider } from '../../../core/ai/interfaces/ai-provider.interface';
+import { GitHubAppService } from '../repositories/services/github-app.service';
 
 import {
   AiAnalysisReport,
@@ -24,6 +25,7 @@ export class AiOrchestrationService {
     private readonly aiRepository: AiOrchestrationRepository,
     private readonly prisma: PrismaService,
     @Inject(GeminiAiProvider) private readonly aiProvider: IAiProvider,
+    @Optional() private readonly githubAppService?: GitHubAppService,
   ) {}
 
   async analyzeRunFailure(pipelineRunId: string): Promise<AiAnalysisReport> {
@@ -80,6 +82,8 @@ export class AiOrchestrationService {
         failedJobCount: run.jobs.length,
         branch: run.branch,
         commitSha: run.commitSha,
+        suggestedPatch: result.suggestedPatch,
+        suggestedCommands: result.suggestedCommands,
       } as unknown as Prisma.InputJsonValue,
     });
   }
@@ -171,5 +175,69 @@ export class AiOrchestrationService {
       throw new NotFoundException(`AI Analysis Report '${id}' not found`);
     }
     return report;
+  }
+
+  /**
+   * Prepares an isolated fix branch proposal from AI RCA patch recommendations.
+   * If createRemotePr is true, creates a remote branch, commits patch, and opens a GitHub PR.
+   */
+  async applyFix(
+    reportId: string,
+    options?: {
+      createRemotePr?: boolean;
+      owner?: string;
+      repo?: string;
+      accessToken?: string;
+    },
+  ) {
+    const report = await this.findById(reportId);
+    const metadata = (report.metadata as Record<string, unknown>) || {};
+    const suggestedPatch = (metadata.suggestedPatch as string) || null;
+    const suggestedCommands = (metadata.suggestedCommands as string[]) || [];
+
+    const fixBranch = `opspilot/fix-${report.targetId.slice(0, 8)}`;
+
+    let pullRequest: { prNumber: number; htmlUrl: string; title: string } | null = null;
+
+    if (options?.createRemotePr && options?.owner && options?.repo && this.githubAppService) {
+      const { owner, repo, accessToken } = options;
+      // 1. Create remote branch
+      await this.githubAppService.createBranch(owner, repo, fixBranch, 'main', accessToken);
+
+      // 2. Commit patch file
+      if (suggestedPatch) {
+        await this.githubAppService.createOrUpdateFile(
+          owner,
+          repo,
+          'opspilot-fix.patch',
+          suggestedPatch,
+          `fix(opspilot): apply automated AI RCA fix for run ${report.targetId.slice(0, 8)}`,
+          fixBranch,
+          accessToken,
+        );
+      }
+
+      // 3. Create Pull Request
+      pullRequest = await this.githubAppService.createPullRequest(
+        owner,
+        repo,
+        `fix(opspilot): automated fix proposal for run ${report.targetId.slice(0, 8)}`,
+        fixBranch,
+        'main',
+        `## 🤖 OpsPilot AI Root Cause Analysis Fix Proposal\n\n**Root Cause:** ${report.rootCause || 'Pipeline failure'}\n\n**Confidence:** ${(report.confidenceScore * 100).toFixed(0)}%\n\n### Suggested Commands\n\`\`\`bash\n${suggestedCommands.join('\n')}\n\`\`\`\n\n### Patch Diff\n\`\`\`diff\n${suggestedPatch || 'No diff provided'}\n\`\`\``,
+        accessToken,
+      );
+    }
+
+    return {
+      reportId: report.id,
+      targetRunId: report.targetId,
+      fixBranch,
+      suggestedPatch,
+      suggestedCommands,
+      status: pullRequest ? 'PULL_REQUEST_OPENED' : 'READY_FOR_REVIEW',
+      pullRequest,
+      reTestInstructions: `git fetch origin && git checkout -b ${fixBranch} && git apply patch.diff`,
+    };
   }
 }

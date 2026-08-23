@@ -63,7 +63,7 @@ export class GeminiAiProvider implements IAiProvider {
     });
 
     const prompt = `You are an expert DevOps engineer and AI Root Cause Analysis specialist.
-Analyze the following failed pipeline run logs and determine the root cause, confidence score (0.0 to 1.0), risk level (LOW, MEDIUM, HIGH, CRITICAL), and actionable remediation steps.
+Analyze the following failed pipeline run logs and determine the root cause, confidence score (0.0 to 1.0), risk level (LOW, MEDIUM, HIGH, CRITICAL), actionable remediation steps, and concrete fix proposals (suggested CLI commands and unified git patch diff).
 
 Pipeline: "${context.pipelineName}" (Run ID: ${context.runId})
 Branch: ${context.branch ?? 'main'}, Commit: ${context.commitSha ?? 'unknown'}
@@ -80,7 +80,11 @@ Respond strictly in valid JSON format matching this schema:
   "recommendations": [
     "Step 1 fix suggestion",
     "Step 2 fix suggestion"
-  ]
+  ],
+  "suggestedCommands": [
+    "npm install"
+  ],
+  "suggestedPatch": "--- a/file\\n+++ b/file\\n@@ ..."
 }`;
 
     // Retry loop (up to 2 attempts for transient errors)
@@ -132,6 +136,11 @@ Respond strictly in valid JSON format matching this schema:
               : 0.9,
           riskLevel,
           recommendations: Array.isArray(parsed.recommendations) ? parsed.recommendations : [],
+          suggestedCommands: Array.isArray(parsed.suggestedCommands)
+            ? parsed.suggestedCommands
+            : undefined,
+          suggestedPatch:
+            typeof parsed.suggestedPatch === 'string' ? parsed.suggestedPatch : undefined,
         };
       } catch (err) {
         this.logger.error(

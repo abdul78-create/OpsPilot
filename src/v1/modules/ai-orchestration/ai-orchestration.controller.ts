@@ -81,4 +81,17 @@ export class AiOrchestrationController {
       data: report,
     };
   }
+
+  @Post('ai/apply-fix/:id')
+  @Permissions(PipelinePermissions.TRIGGER)
+  @ApiOperation({ summary: 'Prepare an isolated fix branch proposal from AI RCA recommendations' })
+  @ApiParam({ name: 'id', description: 'AI Report UUID' })
+  @ApiResponse({ status: HttpStatus.OK })
+  async applyFix(@Param('id') id: string) {
+    const result = await this.aiService.applyFix(id);
+    return {
+      message: 'AI fix proposal prepared on isolated branch',
+      data: result,
+    };
+  }
 }

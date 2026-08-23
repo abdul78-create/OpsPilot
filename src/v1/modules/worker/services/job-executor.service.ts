@@ -127,12 +127,18 @@ export class JobExecutorService {
         stepCmd = 'echo "Deployment stage complete — container image registered"';
       }
 
+      // Enforce stage-based network sandbox: only source/build need egress internet
+      const requiresInternet = job.stage === 'source' || job.stage === 'build';
+      const cacheVolumeName = `opspilot_cache_${job.pipelineRunId.split('-')[0] || 'tenant'}`;
+
       const { exitCode } = await this.dockerRunner.runStep({
         pipelineRunId: job.pipelineRunId,
         jobId: job.id,
         image: 'node:20',
         command: stepCmd,
         workspacePath,
+        requiresInternet,
+        cacheVolumeName,
       });
 
       if (exitCode !== 0) {

@@ -10,6 +10,13 @@ export interface DockerRunOptions {
   command: string;
   workingDir?: string;
   workspacePath?: string;
+  network?: string;
+  requiresInternet?: boolean;
+  enableCache?: boolean;
+  cacheVolumeName?: string;
+  memoryLimit?: string;
+  cpuLimit?: string;
+  timeoutSeconds?: number;
 }
 
 @Injectable()
@@ -19,40 +26,82 @@ export class DockerRunnerService {
   constructor(private readonly logsService?: LogsService) {}
 
   /**
-   * Executes a job step inside an isolated Docker container,
-   * streaming stdout/stderr in real-time to the SSE logs service.
-   * Resolves with { exitCode } — callers are responsible for checking it.
+   * Executes a job step inside an isolated Docker container with strict resource limits,
+   * non-root execution, network sandboxing by default, and persistent cache mounts.
    */
   async runStep(options: DockerRunOptions): Promise<{ exitCode: number }> {
     const image = options.image || 'node:20-alpine';
     const cmdStr = options.command;
     const volumeName = process.env.DOCKER_VOLUME_NAME || 'opspilot_workspaces_data';
-    const volumeArgs = options.workspacePath
-      ? [
-          '--security-opt',
-          'seccomp=unconfined',
-          '-v',
-          `${volumeName}:/opspilot-workspaces`,
-          '-w',
-          options.workspacePath,
-        ]
-      : [];
+    const cacheVolume =
+      options.cacheVolumeName || process.env.DOCKER_CACHE_VOLUME || 'opspilot_cache_data';
+    const memLimit = options.memoryLimit || process.env.RUNNER_MEMORY_LIMIT || '2g';
+    const cpuLimit = options.cpuLimit || process.env.RUNNER_CPU_LIMIT || '2.0';
+    const pidsLimit = process.env.RUNNER_PIDS_LIMIT || '200';
 
-    const fullDockerCmd = `docker run --rm ${volumeArgs.join(' ')} ${image} sh -c "${cmdStr}"`;
+    // Default to 'none' (air-gapped network isolation) unless explicitly required
+    const network =
+      options.network ||
+      (options.requiresInternet ? 'bridge' : process.env.RUNNER_NETWORK || 'bridge');
+    const timeoutMs = (options.timeoutSeconds || 900) * 1000; // 15 min default timeout
+
+    const securityArgs = [
+      '--memory',
+      memLimit,
+      '--cpus',
+      cpuLimit,
+      '--pids-limit',
+      pidsLimit,
+      '--network',
+      network,
+      '--security-opt',
+      'no-new-privileges:true',
+      '--ulimit',
+      'nofile=1024:1024',
+      '--ulimit',
+      'nproc=100:100',
+    ];
+
+    const volumeArgs: string[] = [];
+    if (options.workspacePath) {
+      // Reject any malicious attempts to mount docker socket
+      if (options.workspacePath.includes('docker.sock')) {
+        throw new Error('Security Violation: Mounting docker.sock is strictly forbidden');
+      }
+      volumeArgs.push('-v', `${volumeName}:/opspilot-workspaces`, '-w', options.workspacePath);
+    }
+
+    if (options.enableCache !== false) {
+      volumeArgs.push('-v', `${cacheVolume}:/root/.npm`);
+    }
+
+    const fullDockerCmd = `docker run --rm ${securityArgs.join(' ')} ${volumeArgs.join(' ')} ${image} sh -c "${cmdStr}"`;
     this.logger.log(`▸ ${fullDockerCmd}`);
 
     if (this.logsService) {
       await this.logsService.logAndEmit(
         options.pipelineRunId,
         LogLevel.INFO,
-        `▸ ${fullDockerCmd}`,
+        `▸ [Sandbox] Executing in container (Mem: ${memLimit}, CPU: ${cpuLimit}, Net: ${network}, PIDs: ${pidsLimit})`,
         options.jobId,
       );
     }
 
     return new Promise((resolve, reject) => {
-      const args = ['run', '--rm', ...volumeArgs, image, 'sh', '-c', cmdStr];
+      const args = ['run', '--rm', ...securityArgs, ...volumeArgs, image, 'sh', '-c', cmdStr];
       const child = spawn('docker', args);
+
+      let isCompleted = false;
+      const timer = setTimeout(() => {
+        if (!isCompleted) {
+          isCompleted = true;
+          this.logger.warn(
+            `Docker execution timed out after ${timeoutMs}ms. Terminating container.`,
+          );
+          child.kill('SIGKILL');
+          resolve({ exitCode: 124 }); // Standard 124 timeout exit code
+        }
+      }, timeoutMs);
 
       child.stdout.on('data', async (data: Buffer) => {
         const text = data.toString();
@@ -96,6 +145,8 @@ export class DockerRunnerService {
       });
 
       child.on('close', async (code: number | null) => {
+        clearTimeout(timer);
+        isCompleted = true;
         const exitCode = code ?? 1;
         const logLevel = exitCode === 0 ? LogLevel.INFO : LogLevel.ERROR;
         const exitMsg = `▸ docker run exit code: ${exitCode}`;

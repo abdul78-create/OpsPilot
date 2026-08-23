@@ -69,4 +69,65 @@ describe('PipelineRunProcessor & DockerRunner', () => {
 
     await expect(processor.process(jobMock)).resolves.not.toThrow();
   });
+
+  it('should execute parallel jobs in the same stage and skip downstream jobs on failure', async () => {
+    const mockPrisma = (processor as any).prisma;
+    const mockExecutor = (processor as any).jobExecutor;
+
+    const runId = 'run_parallel_test_1';
+    const mockRun = {
+      id: runId,
+      status: 'QUEUED',
+      jobs: [
+        {
+          id: 'job_build',
+          stage: 'build',
+          name: 'compile',
+          status: 'QUEUED',
+          pipelineRunId: runId,
+        },
+        { id: 'job_lint', stage: 'build', name: 'lint', status: 'QUEUED', pipelineRunId: runId },
+        {
+          id: 'job_deploy',
+          stage: 'deploy',
+          name: 'release',
+          status: 'QUEUED',
+          pipelineRunId: runId,
+        },
+      ],
+    };
+
+    mockPrisma.pipelineRun.findFirst.mockResolvedValueOnce(mockRun);
+    mockPrisma.pipelineJob.updateMany = jest.fn().mockResolvedValue({ count: 1 });
+
+    // Simulate job_build succeeding, but job_lint failing in the parallel 'build' stage
+    jest.spyOn(mockExecutor, 'executeJob').mockImplementation(async (job: any) => {
+      if (job.id === 'job_lint') {
+        return { ...job, status: 'FAILED' };
+      }
+      return { ...job, status: 'SUCCESS' };
+    });
+
+    const jobMock = {
+      data: { pipelineRunId: runId, repoUrl: 'https://github.com/org/repo' },
+    } as any;
+
+    await processor.process(jobMock);
+
+    // Verify run marked FAILED
+    expect(mockPrisma.pipelineRun.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: runId },
+        data: expect.objectContaining({ status: 'FAILED' }),
+      }),
+    );
+
+    // Verify downstream queued jobs were updated to SKIPPED
+    expect(mockPrisma.pipelineJob.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { pipelineRunId: runId, status: 'QUEUED' },
+        data: { status: 'SKIPPED' },
+      }),
+    );
+  });
 });

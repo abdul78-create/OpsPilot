@@ -36,6 +36,8 @@ export interface AnalysisResult {
   confidenceScore: number; // 0.0 to 1.0
   riskLevel: AiRiskLevel;
   recommendations: string[];
+  suggestedPatch?: string;
+  suggestedCommands?: string[];
 }
 
 export interface RiskScoreResult {
