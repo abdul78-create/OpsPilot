@@ -17,6 +17,10 @@ import { WorkerModule } from './modules/worker/worker.module';
 import { LogStreamingModule } from './modules/log-streaming/log-streaming.module';
 import { AiOrchestrationModule } from './modules/ai-orchestration/ai-orchestration.module';
 import { BillingModule } from './modules/billing/billing.module';
+import { IncidentsModule } from './modules/incidents/incidents.module';
+import { SloModule } from './modules/slo/slo.module';
+import { FlakyTestsModule } from './modules/flaky-tests/flaky-tests.module';
+import { ApiKeysModule } from './modules/api-keys/api-keys.module';
 
 @Module({
   imports: [
@@ -38,6 +42,10 @@ import { BillingModule } from './modules/billing/billing.module';
     LogStreamingModule,
     AiOrchestrationModule,
     BillingModule,
+    IncidentsModule,
+    SloModule,
+    FlakyTestsModule,
+    ApiKeysModule,
   ],
   exports: [
     HealthModule,
@@ -58,6 +66,10 @@ import { BillingModule } from './modules/billing/billing.module';
     LogStreamingModule,
     AiOrchestrationModule,
     BillingModule,
+    IncidentsModule,
+    SloModule,
+    FlakyTestsModule,
+    ApiKeysModule,
   ],
 })
 export class V1Module {}

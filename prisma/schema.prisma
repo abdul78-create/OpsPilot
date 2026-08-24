@@ -171,6 +171,26 @@ enum AiAnalysisType {
   SECURITY_AUDIT
 }
 
+enum IncidentSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum IncidentStatus {
+  INVESTIGATING
+  IDENTIFIED
+  MONITORING
+  RESOLVED
+}
+
+enum SloStatus {
+  HEALTHY
+  WARNING
+  BREACHED
+}
+
 model User {
   id            String         @id @default(uuid())
   email         String         @unique
@@ -191,6 +211,7 @@ model User {
   emailVerifications EmailVerification[]
   passwordResets     PasswordReset[]
   oauthAccounts      OAuthAccount[]
+  apiKeys            ApiKey[]
 
   @@map("users")
 }
@@ -210,6 +231,10 @@ model Organization {
   invitations  Invitation[]
   projects     Project[]
   aiReports    AiAnalysisReport[]
+  incidents    Incident[]
+  slos         ServiceLevelObjective[]
+  apiKeys      ApiKey[]
+  flakyTests   FlakyTestRecord[]
 
   @@map("organizations")
 }
@@ -268,6 +293,8 @@ model Project {
   repositoryConnections RepositoryConnection[]
   pipelineDefinitions   PipelineDefinition[]
   aiReports             AiAnalysisReport[]
+  incidents             Incident[]
+  flakyTests            FlakyTestRecord[]
 
   @@unique([organizationId, slug])
   @@map("projects")
@@ -622,4 +649,96 @@ model OAuthAccount {
   @@unique([provider, providerId])
   @@index([userId])
   @@map("oauth_accounts")
+}
+
+model Incident {
+  id               String           @id @default(uuid())
+  organizationId   String
+  projectId        String?
+  environmentId    String?
+  title            String
+  description      String?
+  severity         IncidentSeverity @default(HIGH)
+  status           IncidentStatus   @default(INVESTIGATING)
+  service          String
+  rootCause        String?
+  impactSummary    String?
+  mitigationAction String?
+  aiInvestigated   Boolean          @default(false)
+  aiEvidence       Json?
+  timeline         Json?
+  resolvedAt       DateTime?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  organization     Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  project          Project?         @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, status])
+  @@map("incidents")
+}
+
+model ServiceLevelObjective {
+  id                   String    @id @default(uuid())
+  organizationId       String
+  service              String
+  targetAvailability   Float     @default(99.9)
+  targetLatencyP95Ms   Int       @default(500)
+  windowDays           Int       @default(30)
+  currentAvailability  Float     @default(100.0)
+  errorBudgetRemaining Float     @default(100.0)
+  burnRate             Float     @default(0.0)
+  status               SloStatus @default(HEALTHY)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  organization         Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, service])
+  @@map("service_level_objectives")
+}
+
+model ApiKey {
+  id             String    @id @default(uuid())
+  organizationId String
+  userId         String
+  name           String
+  keyPrefix      String
+  keyHash        String    @unique
+  scopes         String[]  @default(["read", "write", "deploy"])
+  expiresAt      DateTime?
+  lastUsedAt     DateTime?
+  isRevoked      Boolean   @default(false)
+  createdAt      DateTime  @default(now())
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, isRevoked])
+  @@map("api_keys")
+}
+
+model FlakyTestRecord {
+  id                 String    @id @default(uuid())
+  organizationId     String
+  projectId          String
+  testSuite          String
+  testName           String
+  failureCount       Int       @default(1)
+  totalRuns          Int       @default(1)
+  flakinessScore     Float     @default(0.0)
+  isQuarantined      Boolean   @default(false)
+  quarantinedAt      DateTime?
+  quarantinedBy      String?
+  lastFailureRunId   String?
+  lastFailureMessage String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  organization       Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  project            Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, testSuite, testName])
+  @@index([organizationId, flakinessScore])
+  @@map("flaky_test_records")
 }
