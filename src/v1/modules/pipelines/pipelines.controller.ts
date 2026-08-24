@@ -16,6 +16,7 @@ import { PipelinesService } from './pipelines.service';
 import { CreatePipelineDefinitionDto } from './dto/create-pipeline-definition.dto';
 import { CreatePipelineFromRepoDto } from './dto/create-pipeline-from-repo.dto';
 import { UpdatePipelineDefinitionDto } from './dto/update-pipeline-definition.dto';
+import { ValidatePipelineYamlDto } from './dto/validate-pipeline-yaml.dto';
 import { PipelineDefinitionResponseDto } from './dto/pipeline-definition-response.dto';
 import { PipelineVersionResponseDto } from './dto/pipeline-version-response.dto';
 import { JwtAuthGuard } from '../../../core/security/guards/jwt-auth.guard';
@@ -32,6 +33,26 @@ import { PipelinePermissions } from '@shared/constants/permissions.constants';
 @UseGuards(JwtAuthGuard, TenantGuard, PermissionsGuard)
 export class PipelinesController {
   constructor(private readonly pipelinesService: PipelinesService) {}
+
+  @Post('validate-yaml')
+  @Permissions(PipelinePermissions.READ)
+  @ApiOperation({
+    summary: 'Parse, validate, and resolve DAG execution plan for a pipeline YAML string',
+  })
+  @ApiParam({ name: 'projectId', description: 'Project UUID' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Compiled pipeline graph and validation results',
+  })
+  validateYaml(@Body() dto: ValidatePipelineYamlDto) {
+    const result = this.pipelinesService.validateYaml(dto);
+    return {
+      message: result.valid
+        ? 'Pipeline YAML parsed and compiled successfully'
+        : 'Pipeline YAML contains validation errors',
+      data: result,
+    };
+  }
 
   @Post('from-repo')
   @Permissions(PipelinePermissions.CREATE)

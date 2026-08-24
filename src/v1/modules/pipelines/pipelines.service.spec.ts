@@ -5,8 +5,8 @@ import { PrismaService } from '../../../core/database/prisma.service';
 import { TransactionManager } from '../../../core/database/transaction.manager';
 import { EventBusService } from '../../../core/events/event-bus.service';
 import { RequestContextService } from '../../../core/context/request-context.service';
-
 import { WorkflowCompilerService } from './workflow-compiler.service';
+import { PipelineYamlParserService } from './services/pipeline-yaml-parser.service';
 
 describe('PipelinesService', () => {
   let service: PipelinesService;
@@ -48,6 +48,7 @@ describe('PipelinesService', () => {
       providers: [
         PipelinesService,
         WorkflowCompilerService,
+        PipelineYamlParserService,
         { provide: PipelinesRepository, useValue: mockPipelinesRepository },
         { provide: PrismaService, useValue: mockPrisma },
         { provide: TransactionManager, useValue: mockTransactionManager },

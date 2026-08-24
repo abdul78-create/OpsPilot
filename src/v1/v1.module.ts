@@ -21,6 +21,8 @@ import { IncidentsModule } from './modules/incidents/incidents.module';
 import { SloModule } from './modules/slo/slo.module';
 import { FlakyTestsModule } from './modules/flaky-tests/flaky-tests.module';
 import { ApiKeysModule } from './modules/api-keys/api-keys.module';
+import { AuditLogsModule } from './modules/audit-logs/audit-logs.module';
+import { AlertsModule } from './modules/alerts/alerts.module';
 
 @Module({
   imports: [
@@ -46,6 +48,8 @@ import { ApiKeysModule } from './modules/api-keys/api-keys.module';
     SloModule,
     FlakyTestsModule,
     ApiKeysModule,
+    AuditLogsModule,
+    AlertsModule,
   ],
   exports: [
     HealthModule,
@@ -70,6 +74,8 @@ import { ApiKeysModule } from './modules/api-keys/api-keys.module';
     SloModule,
     FlakyTestsModule,
     ApiKeysModule,
+    AuditLogsModule,
+    AlertsModule,
   ],
 })
 export class V1Module {}

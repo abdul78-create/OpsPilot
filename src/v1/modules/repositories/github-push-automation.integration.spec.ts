@@ -6,6 +6,7 @@ import { RequestContextService } from '../../../core/context/request-context.ser
 import { RepositoryScannerService } from './services/repository-scanner.service';
 import { WorkflowCompilerService } from '../pipelines/workflow-compiler.service';
 import { PipelineOrchestratorService } from '../pipelines/services/pipeline-orchestrator.service';
+import { WebhookPipelineRouterService } from '../pipelines/services/webhook-pipeline-router.service';
 import { GitHubAppService } from './services/github-app.service';
 import * as crypto from 'crypto';
 
@@ -39,6 +40,10 @@ describe('GitHub Push Webhook E2E Automation Integration Test Suite', () => {
     }),
   };
   const mockGitHubAppService = { listUserRepositories: jest.fn().mockResolvedValue([]) };
+  // Router returns empty triggeredRuns — tests verify fallback stack-scan dispatch path (runId / jobsEnqueued from orchestrator)
+  const mockWebhookRouter = {
+    routePushEvent: jest.fn().mockResolvedValue({ triggeredRuns: [], skippedPipelines: [] }),
+  };
 
   beforeEach(async () => {
     delete process.env.GITHUB_WEBHOOK_SECRET;
@@ -53,6 +58,7 @@ describe('GitHub Push Webhook E2E Automation Integration Test Suite', () => {
         { provide: WorkflowCompilerService, useValue: mockCompiler },
         { provide: PipelineOrchestratorService, useValue: mockOrchestrator },
         { provide: GitHubAppService, useValue: mockGitHubAppService },
+        { provide: WebhookPipelineRouterService, useValue: mockWebhookRouter },
       ],
     }).compile();
 

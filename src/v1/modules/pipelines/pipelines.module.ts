@@ -6,6 +6,8 @@ import { PipelinesController } from './pipelines.controller';
 import { PipelinesRepository } from './pipelines.repository';
 import { WorkflowCompilerService } from './workflow-compiler.service';
 import { PipelineOrchestratorService } from './services/pipeline-orchestrator.service';
+import { WebhookPipelineRouterService } from './services/webhook-pipeline-router.service';
+import { PipelineYamlParserService } from './services/pipeline-yaml-parser.service';
 
 @Module({
   imports: [
@@ -19,12 +21,16 @@ import { PipelineOrchestratorService } from './services/pipeline-orchestrator.se
     PipelinesRepository,
     WorkflowCompilerService,
     PipelineOrchestratorService,
+    WebhookPipelineRouterService,
+    PipelineYamlParserService,
   ],
   exports: [
     PipelinesService,
     PipelinesRepository,
     WorkflowCompilerService,
     PipelineOrchestratorService,
+    WebhookPipelineRouterService,
+    PipelineYamlParserService,
   ],
 })
 export class PipelinesModule {}

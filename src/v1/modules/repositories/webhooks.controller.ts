@@ -19,6 +19,7 @@ import { RepositoryScannerService } from './services/repository-scanner.service'
 import { WorkflowCompilerService } from '../pipelines/workflow-compiler.service';
 import { PipelineOrchestratorService } from '../pipelines/services/pipeline-orchestrator.service';
 import { GitHubAppService } from './services/github-app.service';
+import { WebhookPipelineRouterService } from '../pipelines/services/webhook-pipeline-router.service';
 
 @ApiTags('Webhooks')
 @Controller('webhooks')
@@ -33,6 +34,7 @@ export class WebhooksController {
     private readonly compiler: WorkflowCompilerService,
     private readonly orchestrator: PipelineOrchestratorService,
     private readonly githubAppService: GitHubAppService,
+    private readonly webhookRouter: WebhookPipelineRouterService,
   ) {}
 
   private getRedisClient(): Redis {
@@ -47,14 +49,14 @@ export class WebhooksController {
   }
 
   /**
-   * Distributed Idempotency Check (Multi-Instance & Restart Safe):
-   * Uses Redis `SET key value EX 86400 NX` atomic lock.
-   * If Redis is unavailable, falls back to in-memory TTL map.
+   * Distributed Idempotency Check (Multi-Instance & Restart Safe).
+   * Uses Redis SET key value EX 86400 NX atomic lock.
+   * Falls back to in-memory TTL map when NODE_ENV === 'test'.
    */
   async isDuplicateDelivery(deliveryId: string | undefined): Promise<boolean> {
     if (!deliveryId) return false;
 
-    const ttlSeconds = 86400; // 24 Hours TTL
+    const ttlSeconds = 86400;
 
     if (process.env.NODE_ENV === 'test') {
       const now = Date.now();
@@ -74,15 +76,9 @@ export class WebhooksController {
       if (client.status !== 'ready' && client.status !== 'connecting') {
         await client.connect();
       }
-
-      // SET key 1 EX 86400 NX returns 'OK' if set (first time), or null if already exists (duplicate)
       const res = await client.set(redisKey, '1', 'EX', ttlSeconds, 'NX');
-      if (res === 'OK') {
-        return false; // First delivery
-      }
-      return true; // Duplicate delivery
-    } catch (err) {
-      // Production Fallback Mode
+      return res !== 'OK';
+    } catch {
       throw new ServiceUnavailableException(
         'Distributed webhook store unavailable. Please retry delivery.',
       );
@@ -118,10 +114,12 @@ export class WebhooksController {
   @Public()
   @Post(':provider')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Unauthenticated vendor webhook ingestion & payload normalization' })
+  @ApiOperation({
+    summary: 'Unauthenticated vendor webhook ingestion — tenant-aware pipeline dispatch',
+  })
   @ApiResponse({
     status: HttpStatus.OK,
-    description: 'Webhook processed and normalized domain event emitted',
+    description: 'Webhook processed — matching pipelines triggered per tenant configuration',
   })
   async handleWebhook(
     @Param('provider') provider: string,
@@ -145,8 +143,8 @@ export class WebhooksController {
         throw new UnauthorizedException('Invalid GitHub webhook HMAC SHA-256 signature');
       }
     }
-    const correlationId = this.contextService.getCorrelationId();
 
+    const correlationId = this.contextService.getCorrelationId();
     const ref = typeof payload?.ref === 'string' ? payload.ref : 'refs/heads/main';
     const headCommit = payload?.head_commit as Record<string, unknown> | undefined;
     const repoObj = payload?.repository as Record<string, unknown> | undefined;
@@ -175,13 +173,7 @@ export class WebhooksController {
           occurredOn: new Date(),
           version: 1,
           correlationId,
-          payload: {
-            provider,
-            repositoryUrl,
-            tagName,
-            commitSha,
-            triggeredBy: sender,
-          },
+          payload: { provider, repositoryUrl, tagName, commitSha, triggeredBy: sender },
         });
       } else if (payload?.created) {
         const branchName = ref.replace('refs/heads/', '');
@@ -193,16 +185,12 @@ export class WebhooksController {
           occurredOn: new Date(),
           version: 1,
           correlationId,
-          payload: {
-            provider,
-            repositoryUrl,
-            branchName,
-            commitSha,
-            triggeredBy: sender,
-          },
+          payload: { provider, repositoryUrl, branchName, commitSha, triggeredBy: sender },
         });
       } else {
         const branchName = ref.replace('refs/heads/', '');
+
+        // Publish normalized push event
         await this.eventBus.publish({
           eventId: `evt_${Date.now()}`,
           eventName: 'repository.push.v1',
@@ -223,28 +211,49 @@ export class WebhooksController {
           },
         });
 
-        // Trigger stack scanning & DAG compilation
-        const runId = `run_${Date.now()}`;
-        const stack = await this.scanner.scanRepository(repositoryUrl, process.cwd());
-        const graph = this.compiler.compilePipeline(stack, runId);
-        const dispatch = await this.orchestrator.dispatchRun(
-          runId,
-          graph,
+        // ── PRIMARY: Tenant-aware webhook pipeline routing ─────────────────
+        const routeResult = await this.webhookRouter.routePushEvent({
           repositoryUrl,
+          branch: branchName,
           commitSha,
-          branchName,
-        );
+          commitMessage: typeof headCommit?.message === 'string' ? headCommit.message : undefined,
+          pusher: sender,
+          deliveryId,
+        });
+
+        // ── FALLBACK: No tenant pipelines matched — use stack-scan dispatch ─
+        if (routeResult.triggeredRuns.length === 0) {
+          const runId = `run_${Date.now()}`;
+          const stack = await this.scanner.scanRepository(repositoryUrl, process.cwd());
+          const graph = this.compiler.compilePipeline(stack, runId);
+          const dispatch = await this.orchestrator.dispatchRun(
+            runId,
+            graph,
+            repositoryUrl,
+            commitSha,
+            branchName,
+          );
+
+          return {
+            status: 'success',
+            message: `No tenant pipelines matched — fallback stack-scan dispatch used`,
+            runId: dispatch.runId,
+            jobsEnqueued: dispatch.jobsEnqueued,
+            triggeredRuns: [],
+            skippedPipelines: routeResult.skippedPipelines,
+            stack: {
+              language: stack.language,
+              framework: stack.framework,
+              packageManager: stack.packageManager,
+            },
+          };
+        }
 
         return {
           status: 'success',
-          message: `Webhook event normalized for provider '${provider}'`,
-          runId: dispatch.runId,
-          jobsEnqueued: dispatch.jobsEnqueued,
-          stack: {
-            language: stack.language,
-            framework: stack.framework,
-            packageManager: stack.packageManager,
-          },
+          message: `${routeResult.triggeredRuns.length} pipeline run(s) triggered`,
+          triggeredRuns: routeResult.triggeredRuns,
+          skippedPipelines: routeResult.skippedPipelines,
         };
       }
     }
@@ -284,12 +293,7 @@ export class WebhooksController {
     if (token) {
       try {
         const repos = await this.githubAppService.listUserRepositories(token);
-        return {
-          status: 'success',
-          data: {
-            repositories: repos,
-          },
-        };
+        return { status: 'success', data: { repositories: repos } };
       } catch (err) {
         return {
           status: 'error',
@@ -302,10 +306,8 @@ export class WebhooksController {
     return {
       status: 'not_configured',
       message:
-        'GitHub App / OAuth repository browsing is not yet configured. Provide an accessToken or set GITHUB_TOKEN environment variable to list repositories dynamically.',
-      data: {
-        repositories: [],
-      },
+        'GitHub App / OAuth repository browsing is not configured. Provide an accessToken or set GITHUB_TOKEN to list repositories dynamically.',
+      data: { repositories: [] },
     };
   }
 }

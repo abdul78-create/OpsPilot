@@ -8,7 +8,10 @@ import { YamlValidatorUtil } from './utils/yaml-validator.util';
 import { CreatePipelineDefinitionDto } from './dto/create-pipeline-definition.dto';
 import { UpdatePipelineDefinitionDto } from './dto/update-pipeline-definition.dto';
 import { CreatePipelineFromRepoDto } from './dto/create-pipeline-from-repo.dto';
+import { ValidatePipelineYamlDto } from './dto/validate-pipeline-yaml.dto';
 import { WorkflowCompilerService } from './workflow-compiler.service';
+import { PipelineYamlParserService } from './services/pipeline-yaml-parser.service';
+import { CompiledPipeline } from './interfaces/pipeline-schema.interface';
 import { parseGitHubUrl } from '../repositories/providers/github-repository.provider';
 import { PipelineDefinition, PipelineVersion, TriggerType } from '@prisma/client';
 import { slugify, validateSlug } from '@shared/utils/slug.util';
@@ -22,7 +25,12 @@ export class PipelinesService {
     private readonly eventBus: EventBusService,
     private readonly contextService: RequestContextService,
     private readonly workflowCompiler: WorkflowCompilerService,
+    private readonly yamlParser: PipelineYamlParserService,
   ) {}
+
+  validateYaml(dto: ValidatePipelineYamlDto): CompiledPipeline {
+    return this.yamlParser.parseAndCompile(dto.yamlConfig);
+  }
 
   async create(
     projectId: string,

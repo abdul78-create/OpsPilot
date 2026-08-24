@@ -5,6 +5,7 @@ import { RequestContextService } from '../../../core/context/request-context.ser
 import { RepositoryScannerService } from './services/repository-scanner.service';
 import { WorkflowCompilerService } from '../pipelines/workflow-compiler.service';
 import { PipelineOrchestratorService } from '../pipelines/services/pipeline-orchestrator.service';
+import { WebhookPipelineRouterService } from '../pipelines/services/webhook-pipeline-router.service';
 import { GitHubAppService } from './services/github-app.service';
 
 describe('WebhooksController X-GitHub-Delivery Idempotency Integration Test', () => {
@@ -22,6 +23,10 @@ describe('WebhooksController X-GitHub-Delivery Idempotency Integration Test', ()
     dispatchRun: jest.fn().mockResolvedValue({ runId: 'run_test_idempotent', jobsEnqueued: 2 }),
   };
   const mockGitHubAppService = { listUserRepositories: jest.fn().mockResolvedValue([]) };
+  // Router returns empty triggeredRuns so fallback orchestrator path runs (tests verify idempotency via dispatchRun call count)
+  const mockWebhookRouter = {
+    routePushEvent: jest.fn().mockResolvedValue({ triggeredRuns: [], skippedPipelines: [] }),
+  };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -33,11 +38,13 @@ describe('WebhooksController X-GitHub-Delivery Idempotency Integration Test', ()
         { provide: WorkflowCompilerService, useValue: mockCompiler },
         { provide: PipelineOrchestratorService, useValue: mockOrchestrator },
         { provide: GitHubAppService, useValue: mockGitHubAppService },
+        { provide: WebhookPipelineRouterService, useValue: mockWebhookRouter },
       ],
     }).compile();
 
     controller = module.get<WebhooksController>(WebhooksController);
-    (controller as any).processedDeliveries = new Map();
+    (controller as unknown as { processedDeliveries: Map<string, number> }).processedDeliveries =
+      new Map();
     jest.clearAllMocks();
   });
 

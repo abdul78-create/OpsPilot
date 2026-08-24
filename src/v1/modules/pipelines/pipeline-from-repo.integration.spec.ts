@@ -3,6 +3,7 @@ import { NotFoundException, ConflictException } from '@nestjs/common';
 import { PipelinesService } from './pipelines.service';
 import { PipelinesRepository } from './pipelines.repository';
 import { WorkflowCompilerService } from './workflow-compiler.service';
+import { PipelineYamlParserService } from './services/pipeline-yaml-parser.service';
 import { PrismaService } from '../../../core/database/prisma.service';
 import { TransactionManager } from '../../../core/database/transaction.manager';
 import { EventBusService } from '../../../core/events/event-bus.service';
@@ -70,6 +71,7 @@ describe('Pipeline Creation from Real Connected Repository Integration Test Suit
       providers: [
         PipelinesService,
         WorkflowCompilerService,
+        PipelineYamlParserService,
         { provide: PipelinesRepository, useValue: mockPipelinesRepository },
         { provide: PrismaService, useValue: mockPrisma },
         { provide: TransactionManager, useValue: mockTxManager },
