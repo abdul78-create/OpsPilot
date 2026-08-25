@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
 import { ThemeToggle } from '../../components/ui/ThemeToggle';
-import { getApiBaseUrl } from '@/lib/apiClient';
+import { getApiBaseUrl, getOAuthBaseUrl } from '@/lib/apiClient';
 
 function GithubIcon({ size = 15 }: { size?: number }) {
   return (
@@ -49,13 +49,13 @@ export default function LoginPage() {
   }, []);
 
   const handleGoogleLogin = () => {
-    const apiBase = getApiBaseUrl();
-    window.location.href = `${apiBase}/auth/google`;
+    const oauthBase = getOAuthBaseUrl();
+    window.location.href = `${oauthBase}/auth/google`;
   };
 
   const handleGitHubLogin = () => {
-    const apiBase = getApiBaseUrl();
-    window.location.href = `${apiBase}/auth/github`;
+    const oauthBase = getOAuthBaseUrl();
+    window.location.href = `${oauthBase}/auth/github`;
   };
 
   const handleLogin = async (e: React.FormEvent) => {

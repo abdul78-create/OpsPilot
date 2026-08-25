@@ -3,12 +3,30 @@
  */
 
 export function getApiBaseUrl(): string {
-  if (process.env.NEXT_PUBLIC_API_URL) return process.env.NEXT_PUBLIC_API_URL;
-  if (typeof window !== 'undefined') {
-    if (window.location.port === '3001') return 'http://localhost:3000/v1';
-    return '/v1';
+  if (process.env.NEXT_PUBLIC_API_URL && process.env.NEXT_PUBLIC_API_URL !== '/v1') {
+    return process.env.NEXT_PUBLIC_API_URL;
   }
-  return 'http://localhost:3000/v1';
+  if (typeof window !== 'undefined') {
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      return 'http://localhost:3000/v1';
+    }
+    return 'https://opspilot-backend-gd60.onrender.com/v1';
+  }
+  return process.env.NEXT_PUBLIC_API_URL || 'https://opspilot-backend-gd60.onrender.com/v1';
+}
+
+export function getOAuthBaseUrl(): string {
+  if (process.env.NEXT_PUBLIC_OAUTH_API_URL) return process.env.NEXT_PUBLIC_OAUTH_API_URL;
+  if (process.env.NEXT_PUBLIC_API_URL && process.env.NEXT_PUBLIC_API_URL.startsWith('http')) {
+    return process.env.NEXT_PUBLIC_API_URL;
+  }
+  if (
+    typeof window !== 'undefined' &&
+    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+  ) {
+    return 'http://localhost:3000/v1';
+  }
+  return 'https://opspilot-backend-gd60.onrender.com/v1';
 }
 
 export const API_BASE = getApiBaseUrl();
