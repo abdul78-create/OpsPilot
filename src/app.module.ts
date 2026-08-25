@@ -29,7 +29,7 @@ import { V1Module } from './v1/v1.module';
     ThrottlerModule.forRoot([
       {
         ttl: 60000,
-        limit: 100,
+        limit: 2000,
       },
     ]),
     AppLoggerModule,

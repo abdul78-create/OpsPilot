@@ -42,102 +42,153 @@ export class PipelineOrchestratorService {
       `▸ Orchestrating execution for Run '${pipelineRunId}' (${graph.stages.length} stages) · repo: ${repoUrl}`,
     );
 
-    // ── 1. Ensure system org exists ──────────────────────────────────────────
-    const org = await this.prisma.organization.upsert({
-      where: { slug: PipelineOrchestratorService.SYSTEM_ORG_SLUG },
-      create: {
-        name: 'System Webhook Builds',
-        slug: PipelineOrchestratorService.SYSTEM_ORG_SLUG,
-        billingEmail: 'system@opspilot.internal',
-      },
-      update: {},
-    });
+    // ── 1. Ensure system organization exists ─────────────────────────────────
+    const org = await this.safeUpsert(
+      () =>
+        this.prisma.organization.upsert({
+          where: { slug: PipelineOrchestratorService.SYSTEM_ORG_SLUG },
+          create: {
+            name: 'OpsPilot System',
+            slug: PipelineOrchestratorService.SYSTEM_ORG_SLUG,
+            billingEmail: 'system@opspilot.internal',
+          },
+          update: {},
+        }),
+      () =>
+        this.prisma.organization.findUniqueOrThrow({
+          where: { slug: PipelineOrchestratorService.SYSTEM_ORG_SLUG },
+        }),
+    );
 
     // ── 2. Ensure system project exists ──────────────────────────────────────
-    const project = await this.prisma.project.upsert({
-      where: {
-        organizationId_slug: {
-          organizationId: org.id,
-          slug: PipelineOrchestratorService.SYSTEM_PROJECT_SLUG,
-        },
-      },
-      create: {
-        organizationId: org.id,
-        name: 'Webhook Builds',
-        slug: PipelineOrchestratorService.SYSTEM_PROJECT_SLUG,
-      },
-      update: {},
-    });
+    const project = await this.safeUpsert(
+      () =>
+        this.prisma.project.upsert({
+          where: {
+            organizationId_slug: {
+              organizationId: org.id,
+              slug: PipelineOrchestratorService.SYSTEM_PROJECT_SLUG,
+            },
+          },
+          create: {
+            organizationId: org.id,
+            name: 'Webhook Builds',
+            slug: PipelineOrchestratorService.SYSTEM_PROJECT_SLUG,
+          },
+          update: {},
+        }),
+      () =>
+        this.prisma.project.findUniqueOrThrow({
+          where: {
+            organizationId_slug: {
+              organizationId: org.id,
+              slug: PipelineOrchestratorService.SYSTEM_PROJECT_SLUG,
+            },
+          },
+        }),
+    );
 
     // ── 3. Ensure pipeline definition exists per repo URL ────────────────────
     // Slug is a safe hash of the URL to stay within unique constraint
     const pipelineSlug = crypto.createHash('md5').update(repoUrl).digest('hex').slice(0, 32);
 
-    const pipelineDef = await this.prisma.pipelineDefinition.upsert({
-      where: { projectId_slug: { projectId: project.id, slug: pipelineSlug } },
-      create: {
-        projectId: project.id,
-        name: `Build: ${repoUrl}`,
-        slug: pipelineSlug,
-        description: `Auto-provisioned pipeline for ${repoUrl}`,
-        triggerType: TriggerType.GIT_PUSH,
-        triggerBranch: branch || 'main',
-      },
-      update: {},
-    });
+    const pipelineDef = await this.safeUpsert(
+      () =>
+        this.prisma.pipelineDefinition.upsert({
+          where: { projectId_slug: { projectId: project.id, slug: pipelineSlug } },
+          create: {
+            projectId: project.id,
+            name: `Build: ${repoUrl}`,
+            slug: pipelineSlug,
+            description: `Auto-provisioned pipeline for ${repoUrl}`,
+            triggerType: TriggerType.GIT_PUSH,
+            triggerBranch: branch || 'main',
+          },
+          update: {},
+        }),
+      () =>
+        this.prisma.pipelineDefinition.findUniqueOrThrow({
+          where: { projectId_slug: { projectId: project.id, slug: pipelineSlug } },
+        }),
+    );
 
     // ── 4. Ensure pipeline version 1 exists ──────────────────────────────────
-    const pipelineVersion = await this.prisma.pipelineVersion.upsert({
-      where: {
-        pipelineDefinitionId_versionNumber: {
-          pipelineDefinitionId: pipelineDef.id,
-          versionNumber: 1,
-        },
-      },
-      create: {
-        pipelineDefinitionId: pipelineDef.id,
-        versionNumber: 1,
-        yamlConfig: `# Auto-generated for ${repoUrl}`,
-        checksum: crypto.createHash('md5').update(repoUrl).digest('hex'),
-        changeSummary: 'Webhook auto-provision',
-      },
-      update: {},
-    });
+    const pipelineVersion = await this.safeUpsert(
+      () =>
+        this.prisma.pipelineVersion.upsert({
+          where: {
+            pipelineDefinitionId_versionNumber: {
+              pipelineDefinitionId: pipelineDef.id,
+              versionNumber: 1,
+            },
+          },
+          create: {
+            pipelineDefinitionId: pipelineDef.id,
+            versionNumber: 1,
+            yamlConfig: `# Auto-generated for ${repoUrl}`,
+            checksum: crypto.createHash('md5').update(repoUrl).digest('hex'),
+            changeSummary: 'Webhook auto-provision',
+          },
+          update: {},
+        }),
+      () =>
+        this.prisma.pipelineVersion.findUniqueOrThrow({
+          where: {
+            pipelineDefinitionId_versionNumber: {
+              pipelineDefinitionId: pipelineDef.id,
+              versionNumber: 1,
+            },
+          },
+        }),
+    );
 
     // ── 5. Create the PipelineRun record with a fixed ID ─────────────────────
     // Use upsert so webhook retries are idempotent
-    const run = await this.prisma.pipelineRun.upsert({
-      where: { id: pipelineRunId },
-      create: {
-        id: pipelineRunId,
-        pipelineDefinitionId: pipelineDef.id,
-        pipelineVersionId: pipelineVersion.id,
-        status: PipelineRunStatus.QUEUED,
-        triggerType: TriggerType.GIT_PUSH,
-        triggeredBy: 'github-webhook',
-        commitSha: commitSha || 'e6f8b1a2c3d4',
-        branch: branch || 'main',
-        queuedAt: new Date(),
-      },
-      update: {},
-    });
-
-    this.logger.log(`✓ PipelineRun '${run.id}' persisted in DB (status: ${run.status})`);
+    const run = await this.safeUpsert(
+      () =>
+        this.prisma.pipelineRun.upsert({
+          where: { id: pipelineRunId },
+          create: {
+            id: pipelineRunId,
+            pipelineDefinitionId: pipelineDef.id,
+            pipelineVersionId: pipelineVersion.id,
+            status: PipelineRunStatus.QUEUED,
+            triggerType: TriggerType.GIT_PUSH,
+            triggeredBy: 'github-webhook',
+            commitSha: commitSha || 'e6f8b1a2c3d4',
+            branch: branch || 'main',
+            queuedAt: new Date(),
+          },
+          update: {},
+        }),
+      () =>
+        this.prisma.pipelineRun.findUniqueOrThrow({
+          where: { id: pipelineRunId },
+        }),
+    );
 
     // ── 6. Create PipelineJob records for each stage ─────────────────────────
     const stageJobMap: Record<string, string> = {};
     for (const stage of graph.stages) {
-      const dbJob = await this.prisma.pipelineJob.upsert({
-        where: { id: `${pipelineRunId}_${stage.id}` },
-        create: {
-          id: `${pipelineRunId}_${stage.id}`,
-          pipelineRunId: run.id,
-          name: stage.name,
-          stage: stage.stage,
-          status: JobStatus.QUEUED,
-        },
-        update: {},
-      });
+      const jobId = `${pipelineRunId}_${stage.id}`;
+      const dbJob = await this.safeUpsert(
+        () =>
+          this.prisma.pipelineJob.upsert({
+            where: { id: jobId },
+            create: {
+              id: jobId,
+              pipelineRunId: run.id,
+              name: stage.name,
+              stage: stage.stage,
+              status: JobStatus.QUEUED,
+            },
+            update: {},
+          }),
+        () =>
+          this.prisma.pipelineJob.findUniqueOrThrow({
+            where: { id: jobId },
+          }),
+      );
       stageJobMap[stage.id] = dbJob.id;
       this.logger.log(`  ↳ PipelineJob '${dbJob.name}' created (stage: ${stage.stage})`);
     }
@@ -182,5 +233,17 @@ export class PipelineOrchestratorService {
       runId: run.id,
       jobsEnqueued: graph.stages.length,
     };
+  }
+
+  private async safeUpsert<T>(fn: () => Promise<T>, fallback: () => Promise<T>): Promise<T> {
+    try {
+      return await fn();
+    } catch (err: unknown) {
+      const errorObj = err as { code?: string; message?: string };
+      if (errorObj?.code === 'P2002' || errorObj?.message?.includes('Unique constraint failed')) {
+        return await fallback();
+      }
+      throw err;
+    }
   }
 }

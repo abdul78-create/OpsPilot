@@ -2,10 +2,11 @@ import { Module } from '@nestjs/common';
 import { AlertsRepository } from './alerts.repository';
 import { AlertsService } from './alerts.service';
 import { AlertsController } from './alerts.controller';
-import { CoreModule } from '../../../core/core.module';
+import { PrismaModule } from '../../../core/database/prisma.module';
+import { SecurityModule } from '../../../core/security/security.module';
 
 @Module({
-  imports: [CoreModule],
+  imports: [PrismaModule, SecurityModule],
   controllers: [AlertsController],
   providers: [AlertsRepository, AlertsService],
   exports: [AlertsRepository, AlertsService],

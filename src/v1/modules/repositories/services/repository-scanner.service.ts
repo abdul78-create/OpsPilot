@@ -3,6 +3,7 @@ import { spawn } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
+import * as crypto from 'crypto';
 import {
   StackDefinition,
   Language,
@@ -22,20 +23,23 @@ export class RepositoryScannerService {
   async scanRepository(repoUrl: string, targetDir: string): Promise<StackDefinition> {
     const isRemote =
       repoUrl.startsWith('http://') || repoUrl.startsWith('https://') || repoUrl.startsWith('git@');
+    const uniqueScanId = crypto.randomBytes(4).toString('hex');
     const scanDir = isRemote
       ? path.join(
           os.tmpdir(),
           'opspilot-scans',
-          Buffer.from(repoUrl).toString('hex').substring(0, 12),
+          `${Buffer.from(repoUrl).toString('hex').substring(0, 8)}_${Date.now()}_${uniqueScanId}`,
         )
       : targetDir;
 
     this.logger.log(`▸ Scanning repository codebase: ${repoUrl} → ${scanDir}`);
 
     if (isRemote) {
-      if (fs.existsSync(scanDir)) {
-        fs.rmSync(scanDir, { recursive: true, force: true });
-      }
+      try {
+        if (fs.existsSync(scanDir)) {
+          fs.rmSync(scanDir, { recursive: true, force: true });
+        }
+      } catch {}
       fs.mkdirSync(scanDir, { recursive: true });
       await this.gitClone(repoUrl, scanDir);
     }
@@ -143,6 +147,14 @@ export class RepositoryScannerService {
         monorepo: isMonorepo,
       },
     };
+
+    if (isRemote) {
+      try {
+        if (fs.existsSync(scanDir)) {
+          fs.rmSync(scanDir, { recursive: true, force: true });
+        }
+      } catch {}
+    }
 
     this.logger.log(
       `✓ Scan complete for ${repoUrl}: Detected ${stack.language} (${stack.framework}${isMonorepo ? ' Monorepo' : ''}) using ${stack.packageManager}`,

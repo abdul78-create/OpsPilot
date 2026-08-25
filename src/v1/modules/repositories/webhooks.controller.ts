@@ -7,11 +7,11 @@ import {
   HttpStatus,
   HttpCode,
   UnauthorizedException,
-  ServiceUnavailableException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import * as crypto from 'crypto';
 import Redis from 'ioredis';
+import { SkipThrottle } from '@nestjs/throttler';
 import { Public } from '../../../core/security/decorators/public.decorator';
 import { EventBusService } from '../../../core/events/event-bus.service';
 import { RequestContextService } from '../../../core/context/request-context.service';
@@ -22,6 +22,7 @@ import { GitHubAppService } from './services/github-app.service';
 import { WebhookPipelineRouterService } from '../pipelines/services/webhook-pipeline-router.service';
 
 @ApiTags('Webhooks')
+@SkipThrottle()
 @Controller('webhooks')
 export class WebhooksController {
   private redisClient: Redis | null = null;
@@ -41,8 +42,9 @@ export class WebhooksController {
     if (!this.redisClient) {
       const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
       this.redisClient = new Redis(redisUrl, {
-        lazyConnect: true,
-        maxRetriesPerRequest: 1,
+        maxRetriesPerRequest: 3,
+        enableReadyCheck: true,
+        autoResubscribe: true,
       });
     }
     return this.redisClient;
@@ -51,7 +53,7 @@ export class WebhooksController {
   /**
    * Distributed Idempotency Check (Multi-Instance & Restart Safe).
    * Uses Redis SET key value EX 86400 NX atomic lock.
-   * Falls back to in-memory TTL map when NODE_ENV === 'test'.
+   * Falls back to in-memory TTL map when NODE_ENV === 'test' or under transient Redis partition.
    */
   async isDuplicateDelivery(deliveryId: string | undefined): Promise<boolean> {
     if (!deliveryId) return false;
@@ -73,15 +75,18 @@ export class WebhooksController {
     const redisKey = `webhook:github:delivery:${deliveryId}`;
     try {
       const client = this.getRedisClient();
-      if (client.status !== 'ready' && client.status !== 'connecting') {
-        await client.connect();
-      }
       const res = await client.set(redisKey, '1', 'EX', ttlSeconds, 'NX');
       return res !== 'OK';
     } catch {
-      throw new ServiceUnavailableException(
-        'Distributed webhook store unavailable. Please retry delivery.',
-      );
+      const now = Date.now();
+      if (this.processedDeliveries.has(deliveryId)) {
+        const timestamp = this.processedDeliveries.get(deliveryId) || 0;
+        if (now - timestamp < ttlSeconds * 1000) {
+          return true;
+        }
+      }
+      this.processedDeliveries.set(deliveryId, now);
+      return false;
     }
   }
 

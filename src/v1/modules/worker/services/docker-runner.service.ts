@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { spawn } from 'child_process';
+import * as fs from 'fs';
 import { LogsService } from '../../log-streaming/logs.service';
 import { LogLevel } from '@prisma/client';
 
@@ -28,6 +29,7 @@ export class DockerRunnerService {
   /**
    * Executes a job step inside an isolated Docker container with strict resource limits,
    * non-root execution, network sandboxing by default, and persistent cache mounts.
+   * Supports RUNNER_DRIVER=process for cloud PaaS environments (like Render Background Workers).
    */
   async runStep(options: DockerRunOptions): Promise<{ exitCode: number }> {
     const image = options.image || 'node:20-alpine';
@@ -75,21 +77,34 @@ export class DockerRunnerService {
       volumeArgs.push('-v', `${cacheVolume}:/root/.npm`);
     }
 
-    const fullDockerCmd = `docker run --rm ${securityArgs.join(' ')} ${volumeArgs.join(' ')} ${image} sh -c "${cmdStr}"`;
+    const isProcessDriver = process.env.RUNNER_DRIVER === 'process';
+    const fullDockerCmd = isProcessDriver
+      ? `sh -c "${cmdStr}" (workspace: ${options.workspacePath || '.'})`
+      : `docker run --rm ${securityArgs.join(' ')} ${volumeArgs.join(' ')} ${image} sh -c "${cmdStr}"`;
     this.logger.log(`▸ ${fullDockerCmd}`);
 
     if (this.logsService) {
       await this.logsService.logAndEmit(
         options.pipelineRunId,
         LogLevel.INFO,
-        `▸ [Sandbox] Executing in container (Mem: ${memLimit}, CPU: ${cpuLimit}, Net: ${network}, PIDs: ${pidsLimit})`,
+        isProcessDriver
+          ? `▸ [Process Runner] Executing step in workspace (Timeout: ${options.timeoutSeconds || 900}s)`
+          : `▸ [Sandbox] Executing in container (Mem: ${memLimit}, CPU: ${cpuLimit}, Net: ${network}, PIDs: ${pidsLimit})`,
         options.jobId,
       );
     }
 
     return new Promise((resolve, reject) => {
       const args = ['run', '--rm', ...securityArgs, ...volumeArgs, image, 'sh', '-c', cmdStr];
-      const child = spawn('docker', args);
+      const child = isProcessDriver
+        ? spawn('sh', ['-c', cmdStr], {
+            cwd:
+              options.workspacePath && fs.existsSync(options.workspacePath)
+                ? options.workspacePath
+                : process.cwd(),
+            env: process.env,
+          })
+        : spawn('docker', args);
 
       let isCompleted = false;
       const timer = setTimeout(() => {

@@ -1,0 +1,169 @@
+{
+  "timestamp": "2026-08-25T10:20:30.482Z",
+  "environment": "Local Docker Production Stack (Node.js 20, Postgres 16, Redis 7)",
+  "baseline": {
+    "dockerStats": {
+      "opspilot_backend": {
+        "cpu": "11.20%",
+        "mem": "84.91MiB / 7.602GiB"
+      },
+      "opspilot_app_target": {
+        "cpu": "0.00%",
+        "mem": "8.816MiB / 7.602GiB"
+      },
+      "opspilot_frontend": {
+        "cpu": "0.00%",
+        "mem": "14.59MiB / 7.602GiB"
+      },
+      "opspilot_postgres": {
+        "cpu": "0.03%",
+        "mem": "69.05MiB / 7.602GiB"
+      },
+      "opspilot_redis": {
+        "cpu": "1.09%",
+        "mem": "11.01MiB / 7.602GiB"
+      }
+    },
+    "pgConnections": 13,
+    "redisMemory": "4.11M",
+    "queue": {
+      "completed": 68,
+      "failed": 9,
+      "waiting": 1523,
+      "active": 0,
+      "queueDepth": 1523
+    }
+  },
+  "scenarios": {
+    "baseline": {
+      "webhookLatencyMs": 773,
+      "pipelineQueueLatencyMs": 39,
+      "pgConnections": 13,
+      "redisMemory": "4.19M"
+    },
+    "burst25": {
+      "count": 25,
+      "durationMs": 1300,
+      "throughputRps": 19.23,
+      "p50": 1137,
+      "p95": 1285,
+      "p99": 1292,
+      "min": 841,
+      "max": 1292,
+      "avg": 1093.24,
+      "successRate": 100
+    },
+    "medium100": {
+      "count": 100,
+      "durationMs": 3705,
+      "throughputRps": 26.99,
+      "p50": 1855,
+      "p95": 2868,
+      "p99": 3694,
+      "min": 1268,
+      "max": 3694,
+      "avg": 1974.51,
+      "successRate": 100
+    },
+    "high500": {
+      "count": 500,
+      "durationMs": 23044,
+      "throughputRps": 21.7,
+      "p50": 6850,
+      "p95": 10696,
+      "p99": 11207,
+      "min": 2290,
+      "max": 23023,
+      "avg": 6667.74,
+      "successRate": 100
+    },
+    "idempotency": {
+      "totalBurst": 50,
+      "acceptedOrFiltered": 50,
+      "duplicateFilterRate": "100%"
+    },
+    "multiTenantIsolation": {
+      "tenantCount": 3,
+      "successfulRuns": 3,
+      "isolationStrict": true
+    },
+    "queueBackpressure": {
+      "enqueuedCount": 15,
+      "accepted": 15,
+      "queueStats": {
+        "completed": 68,
+        "failed": 9,
+        "waiting": 2153,
+        "active": 0,
+        "queueDepth": 2153
+      }
+    },
+    "workerReconciliation": {
+      "status": "ACTIVE_AND_VERIFIED",
+      "recoveryPolicy": "ORPHAN_TO_FAILED_AND_PURGE_WORKSPACE"
+    },
+    "retryBehavior": {
+      "policy": "EXPONENTIAL_BACKOFF",
+      "maxRetries": 3
+    },
+    "watchdogTimeout": {
+      "watchdogStatus": "ACTIVE",
+      "signal": "SIGKILL_AFTER_TIMEOUT"
+    },
+    "cancellation": {
+      "endpointVerified": true,
+      "runId": "4f59f6f7-b37a-41be-be31-16df4e5f1153"
+    },
+    "databaseResilience": {
+      "initialConnections": 13,
+      "postLoadConnections": 23,
+      "connectionPoolHealthy": true
+    },
+    "redisBullResilience": {
+      "initialMemory": "4.11M",
+      "postLoadMemory": "4.74M",
+      "completedJobs": 68,
+      "failedJobs": 9
+    },
+    "recovery": {
+      "healthEndpointStatus": 200,
+      "recovered": true
+    }
+  },
+  "systemMetrics": {
+    "dockerStats": {
+      "opspilot_backend": {
+        "cpu": "29.91%",
+        "mem": "163.7MiB / 7.602GiB"
+      },
+      "opspilot_app_target": {
+        "cpu": "0.00%",
+        "mem": "8.816MiB / 7.602GiB"
+      },
+      "opspilot_frontend": {
+        "cpu": "0.00%",
+        "mem": "14.59MiB / 7.602GiB"
+      },
+      "opspilot_postgres": {
+        "cpu": "2.41%",
+        "mem": "107.3MiB / 7.602GiB"
+      },
+      "opspilot_redis": {
+        "cpu": "1.07%",
+        "mem": "11.46MiB / 7.602GiB"
+      }
+    }
+  },
+  "summary": {
+    "totalAssertions": 20,
+    "passedAssertions": 20,
+    "failedAssertions": 0,
+    "exitCode": 0,
+    "maxThroughputWebhookRps": 26.99,
+    "p95LatencyMs": 10696,
+    "p99LatencyMs": 11207,
+    "pgPoolMaxObserved": 23,
+    "redisMemoryFinal": "4.74M",
+    "cloudReadinessVerdict": "READY_FOR_RENDER_DEPLOYMENT"
+  }
+}
