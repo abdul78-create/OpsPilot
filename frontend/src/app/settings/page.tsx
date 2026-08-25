@@ -38,21 +38,12 @@ interface Invitation {
   status: 'PENDING' | 'ACCEPTED' | 'EXPIRED';
 }
 
-const INITIAL_MEMBERS: Member[] = [
-  { id: 'm1', name: 'Alice Chen', email: 'admin@opspilot.ai', role: 'OWNER', joinedAt: '2026-08-01' },
-  { id: 'm2', name: 'DevOps Bot', email: 'bot@opspilot.internal', role: 'ADMIN', joinedAt: '2026-08-01' },
-];
-
-const INITIAL_INVITES: Invitation[] = [
-  { id: 'inv_1', email: 'sarah.engineering@company.io', role: 'MEMBER', invitedAt: '2026-08-02', status: 'PENDING' },
-];
-
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<'general' | 'team' | 'github' | 'notifications'>('general');
   const [org, setOrg] = useState<Organization | null>(null);
   const [loading, setLoading] = useState(true);
-  const [members, setMembers] = useState<Member[]>(INITIAL_MEMBERS);
-  const [invites, setInvites] = useState<Invitation[]>(INITIAL_INVITES);
+  const [members, setMembers] = useState<Member[]>([]);
+  const [invites, setInvites] = useState<Invitation[]>([]);
 
   // Invite Form
   const [inviteEmail, setInviteEmail] = useState('');
@@ -63,7 +54,7 @@ export default function SettingsPage() {
   // Notifications state
   const [emailAlerts, setEmailAlerts] = useState(true);
   const [slackAlerts, setSlackAlerts] = useState(true);
-  const [webhookUrl, setWebhookUrl] = useState('https://hooks.slack.com/services/T000/B000/XXXX');
+  const [webhookUrl, setWebhookUrl] = useState('');
 
   const { toast } = useToast();
 
@@ -71,16 +62,29 @@ export default function SettingsPage() {
     setLoading(true);
     try {
       const res = await getCurrentOrganization();
-      setOrg(res.data);
+      if (res?.data) {
+        setOrg(res.data);
+      }
     } catch {
-      setOrg({
-        id: '3fdaca7b-c8e4-4be4-ba50-e1a2085ac913',
-        name: 'Production Workspace',
-        slug: 'production-workspace',
-        status: 'ACTIVE',
-        createdAt: new Date().toISOString(),
-      });
+      setOrg(null);
     } finally {
+      if (typeof window !== 'undefined') {
+        const u = localStorage.getItem('opspilot_user');
+        if (u) {
+          try {
+            const parsed = JSON.parse(u);
+            setMembers([
+              {
+                id: parsed.id || 'usr_current',
+                name: parsed.name || 'Current User',
+                email: parsed.email || 'user@example.com',
+                role: 'OWNER',
+                joinedAt: new Date().toISOString().slice(0, 10),
+              },
+            ]);
+          } catch { /* ignore */ }
+        }
+      }
       setLoading(false);
     }
   }, []);
@@ -192,7 +196,9 @@ export default function SettingsPage() {
                   </label>
                   <input
                     type="text"
-                    defaultValue={org?.name ?? 'Production Workspace'}
+                    value={org?.name ?? ''}
+                    placeholder="No organization selected"
+                    readOnly
                     className="w-full border rounded-lg px-3 py-2 text-xs focus:outline-none"
                     style={{
                       background: 'var(--bg-tertiary)',
@@ -208,7 +214,8 @@ export default function SettingsPage() {
                   </label>
                   <input
                     type="text"
-                    defaultValue={org?.slug ?? 'production-workspace'}
+                    value={org?.slug ?? ''}
+                    placeholder="None"
                     disabled
                     className="w-full border rounded-lg px-3 py-2 text-xs font-mono opacity-70"
                     style={{
@@ -226,7 +233,7 @@ export default function SettingsPage() {
                   <div className="flex items-center gap-2">
                     <input
                       type="text"
-                      value={org?.id ?? '3fdaca7b-c8e4-4be4-ba50-e1a2085ac913'}
+                      value={org?.id ?? 'Not assigned'}
                       readOnly
                       className="flex-1 border rounded-lg px-3 py-2 text-xs font-mono"
                       style={{
@@ -235,7 +242,7 @@ export default function SettingsPage() {
                         color: 'var(--text-secondary)',
                       }}
                     />
-                    <CopyButton text={org?.id ?? '3fdaca7b-c8e4-4be4-ba50-e1a2085ac913'} label="Copy ID" />
+                    {org?.id && <CopyButton text={org.id} label="Copy ID" />}
                   </div>
                 </div>
 
@@ -247,10 +254,10 @@ export default function SettingsPage() {
                     <div>
                       <div className="text-xs font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
                         <Sparkles size={14} style={{ color: 'var(--accent)' }} />
-                        OpsPilot Pro Plan (Unlimited Concurrent Builds)
+                        OpsPilot Community Tier
                       </div>
                       <div className="text-[11px] mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                        5 Worker Threads · High-Performance Execution Engine
+                        Standard Execution Engine · Isolated Container Workspaces
                       </div>
                     </div>
                     <span

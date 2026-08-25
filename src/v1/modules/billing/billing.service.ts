@@ -11,6 +11,15 @@ export interface PlanLimits {
   aiRcaEnabled: boolean;
 }
 
+export interface InvoiceRecord {
+  id: string;
+  invoiceNumber: string;
+  amount: string;
+  status: 'PAID' | 'PENDING' | 'VOID';
+  date: string;
+  pdfUrl?: string;
+}
+
 export const PLAN_CONFIGS: Record<string, PlanLimits> = {
   STARTER: {
     name: 'Starter',
@@ -53,7 +62,11 @@ export class BillingService {
         projects: {
           include: {
             pipelineDefinitions: {
-              include: { runs: true },
+              include: {
+                runs: {
+                  include: { artifacts: true },
+                },
+              },
             },
             environments: {
               include: { deployments: true },
@@ -67,26 +80,30 @@ export class BillingService {
       throw new NotFoundException(`Organization '${orgId}' not found`);
     }
 
-    const currentPlanKey = 'PRO'; // Default to Pro for dev/test environment
+    const currentPlanKey = 'STARTER';
     const limits = PLAN_CONFIGS[currentPlanKey];
 
     // Compute actual current usage metrics
     const totalTeamSeats = org.members.length;
     let totalBuildMinutes = 0;
     let totalDeployments = 0;
+    let artifactStorageMB = 0;
 
     for (const p of org.projects) {
       for (const pipe of p.pipelineDefinitions) {
         for (const run of pipe.runs) {
           totalBuildMinutes += Math.ceil((run.durationSeconds ?? 0) / 60);
+          if (run.artifacts && Array.isArray(run.artifacts)) {
+            for (const a of run.artifacts) {
+              artifactStorageMB += Math.round(Number(a.sizeBytes) / (1024 * 1024));
+            }
+          }
         }
       }
       for (const env of p.environments) {
         totalDeployments += env.deployments.length;
       }
     }
-
-    const artifactStorageMB = 256; // Mock storage usage for verified builds
 
     return {
       organizationId: org.id,
@@ -129,22 +146,13 @@ export class BillingService {
     };
   }
 
-  async getInvoices(_orgId: string) {
-    return [
-      {
-        id: `inv_${Date.now() - 2592000000}`,
-        amount: '$29.00',
-        status: 'PAID',
-        date: new Date(Date.now() - 2592000000).toISOString(),
-        pdfUrl: 'https://billing.opspilot.ai/invoices/inv_01.pdf',
-      },
-      {
-        id: `inv_${Date.now() - 5184000000}`,
-        amount: '$29.00',
-        status: 'PAID',
-        date: new Date(Date.now() - 5184000000).toISOString(),
-        pdfUrl: 'https://billing.opspilot.ai/invoices/inv_02.pdf',
-      },
-    ];
+  async getInvoices(orgId: string): Promise<InvoiceRecord[]> {
+    const org = await this.prisma.organization.findUnique({
+      where: { id: orgId },
+    });
+    if (!org) {
+      throw new NotFoundException(`Organization '${orgId}' not found`);
+    }
+    return [];
   }
 }

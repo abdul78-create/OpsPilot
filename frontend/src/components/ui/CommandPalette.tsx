@@ -9,7 +9,7 @@ import {
   Activity, FileText, Shield, CreditCard, BookOpen,
 } from 'lucide-react';
 import { useToast } from './Toast';
-import { triggerPipeline, DEFAULT_PIPELINE_ID } from '@/lib/apiClient';
+import { triggerPipeline, listPipelines } from '@/lib/apiClient';
 
 interface CommandPaletteProps {
   onOpenSecretModal?: () => void;
@@ -69,9 +69,17 @@ export function CommandPalette({ onOpenSecretModal }: CommandPaletteProps) {
 
   // ── Real API actions ──────────────────────────────────────────────────────
   const handleRunPipeline = useCallback(async () => {
-    toast({ kind: 'info', title: 'Triggering pipeline...', message: 'Request sent to runner service.' });
     try {
-      const res = await triggerPipeline(DEFAULT_PIPELINE_ID, 'main');
+      const pipelinesRes = await listPipelines();
+      const pipelines = pipelinesRes.data ?? [];
+      if (pipelines.length === 0) {
+        toast({ kind: 'info', title: 'No pipelines found', message: 'Please create a pipeline first in Pipeline Builder.' });
+        router.push('/builder');
+        return;
+      }
+      const target = pipelines[0];
+      toast({ kind: 'info', title: 'Triggering pipeline...', message: `Triggering ${target.name} on main.` });
+      const res = await triggerPipeline(target.id, 'main');
       if (res?.data) {
         toast({ kind: 'success', title: 'Pipeline Triggered', message: `Run ID: ${res.data.id.slice(0, 8)} on branch main` });
         router.push(`/runs/${res.data.id}`);
@@ -85,9 +93,17 @@ export function CommandPalette({ onOpenSecretModal }: CommandPaletteProps) {
   }, [toast, router]);
 
   const handleQuickDeploy = useCallback(async () => {
-    toast({ kind: 'info', title: 'Initiating deployment...', message: 'Building production target.' });
     try {
-      const res = await triggerPipeline(DEFAULT_PIPELINE_ID, 'main');
+      const pipelinesRes = await listPipelines();
+      const pipelines = pipelinesRes.data ?? [];
+      if (pipelines.length === 0) {
+        toast({ kind: 'info', title: 'No pipelines configured', message: 'Create a pipeline to enable one-click deployments.' });
+        router.push('/builder');
+        return;
+      }
+      const target = pipelines[0];
+      toast({ kind: 'info', title: 'Initiating deployment...', message: `Building target for ${target.name}.` });
+      const res = await triggerPipeline(target.id, 'main');
       if (res?.data) {
         toast({ kind: 'success', title: 'Deployment Triggered', message: 'Docker build runner started.' });
         router.push(`/runs/${res.data.id}`);

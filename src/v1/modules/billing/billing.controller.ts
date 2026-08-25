@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
 import { BillingService } from './billing.service';
 import { JwtAuthGuard } from '../../../core/security/guards/jwt-auth.guard';
@@ -15,9 +15,8 @@ export class BillingController {
   @Get('subscription')
   @ApiOperation({ summary: 'Retrieve organization active subscription tier and usage quotas' })
   @ApiParam({ name: 'orgId', description: 'Organization UUID', required: false })
-  async getSubscription(@Param('orgId') paramOrgId?: string, @Query('orgId') queryOrgId?: string) {
-    const targetOrgId = paramOrgId || queryOrgId || '3fdaca7b-c8e4-4be4-ba50-e1a2085ac913';
-    const data = await this.billingService.getSubscriptionAndUsage(targetOrgId);
+  async getSubscription(@Param('orgId') orgId: string) {
+    const data = await this.billingService.getSubscriptionAndUsage(orgId);
     return {
       message: 'Subscription and usage data retrieved successfully',
       data,

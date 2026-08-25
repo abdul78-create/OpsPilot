@@ -42,74 +42,36 @@ interface LiveRunData {
   endTime: string;
 }
 
-// ─── Static fallback data ─────────────────────────────────────────────────────
-const FALLBACK_STEPS: ExecutionStep[] = [
+// ─── Default Pipeline Stages ──────────────────────────────────────────────────
+const DEFAULT_STAGE_STEPS: ExecutionStep[] = [
   {
-    id: 's1', name: 'Git Repository', type: 'source', status: 'success',
-    duration: '1.2s', cpu: '0.1%', mem: '12 MB', exitCode: 0, startedAt: '14:31:00',
-    logs: [
-      'Initialized git repository clone...',
-      'Cloning my-org/backend-service @ sha: a4f3d19',
-
-      'Branch: main → HEAD detached at a4f3d19',
-      'Files: 2,841 objects received (12.3 MB)',
-      '✓ Clone complete in 1.2s',
-    ],
+    id: 's1', name: 'Source Checkout', type: 'source', status: 'queued',
+    duration: '—', cpu: '—', mem: '—', exitCode: null, startedAt: '—',
+    logs: ['[INFO] Initializing workspace container...', '[INFO] Preparing source checkout...'],
   },
   {
-    id: 's2', name: 'Jest Integration Tests', type: 'test', status: 'success',
-    duration: '38.4s', cpu: '82%', mem: '248 MB', exitCode: 0, startedAt: '14:31:01',
-    logs: [
-      'npm test -- --ci --maxWorkers=4 --forceExit',
-      'PASS src/__tests__/auth.test.ts (4.2s)',
-      'PASS src/__tests__/pipelines.test.ts (7.8s)',
-      'PASS src/__tests__/deployments.test.ts (11.1s)',
-      'PASS src/__tests__/workers.test.ts (15.3s)',
-      'Test Suites: 24 passed, 0 failed',
-      'Tests:       187 passed, 0 failed, 0 skipped',
-      '✓ Time: 38.4s — All tests passed',
-    ],
+    id: 's2', name: 'Build & Compile', type: 'build', status: 'queued',
+    duration: '—', cpu: '—', mem: '—', exitCode: null, startedAt: '—',
+    logs: ['[INFO] Waiting for build execution...'],
   },
   {
-    id: 's3', name: 'Trivy SAST Scan', type: 'security', status: 'success',
-    duration: '12.1s', cpu: '34%', mem: '94 MB', exitCode: 0, startedAt: '14:31:40',
-    logs: [
-      'trivy image --severity HIGH,CRITICAL --exit-code 0 node:20-alpine',
-      'Total: 0 (HIGH: 0, CRITICAL: 0)',
-      '✓ No HIGH or CRITICAL vulnerabilities found',
-    ],
+    id: 's3', name: 'Automated Tests', type: 'test', status: 'queued',
+    duration: '—', cpu: '—', mem: '—', exitCode: null, startedAt: '—',
+    logs: ['[INFO] Test suite waiting for execution...'],
   },
   {
-    id: 's4', name: 'Docker Container Build', type: 'build', status: 'success',
-    duration: '2m 18s', cpu: '91%', mem: '512 MB', exitCode: 0, startedAt: '14:31:52',
-    logs: [
-      'docker buildx build --platform linux/amd64 --push -t stockflow/backend:a4f3d19 .',
-      'Step 1/8 : FROM node:20-alpine',
-      'Step 8/8 : CMD ["node", "dist/main.js"]',
-      '✓ Successfully built sha256:4b7e9f2a',
-      '✓ Pushed to registry in 2m 18s',
-    ],
+    id: 's4', name: 'Security Audit', type: 'security', status: 'queued',
+    duration: '—', cpu: '—', mem: '—', exitCode: null, startedAt: '—',
+    logs: ['[INFO] Security scanner queued...'],
   },
   {
-    id: 's5', name: 'Kubernetes Rollout', type: 'deploy', status: 'failed',
-    duration: '14.8s', cpu: '8%', mem: '32 MB', exitCode: 1, startedAt: '14:34:10',
-    logs: [
-      'kubectl apply -f k8s/deployment.yaml --namespace=production',
-      'deployment.apps/backend configured',
-      'Waiting for deployment "backend" rollout to finish...',
-      'Warning  Failed    14s   kubelet  Error: ImagePullBackOff',
-      'Error from server: deployment failed to roll out within timeout',
-      'Error: Rollout failed. Exit code: 1',
-    ],
-  },
-  {
-    id: 's6', name: 'Slack Webhook', type: 'notification', status: 'skipped',
-    duration: '—', cpu: '—', mem: '—', exitCode: null, startedAt: '14:34:25',
-    logs: ['Skipped: upstream step "Kubernetes Rollout" failed with exit code 1'],
+    id: 's5', name: 'Deployment', type: 'deploy', status: 'queued',
+    duration: '—', cpu: '—', mem: '—', exitCode: null, startedAt: '—',
+    logs: ['[INFO] Deployment step waiting for upstream completion...'],
   },
 ];
 
-const STEP_TIME_PCTS = [0, 2, 42, 46, 58, 95, 100];
+const STEP_TIME_PCTS = [0, 20, 40, 60, 80, 100];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function stepIcon(type: ExecutionStep['type']) {
@@ -198,18 +160,18 @@ export function ExecutionWorkspace({ runId }: ExecutionWorkspaceProps) {
         if (matchedRun) {
           setLiveRun({
             runId: matchedRun.id,
-            repoName: matchedRun.repositoryUrl || 'stockflow/backend',
-            commitSha: matchedRun.commitSha?.slice(0, 7) || 'a4f3d19',
+            repoName: matchedRun.repositoryUrl || 'Repository',
+            commitSha: matchedRun.commitSha?.slice(0, 7) || 'HEAD',
             branch: matchedRun.branch || 'main',
             status: matchedRun.status || 'UNKNOWN',
-            totalDuration: '3m 06s',
-            startTime: matchedRun.startedAt ? new Date(matchedRun.startedAt).toLocaleTimeString() : '14:31:00',
-            endTime: matchedRun.finishedAt ? new Date(matchedRun.finishedAt).toLocaleTimeString() : '14:34:06',
+            totalDuration: matchedRun.duration ? `${matchedRun.duration}s` : '—',
+            startTime: matchedRun.startedAt ? new Date(matchedRun.startedAt).toLocaleTimeString() : '—',
+            endTime: matchedRun.finishedAt ? new Date(matchedRun.finishedAt).toLocaleTimeString() : '—',
           });
         }
       }
     } catch {
-      // Keep fallback state
+      // Graceful error state
     } finally {
       setIsLoading(false);
     }
@@ -237,21 +199,22 @@ export function ExecutionWorkspace({ runId }: ExecutionWorkspaceProps) {
     return () => { if (replayRef.current) clearInterval(replayRef.current); };
   }, [isReplaying]);
 
-  const visibleStepCount = STEP_TIME_PCTS.filter((t) => t <= sliderPct).length - 1;
-  const visibleSteps = steps.slice(0, visibleStepCount);
-  const selectedStep = steps.find((s) => s.id === selectedStepId) ?? steps[4];
+  const activeSteps = steps.length > 0 ? steps : DEFAULT_STAGE_STEPS;
+  const visibleStepCount = Math.max(1, STEP_TIME_PCTS.filter((t) => t <= sliderPct).length);
+  const visibleSteps = activeSteps.slice(0, visibleStepCount);
+  const selectedStep = activeSteps.find((s) => s.id === selectedStepId) ?? activeSteps[0];
 
-  const runStatus = liveRun?.status || 'FAILED';
-  const displayRunId = runId || '47';
-  const repoDisplay = liveRun?.repoName || 'workspace/repository';
+  const runStatus = liveRun?.status || 'QUEUED';
+  const displayRunId = runId || 'Latest';
+  const repoDisplay = liveRun?.repoName || 'Workspace';
 
-  const commitSha = liveRun?.commitSha || 'a4f3d19';
-  const startTime = liveRun?.startTime || '14:31:00';
-  const endTime = liveRun?.endTime || '14:34:06';
+  const commitSha = liveRun?.commitSha || 'HEAD';
+  const startTime = liveRun?.startTime || '—';
+  const endTime = liveRun?.endTime || '—';
 
-  const terminalLogs = selectedStep.id === selectedStepId && liveLogs.length > 0
+  const terminalLogs = selectedStep && selectedStep.id === selectedStepId && liveLogs.length > 0
     ? liveLogs
-    : selectedStep.logs;
+    : (selectedStep?.logs ?? ['[INFO] No log output recorded yet.']);
 
   return (
     <DeveloperShell>
@@ -377,20 +340,19 @@ export function ExecutionWorkspace({ runId }: ExecutionWorkspaceProps) {
                 <Sparkles size={13} className="shrink-0 mt-0.5 text-blue-400" />
                 <div className="space-y-1 min-w-0 flex-1">
                   <div className="font-bold text-blue-300 flex items-center gap-2">
-                    AI Root Cause Analysis
+                    Step Diagnostics
                     <AlertCircle size={11} className="text-rose-400" />
                   </div>
                   <p className="text-slate-300 leading-relaxed">
-                    <code className="text-blue-300 bg-blue-900/20 px-1 rounded">ImagePullBackOff</code> — Docker Hub registry authentication expired.
-                    Rotate the <code className="text-blue-300 bg-blue-900/20 px-1 rounded">DOCKER_HUB_TOKEN</code> secret in Settings → Secrets and re-trigger the run.
-                    Estimated fix time: <strong className="text-slate-200">3 minutes</strong>.
+                    Step <code className="text-blue-300 bg-blue-900/20 px-1 rounded">{selectedStep.name}</code> terminated with exit code <strong className="text-rose-400 font-mono">{selectedStep.exitCode ?? 1}</strong>.
+                    Review the console output above to inspect the exact failure reason or trigger a retry.
                   </p>
                   <div className="flex gap-2 mt-2">
-                    <button className="flex items-center gap-1 text-[10px] text-blue-300 hover:text-blue-200 border border-blue-800/40 bg-blue-900/20 px-2 py-1 rounded-lg transition-colors">
-                      <RotateCcw size={10} /> Rollback Deployment
-                    </button>
-                    <button className="flex items-center gap-1 text-[10px] text-slate-400 hover:text-slate-200 border border-slate-800 bg-slate-800/40 px-2 py-1 rounded-lg transition-colors">
-                      <Download size={10} /> Download Logs
+                    <button
+                      onClick={fetchLiveLogs}
+                      className="flex items-center gap-1 text-[10px] text-blue-300 hover:text-blue-200 border border-blue-800/40 bg-blue-900/20 px-2 py-1 rounded-lg transition-colors"
+                    >
+                      <RotateCcw size={10} /> Refresh Step Logs
                     </button>
                   </div>
                 </div>

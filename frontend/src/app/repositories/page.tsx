@@ -12,7 +12,8 @@ import {
   listRepositories, connectRepository, fetchRepositoryBranches,
   fetchRepositoryCommits, fetchRepositoryTree, fetchRepositoryFile,
   triggerPipeline, RepositoryConnection, GitHubBranchInfo,
-  GitHubCommitInfo, GitHubFileItem, GitHubFileContent, DEFAULT_PROJECT_ID,
+  GitHubCommitInfo, GitHubFileItem, GitHubFileContent,
+  getActiveProjectId, setActiveProjectId, listProjects,
 } from '@/lib/apiClient';
 import { useToast } from '@/components/ui/Toast';
 
@@ -39,8 +40,9 @@ export default function RepositoriesPage() {
   const [selectedBranch, setSelectedBranch] = useState<string>('main');
   const [commits, setCommits] = useState<GitHubCommitInfo[]>([]);
   const [fileTree, setFileTree] = useState<GitHubFileItem[]>([]);
-  const [selectedFile, setSelectedFile] = useState<string>('package.json');
+  const [selectedFile, setSelectedFile] = useState<string>('');
   const [fileContent, setFileContent] = useState<GitHubFileContent | null>(null);
+  const [activeProjectId, setActiveProjectIdState] = useState<string | null>(null);
 
   const [loading, setLoading] = useState(true);
   const [treeLoading, setTreeLoading] = useState(false);
@@ -58,26 +60,32 @@ export default function RepositoriesPage() {
   const loadRepositories = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await listRepositories(DEFAULT_PROJECT_ID);
+      let projId = getActiveProjectId();
+      if (!projId) {
+        const projRes = await listProjects();
+        if (projRes.data && projRes.data.length > 0) {
+          projId = projRes.data[0].id;
+          setActiveProjectId(projId);
+        }
+      }
+      setActiveProjectIdState(projId);
+      if (!projId) {
+        setRepositories([]);
+        setSelectedRepo(null);
+        return;
+      }
+      const res = await listRepositories(projId);
       const repos = res.data ?? [];
       setRepositories(repos);
       if (repos.length > 0) {
         setSelectedRepo(repos[0]);
       } else {
-        const fallbackRepo: RepositoryConnection = {
-          id: 'repo-demo-1',
-          projectId: DEFAULT_PROJECT_ID,
-          provider: 'GITHUB',
-          repositoryUrl: 'https://github.com/expressjs/express',
-          defaultBranch: 'main',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-        setRepositories([fallbackRepo]);
-        setSelectedRepo(fallbackRepo);
+        setSelectedRepo(null);
       }
     } catch {
       toast({ kind: 'error', title: 'Failed to load repositories' });
+      setRepositories([]);
+      setSelectedRepo(null);
     } finally {
       setLoading(false);
     }
@@ -86,50 +94,68 @@ export default function RepositoriesPage() {
   useEffect(() => { loadRepositories(); }, [loadRepositories]);
 
   useEffect(() => {
-    if (!selectedRepo) return;
+    if (!selectedRepo) {
+      setBranches([]);
+      setCommits([]);
+      setFileTree([]);
+      setSelectedFile('');
+      setFileContent(null);
+      return;
+    }
+    const projId = selectedRepo.projectId || activeProjectId;
+    if (!projId) return;
+
     async function loadRepoMetadata() {
       setTreeLoading(true);
       try {
         const [bRes, cRes, tRes] = await Promise.allSettled([
-          fetchRepositoryBranches(DEFAULT_PROJECT_ID, selectedRepo!.id),
-          fetchRepositoryCommits(DEFAULT_PROJECT_ID, selectedRepo!.id),
-          fetchRepositoryTree(DEFAULT_PROJECT_ID, selectedRepo!.id, '', selectedBranch),
+          fetchRepositoryBranches(projId!, selectedRepo!.id),
+          fetchRepositoryCommits(projId!, selectedRepo!.id),
+          fetchRepositoryTree(projId!, selectedRepo!.id, '', selectedBranch),
         ]);
         if (bRes.status === 'fulfilled' && bRes.value.data) {
           setBranches(bRes.value.data);
-          if (bRes.value.data.length > 0) setSelectedBranch(bRes.value.data[0].name);
+          if (bRes.value.data.length > 0 && !bRes.value.data.some(b => b.name === selectedBranch)) {
+            setSelectedBranch(bRes.value.data[0].name);
+          }
         }
         if (cRes.status === 'fulfilled' && cRes.value.data) setCommits(cRes.value.data);
-        if (tRes.status === 'fulfilled' && tRes.value.data) setFileTree(tRes.value.data);
+        if (tRes.status === 'fulfilled' && tRes.value.data) {
+          setFileTree(tRes.value.data);
+          if (tRes.value.data.length > 0 && !selectedFile) {
+            const firstFile = tRes.value.data.find(f => f.type === 'file');
+            if (firstFile) setSelectedFile(firstFile.path);
+          }
+        }
       } catch { /* handled */ } finally {
         setTreeLoading(false);
       }
     }
     loadRepoMetadata();
-  }, [selectedRepo, selectedBranch]);
+  }, [selectedRepo, selectedBranch, activeProjectId]);
 
   useEffect(() => {
-    if (!selectedRepo || !selectedFile) return;
+    if (!selectedRepo || !selectedFile) {
+      setFileContent(null);
+      return;
+    }
+    const projId = selectedRepo.projectId || activeProjectId;
+    if (!projId) return;
+
     async function loadFile() {
       setFileLoading(true);
       try {
-        const res = await fetchRepositoryFile(DEFAULT_PROJECT_ID, selectedRepo!.id, selectedFile, selectedBranch);
+        const res = await fetchRepositoryFile(projId!, selectedRepo!.id, selectedFile, selectedBranch);
         if (res.data) setFileContent(res.data);
+        else setFileContent(null);
       } catch {
-        setFileContent({
-          name: selectedFile.split('/').pop() || selectedFile,
-          path: selectedFile,
-          size: 1420,
-          encoding: 'utf8',
-          language: selectedFile.endsWith('.json') ? 'json' : 'typescript',
-          content: `// Source: ${selectedFile}\n// Branch: ${selectedBranch}\n`,
-        });
+        setFileContent(null);
       } finally {
         setFileLoading(false);
       }
     }
     loadFile();
-  }, [selectedRepo, selectedFile, selectedBranch]);
+  }, [selectedRepo, selectedFile, selectedBranch, activeProjectId]);
 
   const handleCopyCode = () => {
     if (!fileContent?.content) return;
@@ -142,9 +168,22 @@ export default function RepositoriesPage() {
   const handleConnectNewRepo = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newRepoUrl) return;
+    let projId = activeProjectId || getActiveProjectId();
+    if (!projId) {
+      const projRes = await listProjects();
+      if (projRes.data && projRes.data.length > 0) {
+        projId = projRes.data[0].id;
+        setActiveProjectId(projId);
+        setActiveProjectIdState(projId);
+      }
+    }
+    if (!projId) {
+      toast({ kind: 'warning', title: 'Project required', message: 'Please create a project in Settings first.' });
+      return;
+    }
     setConnecting(true);
     try {
-      const res = await connectRepository(DEFAULT_PROJECT_ID, {
+      const res = await connectRepository(projId, {
         provider: 'GITHUB',
         repositoryUrl: newRepoUrl,
         defaultBranch: newRepoBranch || 'main',
@@ -157,8 +196,9 @@ export default function RepositoriesPage() {
         setShowConnectModal(false);
         setNewRepoUrl('');
       }
-    } catch {
-      toast({ kind: 'error', title: 'Connection error', message: 'Verify URL and permissions' });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to connect repository';
+      toast({ kind: 'error', title: 'Connection error', message: msg });
     } finally {
       setConnecting(false);
     }
@@ -179,50 +219,56 @@ export default function RepositoriesPage() {
             <h1 className="text-sm font-bold text-[var(--text-primary)]">Repository Explorer</h1>
 
             {/* Repository Select */}
-            <select
-              value={selectedRepo?.id || ''}
-              onChange={e => {
-                const r = repositories.find(x => x.id === e.target.value);
-                if (r) setSelectedRepo(r);
-              }}
-              className="text-xs bg-[var(--bg-tertiary)] border border-[var(--border)] text-[var(--text-secondary)] rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-[var(--border-bright)] font-mono"
-            >
-              {repositories.map(repo => (
-                <option key={repo.id} value={repo.id}>
-                  {repo.repositoryUrl.replace('https://github.com/', '')}
-                </option>
-              ))}
-            </select>
+            {repositories.length > 0 ? (
+              <select
+                value={selectedRepo?.id || ''}
+                onChange={e => {
+                  const r = repositories.find(x => x.id === e.target.value);
+                  if (r) setSelectedRepo(r);
+                }}
+                className="text-xs bg-[var(--bg-tertiary)] border border-[var(--border)] text-[var(--text-secondary)] rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-[var(--border-bright)] font-mono"
+              >
+                {repositories.map(repo => (
+                  <option key={repo.id} value={repo.id}>
+                    {repo.repositoryUrl.replace('https://github.com/', '')}
+                  </option>
+                ))}
+              </select>
+            ) : null}
 
             {/* Branch Selector */}
-            <div className="flex items-center gap-1.5 bg-[var(--bg-tertiary)] border border-[var(--border)] rounded-lg px-2 py-1 text-xs text-[var(--text-secondary)]">
-              <GitBranch size={12} className="text-[var(--text-muted)] shrink-0" />
-              <select
-                value={selectedBranch}
-                onChange={e => setSelectedBranch(e.target.value)}
-                className="bg-transparent text-xs text-[var(--text-secondary)] focus:outline-none font-mono"
-              >
-                {branches.length > 0 ? (
-                  branches.map(b => <option key={b.name} value={b.name}>{b.name}</option>)
-                ) : (
-                  <option value="main">main</option>
-                )}
-              </select>
-            </div>
+            {repositories.length > 0 ? (
+              <div className="flex items-center gap-1.5 bg-[var(--bg-tertiary)] border border-[var(--border)] rounded-lg px-2 py-1 text-xs text-[var(--text-secondary)]">
+                <GitBranch size={12} className="text-[var(--text-muted)] shrink-0" />
+                <select
+                  value={selectedBranch}
+                  onChange={e => setSelectedBranch(e.target.value)}
+                  className="bg-transparent text-xs text-[var(--text-secondary)] focus:outline-none font-mono"
+                >
+                  {branches.length > 0 ? (
+                    branches.map(b => <option key={b.name} value={b.name}>{b.name}</option>)
+                  ) : (
+                    <option value="main">main</option>
+                  )}
+                </select>
+              </div>
+            ) : null}
           </div>
 
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowCommitDrawer(!showCommitDrawer)}
-              className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors ${
-                showCommitDrawer
-                  ? 'bg-[var(--bg-tertiary)] border-[var(--border-bright)] text-[var(--text-primary)]'
-                  : 'bg-[var(--bg-tertiary)] border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
-              }`}
-            >
-              <GitCommit size={13} />
-              <span>Commits ({commits.length})</span>
-            </button>
+            {repositories.length > 0 ? (
+              <button
+                onClick={() => setShowCommitDrawer(!showCommitDrawer)}
+                className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors ${
+                  showCommitDrawer
+                    ? 'bg-[var(--bg-tertiary)] border-[var(--border-bright)] text-[var(--text-primary)]'
+                    : 'bg-[var(--bg-tertiary)] border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-secondary)]'
+                }`}
+              >
+                <GitCommit size={13} />
+                <span>Commits ({commits.length})</span>
+              </button>
+            ) : null}
 
             <button
               onClick={() => setShowConnectModal(true)}
@@ -242,12 +288,39 @@ export default function RepositoriesPage() {
           </div>
         </div>
 
-        {/* Main 2-Column Explorer */}
-        <div className="flex-1 flex gap-3 min-h-0">
-
-          {/* File Tree */}
-          <div className="w-72 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl flex flex-col overflow-hidden shrink-0">
-            <div className="p-3 border-b border-[var(--border)] flex items-center gap-2">
+        {/* Loading / Empty / Main Content */}
+        {loading ? (
+          <div className="flex-1 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl flex items-center justify-center">
+            <div className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
+              <Loader2 size={16} className="animate-spin text-[var(--accent)]" />
+              <span>Loading repositories...</span>
+            </div>
+          </div>
+        ) : repositories.length === 0 ? (
+          <div className="flex-1 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl flex flex-col items-center justify-center p-8 text-center space-y-4">
+            <div className="w-14 h-14 rounded-2xl bg-[var(--bg-tertiary)] border border-[var(--border)] flex items-center justify-center text-[var(--text-muted)]">
+              <FolderGit2 size={26} />
+            </div>
+            <div className="max-w-md space-y-1">
+              <h2 className="text-sm font-semibold text-[var(--text-primary)]">No repositories connected</h2>
+              <p className="text-xs text-[var(--text-muted)] leading-relaxed">
+                Connect your GitHub repository to browse files, inspect branches and commits, and compile automated CI/CD DAG pipelines.
+              </p>
+            </div>
+            <button
+              onClick={() => setShowConnectModal(true)}
+              className="flex items-center gap-2 text-xs bg-[var(--accent)] text-[var(--accent-fg)] font-semibold px-4 py-2 rounded-lg transition-opacity hover:opacity-90"
+            >
+              <Plus size={14} />
+              <span>Connect First Repository</span>
+            </button>
+          </div>
+        ) : (
+          /* Main 2-Column Explorer */
+          <div className="flex-1 flex gap-3 min-h-0">
+            {/* File Tree */}
+            <div className="w-72 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl flex flex-col overflow-hidden shrink-0">
+              <div className="p-3 border-b border-[var(--border)] flex items-center gap-2">
               <Search size={13} className="text-[var(--text-muted)] shrink-0" />
               <input
                 type="text"
@@ -387,6 +460,7 @@ export default function RepositoriesPage() {
             </div>
           )}
         </div>
+        )}
 
         {/* Connect Repository Modal */}
         {showConnectModal && (

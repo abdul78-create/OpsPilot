@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { DeveloperShellWrapper } from '@/components/layout/DeveloperShell';
 import { RepoScannerModal } from '@/components/builder/RepoScannerModal';
 import {
-  fetchSystemHealth, listAllRuns, listPipelines, listAiReports,
+  fetchServiceHealth, listAllRuns, listPipelines, listAiReports,
   PipelineRun, AiAnalysisReport, PipelineDefinition,
 } from '@/lib/apiClient';
 import {
@@ -137,7 +137,12 @@ export default function DashboardPage() {
   const [scanOpen, setScanOpen] = useState(false);
   const [userName, setUserName] = useState('Engineer');
   const [daysFilter, setDaysFilter] = useState<7 | 14 | 30>(7);
-  const [systemHealth, setSystemHealth] = useState<{ isOnline: boolean; dbStatus: string }>({ isOnline: true, dbStatus: 'up' });
+  const [systemHealth, setSystemHealth] = useState<{
+    isOnline: boolean;
+    dbStatus: string;
+    queueStatus: string;
+    eventBusStatus: string;
+  }>({ isOnline: true, dbStatus: 'up', queueStatus: 'up', eventBusStatus: 'up' });
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
@@ -156,21 +161,33 @@ export default function DashboardPage() {
       }
 
       const [healthRes, runsRes, pipelinesRes, reportsRes] = await Promise.all([
-        fetchSystemHealth().catch(() => null),
+        fetchServiceHealth().catch(() => null),
         listAllRuns().catch(() => []),
         listPipelines().catch(() => ({ data: [] })),
         listAiReports().catch(() => ({ data: [] })),
       ]);
 
-      if (healthRes?.data) {
-        setSystemHealth({ isOnline: true, dbStatus: 'up' });
+      if (healthRes) {
+        setSystemHealth({
+          isOnline: healthRes.status === 'ok',
+          dbStatus: healthRes.details?.database || 'unknown',
+          queueStatus: healthRes.details?.queue || 'unknown',
+          eventBusStatus: healthRes.details?.eventBus || 'unknown',
+        });
+      } else {
+        setSystemHealth({
+          isOnline: false,
+          dbStatus: 'down',
+          queueStatus: 'down',
+          eventBusStatus: 'down',
+        });
       }
 
       setRuns(Array.isArray(runsRes) ? runsRes : []);
       setPipelines(pipelinesRes.data ?? []);
       setReports(reportsRes.data ?? []);
     } catch {
-      setSystemHealth({ isOnline: false, dbStatus: 'down' });
+      setSystemHealth({ isOnline: false, dbStatus: 'down', queueStatus: 'down', eventBusStatus: 'down' });
     } finally {
       setLoading(false);
       setIsRefreshing(false);
@@ -194,7 +211,7 @@ export default function DashboardPage() {
   const failedRuns = runs.filter(r => r.status === 'FAILED');
   const runningRuns = runs.filter(r => r.status === 'RUNNING');
   const successfulRuns = runs.filter(r => r.status === 'SUCCESS');
-  const successRate = totalRuns > 0 ? (successfulRuns.length / totalRuns) * 100 : 100;
+  const successRate = totalRuns > 0 ? (successfulRuns.length / totalRuns) * 100 : null;
   const recentFailedRun = failedRuns[0];
 
   const chartData = React.useMemo(() => {
@@ -236,11 +253,11 @@ export default function DashboardPage() {
                 <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[var(--bg-tertiary)] text-[var(--text-muted)] border border-[var(--border)]">v2.4.0</span>
               </div>
               <p className="text-xs text-[var(--text-muted)] flex items-center gap-3 mt-0.5">
-                <span>PostgreSQL: <strong className="text-[var(--success)] font-mono">Connected</strong></span>
+                <span>Database: <strong className={`font-mono ${systemHealth.dbStatus === 'up' ? 'text-[var(--success)]' : 'text-[var(--error)]'}`}>{systemHealth.dbStatus.toUpperCase()}</strong></span>
                 <span>•</span>
-                <span>Docker Engine: <strong className="text-[var(--success)] font-mono">Ready</strong></span>
+                <span>Queue: <strong className={`font-mono ${systemHealth.queueStatus === 'up' ? 'text-[var(--success)]' : 'text-[var(--warning)]'}`}>{systemHealth.queueStatus.toUpperCase()}</strong></span>
                 <span>•</span>
-                <span>Active Workers: <strong className="text-[var(--info)] font-mono">3 Online</strong></span>
+                <span>Active Workflows: <strong className="text-[var(--info)] font-mono">{runningRuns.length} Running</strong></span>
               </p>
             </div>
           </div>
@@ -274,7 +291,9 @@ export default function DashboardPage() {
             <p className="text-sm text-[var(--text-muted)] mt-1">
               {runningRuns.length > 0
                 ? `${runningRuns.length} pipeline run${runningRuns.length > 1 ? 's' : ''} actively executing in Docker environment`
-                : 'Zero pipeline failures detected in the last hour. Workspace ready.'}
+                : totalRuns > 0
+                ? 'Zero pipeline failures detected in the last hour. Workspace ready.'
+                : 'Welcome to OpsPilot. Connect a repository and build your first automated pipeline.'}
             </p>
           </div>
 
@@ -337,10 +356,32 @@ export default function DashboardPage() {
             ))
           ) : (
             <>
-              <KpiCard title="Total Executions" value={totalRuns} subtitle="Across all pipelines" icon={Play} trendText="+14% this week" trendUp={true} />
-              <KpiCard title="Success Rate" value={`${successRate.toFixed(1)}%`} subtitle="Last 30 days" icon={CheckCircle2} trendText={successRate >= 90 ? 'Healthy' : 'Needs Review'} trendUp={successRate >= 90} />
-              <KpiCard title="Active Workflows" value={pipelines.length} subtitle={`${runningRuns.length} currently running`} icon={Rocket} />
-              <KpiCard title="AI RCA Incidents" value={reports.length} subtitle="Root cause reports saved" icon={Sparkles} />
+              <KpiCard
+                title="Total Executions"
+                value={totalRuns}
+                subtitle={totalRuns > 0 ? "Across all pipelines" : "No executions recorded"}
+                icon={Play}
+              />
+              <KpiCard
+                title="Success Rate"
+                value={successRate !== null ? `${successRate.toFixed(1)}%` : '—'}
+                subtitle={totalRuns > 0 ? "Computed from live runs" : "No runs recorded yet"}
+                icon={CheckCircle2}
+                trendText={successRate !== null ? (successRate >= 90 ? 'Healthy' : 'Needs Review') : undefined}
+                trendUp={successRate !== null ? successRate >= 90 : undefined}
+              />
+              <KpiCard
+                title="Active Workflows"
+                value={pipelines.length}
+                subtitle={runningRuns.length > 0 ? `${runningRuns.length} currently running` : `${pipelines.length} configured`}
+                icon={Rocket}
+              />
+              <KpiCard
+                title="AI RCA Incidents"
+                value={reports.length}
+                subtitle={reports.length > 0 ? "Root cause reports saved" : "No incidents analyzed"}
+                icon={Sparkles}
+              />
             </>
           )}
         </div>

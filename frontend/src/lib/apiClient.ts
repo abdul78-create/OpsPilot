@@ -31,9 +31,27 @@ export function getOAuthBaseUrl(): string {
 
 export const API_BASE = getApiBaseUrl();
 
-export const DEFAULT_ORG_ID = '3fdaca7b-c8e4-4be4-ba50-e1a2085ac913';
-export const DEFAULT_PROJECT_ID = '138ae2ae-2d30-4536-8789-267c5901f05c';
-export const DEFAULT_PIPELINE_ID = '923a1e6e-3f99-4e6e-8d04-4531a3c6e8a1';
+export function getActiveOrgId(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('opspilot_org_id');
+}
+
+export function setActiveOrgId(orgId: string): void {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('opspilot_org_id', orgId);
+  }
+}
+
+export function getActiveProjectId(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('opspilot_project_id');
+}
+
+export function setActiveProjectId(projectId: string): void {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('opspilot_project_id', projectId);
+  }
+}
 
 export interface UserProfile {
   id: string;
@@ -158,18 +176,26 @@ export interface Secret {
   createdAt: string;
 }
 
+function extractStatusString(val: unknown): string {
+  if (typeof val === 'string') return val;
+  if (val && typeof val === 'object' && 'status' in val) {
+    return String((val as { status: unknown }).status);
+  }
+  return 'unknown';
+}
+
 function getHeaders(extra: Record<string, string> = {}): Record<string, string> {
   const token = typeof window !== 'undefined' ? localStorage.getItem('opspilot_token') : null;
-  const orgId =
-    typeof window !== 'undefined'
-      ? (localStorage.getItem('opspilot_org_id') ?? DEFAULT_ORG_ID)
-      : DEFAULT_ORG_ID;
-  return {
+  const orgId = typeof window !== 'undefined' ? localStorage.getItem('opspilot_org_id') : null;
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    'x-organization-id': orgId,
     ...extra,
   };
+  if (orgId) {
+    headers['x-organization-id'] = orgId;
+  }
+  return headers;
 }
 
 export async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
@@ -222,25 +248,23 @@ export function isAuthenticated(): boolean {
 // ─── Health ───────────────────────────────────────────────────────────────────
 
 export async function checkHealth() {
-  return apiFetch<{ data: { status: string; info: Record<string, { status: string }> } }>(
-    '/health',
-  );
+  return apiFetch<{ data?: any; status?: string; info?: any; details?: any }>('/health');
 }
 
 export async function checkBackendHealth() {
   try {
     const r = await checkHealth();
-    const dbUp = r.data?.info?.database?.status === 'up';
-    return { isOnline: true, dbStatus: dbUp ? 'Up' : 'Down' };
+    const info = r?.data?.info || r?.info || r?.data?.details || r?.details;
+    const dbStatus = extractStatusString(info?.database);
+    return { isOnline: true, dbStatus: dbStatus === 'up' ? 'Up' : dbStatus };
   } catch {
     return { isOnline: false, dbStatus: 'disconnected' };
   }
 }
 
 /**
- * Fetches live service health from the Observability health monitoring endpoint.
- * Response shape: { status: 'ok'|'degraded', timestamp: string, details: { database, eventBus, queue } }
- * This is the custom probe (real DB + Redis ping), distinct from the Terminus /health endpoint.
+ * Fetches live service health from backend.
+ * Safely extracts string statuses to avoid [object Object] rendering.
  */
 export interface ServiceHealthStatus {
   status: 'ok' | 'degraded' | 'down';
@@ -254,21 +278,16 @@ export interface ServiceHealthStatus {
 
 export async function fetchServiceHealth(): Promise<ServiceHealthStatus> {
   try {
-    // The observability HealthMonitoringController returns the DTO directly (no data wrapper)
-    const raw = await apiFetch<ServiceHealthStatus | { data: ServiceHealthStatus }>('/health');
-    // Handle both wrapped and unwrapped shapes defensively
-    if ('details' in raw) return raw as ServiceHealthStatus;
-    const wrapped = raw as { data: ServiceHealthStatus };
-    if (wrapped.data && 'details' in wrapped.data) return wrapped.data;
-    // Terminus fallback: map info → details
-    const terminus = raw as unknown as { data: { status: string; info: Record<string, { status: string }> } };
+    const raw = await apiFetch<any>('/health');
+    const status = raw?.status === 'ok' ? 'ok' : raw?.status === 'degraded' ? 'degraded' : 'down';
+    const rawDetails = raw?.details || raw?.data?.details || raw?.info || raw?.data?.info || {};
     return {
-      status: terminus.data?.status === 'ok' ? 'ok' : 'degraded',
-      timestamp: new Date().toISOString(),
+      status,
+      timestamp: raw?.timestamp || new Date().toISOString(),
       details: {
-        database: terminus.data?.info?.database?.status ?? 'unknown',
-        eventBus: terminus.data?.info?.eventBus?.status  ?? 'up',
-        queue:    terminus.data?.info?.queue?.status     ?? 'unknown',
+        database: extractStatusString(rawDetails?.database),
+        eventBus: extractStatusString(rawDetails?.eventBus ?? 'up'),
+        queue: extractStatusString(rawDetails?.queue ?? (status === 'ok' ? 'up' : 'unknown')),
       },
     };
   } catch {
@@ -282,18 +301,99 @@ export async function fetchServiceHealth(): Promise<ServiceHealthStatus> {
 
 // ─── Organizations ────────────────────────────────────────────────────────────
 
+export async function listOrganizations() {
+  return apiFetch<{ data: Organization[] }>('/organizations');
+}
+
+export async function createOrganization(name: string, slug: string) {
+  return apiFetch<{ data: Organization }>('/organizations', {
+    method: 'POST',
+    body: JSON.stringify({ name, slug }),
+  });
+}
+
 export async function getCurrentOrganization() {
   return apiFetch<{ data: Organization }>('/organizations/current');
 }
 
-// ─── Projects ────────────────────────────────────────────────────────────────
+// ─── Billing & Subscriptions ──────────────────────────────────────────────────
 
-export async function listProjects(orgId: string = DEFAULT_ORG_ID) {
-  return apiFetch<{ data: Project[] }>(`/organizations/${orgId}/projects`);
+export interface SubscriptionUsageData {
+  organizationId: string;
+  plan: {
+    name: string;
+    price: string;
+    maxBuildMinutes: number;
+    maxDeployments: number;
+    maxArtifactStorageMB: number;
+    maxTeamSeats: number;
+    aiRcaEnabled: boolean;
+  };
+  usage: {
+    buildMinutes: number;
+    buildMinutesLimit: number;
+    buildMinutesPercent: number;
+    deployments: number;
+    deploymentsLimit: number;
+    deploymentsPercent: number;
+    artifactStorageMB: number;
+    artifactStorageLimitMB: number;
+    artifactStoragePercent: number;
+    teamSeats: number;
+    teamSeatsLimit: number;
+    teamSeatsPercent: number;
+  };
 }
 
-export async function createProject(name: string, slug: string, orgId: string = DEFAULT_ORG_ID) {
-  return apiFetch<{ data: Project }>(`/organizations/${orgId}/projects`, {
+export interface InvoiceItem {
+  id: string;
+  amount: string;
+  status: string;
+  date: string;
+  pdfUrl?: string;
+  plan?: string;
+}
+
+export async function fetchSubscriptionAndUsage(orgId?: string) {
+  const targetOrgId = orgId || getActiveOrgId();
+  if (!targetOrgId) return null;
+  return apiFetch<{ data: SubscriptionUsageData }>(`/organizations/${targetOrgId}/billing/subscription`);
+}
+
+export async function fetchInvoices(orgId?: string) {
+  const targetOrgId = orgId || getActiveOrgId();
+  if (!targetOrgId) return { data: [] as InvoiceItem[] };
+  return apiFetch<{ data: InvoiceItem[] }>(`/organizations/${targetOrgId}/billing/invoices`);
+}
+
+export async function createCheckout(plan: string, orgId?: string) {
+  const targetOrgId = orgId || getActiveOrgId();
+  if (!targetOrgId) throw new Error('No active organization selected.');
+  return apiFetch<{ data: { checkoutUrl: string; sessionId: string; plan: any } }>(
+    `/organizations/${targetOrgId}/billing/checkout`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ plan }),
+    },
+  );
+}
+
+// ─── Projects ────────────────────────────────────────────────────────────────
+
+export async function listProjects(orgId?: string) {
+  const targetOrgId = orgId || getActiveOrgId();
+  if (!targetOrgId) {
+    return { data: [] as Project[] };
+  }
+  return apiFetch<{ data: Project[] }>(`/organizations/${targetOrgId}/projects`);
+}
+
+export async function createProject(name: string, slug: string, orgId?: string) {
+  const targetOrgId = orgId || getActiveOrgId();
+  if (!targetOrgId) {
+    throw new Error('No active organization selected.');
+  }
+  return apiFetch<{ data: Project }>(`/organizations/${targetOrgId}/projects`, {
     method: 'POST',
     body: JSON.stringify({ name, slug }),
   });
@@ -301,8 +401,12 @@ export async function createProject(name: string, slug: string, orgId: string = 
 
 // ─── Pipelines ────────────────────────────────────────────────────────────────
 
-export async function listPipelines(projectId: string = DEFAULT_PROJECT_ID) {
-  return apiFetch<{ data: PipelineDefinition[] }>(`/projects/${projectId}/pipelines`);
+export async function listPipelines(projectId?: string) {
+  const targetProjectId = projectId || getActiveProjectId();
+  if (!targetProjectId) {
+    return { data: [] as PipelineDefinition[] };
+  }
+  return apiFetch<{ data: PipelineDefinition[] }>(`/projects/${targetProjectId}/pipelines`);
 }
 
 export async function createPipelineFromRepo(
@@ -352,11 +456,13 @@ export async function listRunsForPipeline(pipelineId: string, limit = 50) {
 }
 
 export async function listAllRuns(
-  projectId: string = DEFAULT_PROJECT_ID,
+  projectId?: string,
   limit = 50,
 ): Promise<PipelineRun[]> {
   try {
-    const pipelines = await listPipelines(projectId);
+    const targetProjectId = projectId || getActiveProjectId();
+    if (!targetProjectId) return [];
+    const pipelines = await listPipelines(targetProjectId);
     const allRuns: PipelineRun[] = [];
     await Promise.all(
       (pipelines.data ?? []).map(async (p) => {
@@ -475,10 +581,14 @@ export async function analyzeRun(runId: string) {
   });
 }
 
-export async function listAiReports(orgId: string = DEFAULT_ORG_ID, type?: string) {
+export async function listAiReports(orgId?: string, type?: string) {
+  const targetOrgId = orgId || getActiveOrgId();
+  if (!targetOrgId) {
+    return { message: 'No active organization', data: [] as AiAnalysisReport[] };
+  }
   const query = type ? `?type=${encodeURIComponent(type)}` : '';
   return apiFetch<{ message: string; data: AiAnalysisReport[] }>(
-    `/organizations/${orgId}/ai-reports${query}`,
+    `/organizations/${targetOrgId}/ai-reports${query}`,
   );
 }
 
@@ -570,12 +680,16 @@ export interface GitHubFileContent {
   language: string;
 }
 
-export async function listRepositories(projectId: string = DEFAULT_PROJECT_ID) {
-  return apiFetch<{ data: RepositoryConnection[] }>(`/projects/${projectId}/repositories`);
+export async function listRepositories(projectId?: string) {
+  const targetProjectId = projectId || getActiveProjectId();
+  if (!targetProjectId) {
+    return { data: [] as RepositoryConnection[] };
+  }
+  return apiFetch<{ data: RepositoryConnection[] }>(`/projects/${targetProjectId}/repositories`);
 }
 
 export async function connectRepository(
-  projectId: string = DEFAULT_PROJECT_ID,
+  projectId: string | undefined,
   dto: {
     provider: 'GITHUB' | 'GITLAB';
     repositoryUrl: string;
@@ -583,39 +697,49 @@ export async function connectRepository(
     accessToken?: string;
   },
 ) {
-  return apiFetch<{ data: RepositoryConnection }>(`/projects/${projectId}/repositories`, {
+  const targetProjectId = projectId || getActiveProjectId();
+  if (!targetProjectId) {
+    throw new Error('No active project selected.');
+  }
+  return apiFetch<{ data: RepositoryConnection }>(`/projects/${targetProjectId}/repositories`, {
     method: 'POST',
     body: JSON.stringify(dto),
   });
 }
 
 export async function fetchRepositoryBranches(
-  projectId: string = DEFAULT_PROJECT_ID,
+  projectId: string | undefined,
   repositoryId: string,
 ) {
+  const targetProjectId = projectId || getActiveProjectId();
+  if (!targetProjectId) return { data: [] as GitHubBranchInfo[] };
   return apiFetch<{ data: GitHubBranchInfo[] }>(
-    `/projects/${projectId}/repositories/${repositoryId}/branches`,
+    `/projects/${targetProjectId}/repositories/${repositoryId}/branches`,
   );
 }
 
 export async function fetchRepositoryCommits(
-  projectId: string = DEFAULT_PROJECT_ID,
+  projectId: string | undefined,
   repositoryId: string,
 ) {
+  const targetProjectId = projectId || getActiveProjectId();
+  if (!targetProjectId) return { data: [] as GitHubCommitInfo[] };
   return apiFetch<{ data: GitHubCommitInfo[] }>(
-    `/projects/${projectId}/repositories/${repositoryId}/commits`,
+    `/projects/${targetProjectId}/repositories/${repositoryId}/commits`,
   );
 }
 
 export async function fetchRepositoryTree(
-  projectId: string = DEFAULT_PROJECT_ID,
+  projectId: string | undefined,
   repositoryId: string,
   path: string = '',
   ref: string = 'main',
 ) {
+  const targetProjectId = projectId || getActiveProjectId();
+  if (!targetProjectId) return { data: [] as GitHubFileItem[] };
   const query = new URLSearchParams({ path, ref }).toString();
   return apiFetch<{ data: GitHubFileItem[] }>(
-    `/projects/${projectId}/repositories/${repositoryId}/tree?${query}`,
+    `/projects/${targetProjectId}/repositories/${repositoryId}/tree?${query}`,
     {
       method: 'GET',
     },
@@ -623,14 +747,16 @@ export async function fetchRepositoryTree(
 }
 
 export async function fetchRepositoryFile(
-  projectId: string = DEFAULT_PROJECT_ID,
+  projectId: string | undefined,
   repositoryId: string,
   path: string = 'package.json',
   ref: string = 'main',
 ) {
+  const targetProjectId = projectId || getActiveProjectId();
+  if (!targetProjectId) throw new Error('No active project selected.');
   const query = new URLSearchParams({ path, ref }).toString();
   return apiFetch<{ data: GitHubFileContent }>(
-    `/projects/${projectId}/repositories/${repositoryId}/file?${query}`,
+    `/projects/${targetProjectId}/repositories/${repositoryId}/file?${query}`,
     {
       method: 'GET',
     },

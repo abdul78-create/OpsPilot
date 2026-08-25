@@ -36,8 +36,10 @@ import { useToast } from '../ui/Toast';
 import {
   createPipelineDefinition,
   triggerPipeline,
-  DEFAULT_PROJECT_ID,
-  DEFAULT_PIPELINE_ID,
+  listProjects,
+  getActiveProjectId,
+  setActiveProjectId,
+  listPipelines,
 } from '../../lib/apiClient';
 import {
   Play, Save, Zap, Sliders, History,
@@ -206,7 +208,25 @@ function BuilderCanvas() {
     const yaml = dagToYaml(nodes, edges, 'OpsPilot Visual Pipeline', 'main');
 
     try {
-      const res = await createPipelineDefinition(DEFAULT_PROJECT_ID, {
+      let projectId = getActiveProjectId();
+      if (!projectId) {
+        const projRes = await listProjects();
+        if (projRes.data && projRes.data.length > 0) {
+          projectId = projRes.data[0].id;
+          setActiveProjectId(projectId);
+        }
+      }
+
+      if (!projectId) {
+        toast({
+          kind: 'warning',
+          title: 'Project Required',
+          message: 'Please create or select a project in Settings before saving.',
+        });
+        return;
+      }
+
+      const res = await createPipelineDefinition(projectId, {
         name: `Visual Pipeline ${Date.now().toString().slice(-4)}`,
         yamlConfig: yaml,
         triggerBranch: 'main',
@@ -241,7 +261,43 @@ function BuilderCanvas() {
     toast({ kind: 'info', title: 'Triggering Pipeline Run...', message: 'Connecting to Docker runner.' });
 
     try {
-      const res = await triggerPipeline(DEFAULT_PIPELINE_ID, 'main');
+      let projectId = getActiveProjectId();
+      if (!projectId) {
+        const projRes = await listProjects();
+        if (projRes.data && projRes.data.length > 0) {
+          projectId = projRes.data[0].id;
+          setActiveProjectId(projectId);
+        }
+      }
+
+      const pipesRes = await listPipelines(projectId ?? undefined);
+      const pipes = pipesRes.data ?? [];
+      let targetPipelineId: string | null = pipes.length > 0 ? pipes[0].id : null;
+
+      if (!targetPipelineId && projectId) {
+        // Save current definition first to create the pipeline
+        const yaml = dagToYaml(nodes, edges, 'OpsPilot Visual Pipeline', 'main');
+        const created = await createPipelineDefinition(projectId, {
+          name: `Visual Pipeline ${Date.now().toString().slice(-4)}`,
+          yamlConfig: yaml,
+          triggerBranch: 'main',
+          description: 'Auto-saved before run',
+        });
+        if (created?.data?.id) {
+          targetPipelineId = created.data.id;
+        }
+      }
+
+      if (!targetPipelineId) {
+        toast({
+          kind: 'warning',
+          title: 'No Pipeline Configured',
+          message: 'Please save the pipeline or connect a project first.',
+        });
+        return;
+      }
+
+      const res = await triggerPipeline(targetPipelineId, 'main');
       if (res?.data?.id) {
         toast({
           kind: 'success',
