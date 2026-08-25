@@ -18,9 +18,9 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 # Copy Next.js static export output (out/)
 COPY --from=builder /app/out /usr/share/nginx/html
 
-EXPOSE 80
+EXPOSE 80 10000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:80 || exit 1
+  CMD wget --no-verbose --tries=1 --spider http://localhost:80 || wget --no-verbose --tries=1 --spider http://localhost:10000 || exit 1
 
 CMD ["nginx", "-g", "daemon off;"]
