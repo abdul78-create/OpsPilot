@@ -97,6 +97,104 @@ async function main() {
     console.log(`✓ Membership already exists.`);
   }
 
+  // 4. Create Dedicated Production QA Account (Zero fake operational activity)
+  const qaEmail = process.env.QA_EMAIL || 'qa@opspilot.dev';
+  const qaPlainPassword = process.env.QA_PASSWORD || process.env.SEED_PASSWORD || 'OpsPilotQA@2026!';
+  const qaName = process.env.QA_NAME || 'OpsPilot QA';
+  const qaOrgName = process.env.QA_ORG_NAME || 'OpsPilot QA Workspace';
+  const qaOrgSlug = process.env.QA_ORG_SLUG || 'opspilot-qa-workspace';
+
+  console.log(`▸ Checking if QA user '${qaEmail}' exists...`);
+  let qaUser = await prisma.user.findFirst({
+    where: { email: qaEmail, deletedAt: null },
+  });
+
+  const qaPasswordHash = await argon2.hash(qaPlainPassword, {
+    type: argon2.argon2id,
+    memoryCost: 65536,
+    timeCost: 3,
+    parallelism: 4,
+  });
+
+  if (!qaUser) {
+    qaUser = await prisma.user.create({
+      data: {
+        email: qaEmail,
+        passwordHash: qaPasswordHash,
+        name: qaName,
+        role: 'USER',
+        isSuperAdmin: false,
+        isVerified: true,
+      },
+    });
+    console.log(`✓ QA User '${qaEmail}' created successfully.`);
+  } else {
+    qaUser = await prisma.user.update({
+      where: { id: qaUser.id },
+      data: {
+        isVerified: true,
+        passwordHash: qaPasswordHash,
+        name: qaName,
+      },
+    });
+    console.log(`✓ QA User '${qaEmail}' verified and updated.`);
+  }
+
+  // QA Organization
+  let qaOrg = await prisma.organization.findUnique({
+    where: { slug: qaOrgSlug },
+  });
+
+  if (!qaOrg) {
+    qaOrg = await prisma.organization.create({
+      data: {
+        name: qaOrgName,
+        slug: qaOrgSlug,
+        billingEmail: qaEmail,
+        status: 'ACTIVE',
+      },
+    });
+    console.log(`✓ QA Organization '${qaOrgSlug}' created successfully.`);
+  } else {
+    qaOrg = await prisma.organization.update({
+      where: { id: qaOrg.id },
+      data: {
+        name: qaOrgName,
+        status: 'ACTIVE',
+      },
+    });
+    console.log(`✓ QA Organization '${qaOrgSlug}' already exists.`);
+  }
+
+  // Link QA User to QA Organization as OWNER
+  const qaMembership = await prisma.member.findFirst({
+    where: {
+      userId: qaUser.id,
+      organizationId: qaOrg.id,
+    },
+  });
+
+  if (!qaMembership) {
+    await prisma.member.create({
+      data: {
+        userId: qaUser.id,
+        organizationId: qaOrg.id,
+        role: 'OWNER',
+        status: 'ACTIVE',
+      },
+    });
+    console.log(`✓ QA Membership linked as OWNER.`);
+  } else {
+    await prisma.member.update({
+      where: { id: qaMembership.id },
+      data: {
+        role: 'OWNER',
+        status: 'ACTIVE',
+      },
+    });
+    console.log(`✓ QA Membership role verified as OWNER.`);
+  }
+
   console.log('✓ Database seeding complete!');
 }
 
