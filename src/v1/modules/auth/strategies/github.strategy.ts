@@ -12,7 +12,7 @@ export class GitHubStrategy extends PassportStrategy(Strategy, 'github') {
       configService.get<string>('GITHUB_CLIENT_SECRET') || 'UNCONFIGURED_GITHUB_CLIENT_SECRET';
     const callbackURL =
       configService.get<string>('GITHUB_CALLBACK_URL') ||
-      'https://opspilot-backend-nq7l.onrender.com/v1/auth/github/callback';
+      'https://opspilot-backend-gd60.onrender.com/v1/auth/github/callback';
 
     super({
       clientID,

@@ -114,7 +114,7 @@ export class AuthController {
   @ApiOperation({ summary: 'Google OAuth2 callback endpoint' })
   async googleAuthCallback(@Req() req: any, @Res() res: Response): Promise<void> {
     const authResult = await this.authService.validateOAuthUser(req.user);
-    const frontendUrl = process.env.FRONTEND_URL ?? 'https://opspilot-frontend-5atm.onrender.com';
+    const frontendUrl = process.env.FRONTEND_URL ?? 'https://opspilot-frontend-zuxp.onrender.com';
     const redirectUrl = `${frontendUrl}/login?token=${encodeURIComponent(
       authResult.tokens.accessToken,
     )}&user=${encodeURIComponent(JSON.stringify(authResult.user))}`;
@@ -138,7 +138,7 @@ export class AuthController {
   @ApiOperation({ summary: 'GitHub OAuth2 callback endpoint' })
   async githubAuthCallback(@Req() req: any, @Res() res: Response): Promise<void> {
     const authResult = await this.authService.validateOAuthUser(req.user);
-    const frontendUrl = process.env.FRONTEND_URL ?? 'https://opspilot-frontend-5atm.onrender.com';
+    const frontendUrl = process.env.FRONTEND_URL ?? 'https://opspilot-frontend-zuxp.onrender.com';
     const redirectUrl = `${frontendUrl}/login?token=${encodeURIComponent(
       authResult.tokens.accessToken,
     )}&user=${encodeURIComponent(JSON.stringify(authResult.user))}`;

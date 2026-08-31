@@ -92,7 +92,7 @@ export class AuthService {
       },
     });
 
-    const frontendUrl = process.env.FRONTEND_URL ?? 'http://localhost:3001';
+    const frontendUrl = process.env.FRONTEND_URL ?? 'https://opspilot-frontend-zuxp.onrender.com';
     const verificationUrl = `${frontendUrl}/verify-email?token=${rawToken}`;
 
     await this.notificationService.sendEmailVerification(user.email, verificationUrl);
@@ -244,7 +244,7 @@ export class AuthService {
       },
     });
 
-    const frontendUrl = process.env.FRONTEND_URL ?? 'http://localhost:3001';
+    const frontendUrl = process.env.FRONTEND_URL ?? 'https://opspilot-frontend-zuxp.onrender.com';
     const resetUrl = `${frontendUrl}/reset-password?token=${rawToken}`;
 
     await this.notificationService.sendPasswordReset(user.email, resetUrl);
