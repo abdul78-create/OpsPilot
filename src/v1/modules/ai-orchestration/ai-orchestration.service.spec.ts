@@ -1,9 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AiOrchestrationService } from './ai-orchestration.service';
 import { AiOrchestrationRepository } from './ai-orchestration.repository';
-import { RuleBasedAiProvider } from '../../../core/ai/providers/rule-based-ai.provider';
 import { GeminiAiProvider } from '../../../core/ai/providers/gemini-ai.provider';
-
+import { ServiceUnavailableException } from '@nestjs/common';
 import { PrismaService } from '../../../core/database/prisma.service';
 import { AiAnalysisType, AiRiskLevel, JobStatus } from '@prisma/client';
 
@@ -26,7 +25,12 @@ describe('AiOrchestrationService', () => {
     },
   };
 
-  const mockRuleBasedProvider = new RuleBasedAiProvider();
+  const mockAiProvider = {
+    analyzeRunFailure: jest.fn(),
+    scoreDeploymentRisk: jest.fn(),
+    recommendOptimizations: jest.fn(),
+    auditSecurity: jest.fn(),
+  };
 
   const mockRunReport = {
     id: 'air_123',
@@ -51,8 +55,7 @@ describe('AiOrchestrationService', () => {
         AiOrchestrationService,
         { provide: AiOrchestrationRepository, useValue: mockAiRepository },
         { provide: PrismaService, useValue: mockPrisma },
-        { provide: RuleBasedAiProvider, useValue: mockRuleBasedProvider },
-        { provide: GeminiAiProvider, useValue: mockRuleBasedProvider },
+        { provide: GeminiAiProvider, useValue: mockAiProvider },
       ],
     }).compile();
 
@@ -72,7 +75,7 @@ describe('AiOrchestrationService', () => {
       );
     });
 
-    it('should analyze failed run and persist AiAnalysisReport', async () => {
+    it('should analyze failed run and persist AiAnalysisReport when AI provider succeeds', async () => {
       mockPrisma.pipelineRun.findFirst.mockResolvedValue({
         id: 'run_123',
         branch: 'main',
@@ -92,6 +95,14 @@ describe('AiOrchestrationService', () => {
         ],
       });
 
+      mockAiProvider.analyzeRunFailure.mockResolvedValue({
+        summary: 'Build failure due to permissions',
+        rootCause: 'File system permission denied',
+        confidenceScore: 0.95,
+        riskLevel: AiRiskLevel.HIGH,
+        recommendations: ['Check file permissions'],
+      });
+
       mockAiRepository.create.mockResolvedValue(mockRunReport);
 
       const result = await service.analyzeRunFailure('run_123');
@@ -103,6 +114,42 @@ describe('AiOrchestrationService', () => {
           targetId: 'run_123',
         }),
       );
+    });
+
+    it('should strictly throw ServiceUnavailableException and NEVER fabricate fake RCA if AI provider is unconfigured or fails (Negative Integrity Test)', async () => {
+      mockPrisma.pipelineRun.findFirst.mockResolvedValue({
+        id: 'run_123',
+        branch: 'main',
+        commitSha: 'sha123',
+        pipelineDefinition: {
+          name: 'Build & Test',
+          project: { id: 'prj_123', organizationId: 'org_123' },
+        },
+        jobs: [
+          {
+            id: 'job_1',
+            name: 'Build Source',
+            stage: 'build',
+            status: JobStatus.FAILED,
+            logs: [
+              { level: 'ERROR', message: 'Process exited with code 1', timestamp: new Date() },
+            ],
+          },
+        ],
+      });
+
+      mockAiProvider.analyzeRunFailure.mockRejectedValue(
+        new ServiceUnavailableException(
+          'AI Root Cause Analysis unavailable: AI provider is not configured. Configure GEMINI_API_KEY to enable automated RCA.',
+        ),
+      );
+
+      await expect(service.analyzeRunFailure('run_123')).rejects.toThrow(
+        ServiceUnavailableException,
+      );
+
+      // Verify that no fake/fabricated report was created in the database
+      expect(mockAiRepository.create).not.toHaveBeenCalled();
     });
   });
 
@@ -133,6 +180,14 @@ describe('AiOrchestrationService', () => {
       mockPrisma.deployment.count
         .mockResolvedValueOnce(10) // totalRecent
         .mockResolvedValueOnce(3); // failedRecent
+
+      mockAiProvider.scoreDeploymentRisk.mockResolvedValue({
+        riskScore: 65,
+        riskLevel: AiRiskLevel.CRITICAL,
+        summary: 'Deployment Risk Score: 65/100',
+        riskFactors: ['Target environment is PRODUCTION.'],
+        recommendations: ['Follow standard deployment rollout procedures.'],
+      });
 
       mockAiRepository.create.mockResolvedValue({
         ...mockRunReport,

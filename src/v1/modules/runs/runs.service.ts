@@ -119,15 +119,19 @@ export class RunsService {
       where: { projectId: pipeline.projectId, deletedAt: null },
       orderBy: { createdAt: 'desc' },
     });
-    const repoUrl = repoConn?.repositoryUrl || 'https://github.com/expressjs/express';
+    const repoUrl = repoConn?.repositoryUrl ?? null;
 
     // Dispatch to BullMQ worker queue for async execution
     await this.pipelineRunQueue.add(PIPELINE_RUN_JOB_NAME, {
       pipelineRunId: result.id,
-      repoUrl,
+      repoUrl: repoUrl ?? 'https://github.com/expressjs/express',
     });
 
-    return result;
+    // Enrich result with resolved repository URL for API response
+    return { ...result, repositoryUrl: repoUrl } as PipelineRun & {
+      jobs: PipelineJob[];
+      repositoryUrl: string | null;
+    };
   }
 
   async findAll(pipelineId: string): Promise<PipelineRun[]> {

@@ -20,6 +20,7 @@ import {
   ChevronDown,
   User,
   HelpCircle,
+  Layers,
 } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 
@@ -30,6 +31,7 @@ const NAV_SECTIONS = [
       { to: '/dashboard',     icon: LayoutDashboard, label: 'Overview',      exact: true },
       { to: '/repositories',  icon: FolderGit2,      label: 'Repositories' },
       { to: '/pipelines',     icon: GitBranch,       label: 'Pipelines' },
+      { to: '/builder',       icon: Layers,          label: 'Builder' },
       { to: '/runs',          icon: PlayCircle,      label: 'Runs' },
       { to: '/deployments',   icon: Rocket,          label: 'Deployments' },
       { to: '/artifacts',     icon: Package,         label: 'Artifacts' },
@@ -50,6 +52,7 @@ const NAV_SECTIONS = [
     ],
   },
 ];
+
 
 interface NextSidebarProps {
   collapsed?: boolean;
@@ -225,10 +228,11 @@ export function NextSidebar({ collapsed = false, onToggle }: NextSidebarProps) {
                   >
                     <IconComponent
                       size={14}
-                      className={active ? 'text-[var(--text-primary)]' : 'text-[var(--text-muted)]'}
+                      className={active ? 'text-[var(--accent)]' : 'text-[var(--text-muted)]'}
                     />
-                    {!collapsed && <span>{link.label}</span>}
+                    {!collapsed && <span className={active ? 'text-[var(--text-primary)]' : ''}>{link.label}</span>}
                   </Link>
+
                 );
               })}
             </div>

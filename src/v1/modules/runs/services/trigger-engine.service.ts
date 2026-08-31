@@ -6,8 +6,8 @@ export interface TriggerRunRequest {
   pipelineVersionId: string;
   triggerType: TriggerType;
   triggeredBy: string;
-  commitSha?: string;
-  branch?: string;
+  commitSha?: string | null;
+  branch?: string | null;
 }
 
 @Injectable()
@@ -17,15 +17,16 @@ export class TriggerEngineService {
     pipelineVersionId: string,
     triggerType: TriggerType,
     triggeredBy: string,
-    options?: { commitSha?: string; branch?: string },
+    options?: { commitSha?: string | null; branch?: string | null },
   ): TriggerRunRequest {
     return {
       pipelineDefinitionId,
       pipelineVersionId,
       triggerType: triggerType || TriggerType.MANUAL,
       triggeredBy: triggeredBy || 'system',
-      commitSha: options?.commitSha || 'head',
-      branch: options?.branch || 'main',
+      // Keep null/undefined — do NOT substitute 'head' as a fake SHA
+      commitSha: options?.commitSha || null,
+      branch: options?.branch || null,
     };
   }
 }

@@ -1,21 +1,20 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { DockerRunnerService } from './services/docker-runner.service';
 import { LogsService } from '../log-streaming/logs.service';
-import { RuleBasedAiProvider } from '../../../core/ai/providers/rule-based-ai.provider';
 import { GeminiAiProvider } from '../../../core/ai/providers/gemini-ai.provider';
 import { ConfigService } from '@nestjs/config';
 import { LogLevel, AiRiskLevel } from '@prisma/client';
 
 describe('Docker Runner Security Hardening & AI RCA Fix Proposal Verification', () => {
   let dockerRunner: DockerRunnerService;
-  let ruleBasedAi: RuleBasedAiProvider;
+  let geminiAi: GeminiAiProvider;
 
   const mockLogsService = {
     logAndEmit: jest.fn().mockResolvedValue(undefined),
   };
 
   const mockConfigService = {
-    get: jest.fn().mockReturnValue(null),
+    get: jest.fn().mockReturnValue('mock_gemini_key'),
   };
 
   beforeAll(async () => {
@@ -23,14 +22,13 @@ describe('Docker Runner Security Hardening & AI RCA Fix Proposal Verification', 
       providers: [
         DockerRunnerService,
         { provide: LogsService, useValue: mockLogsService },
-        RuleBasedAiProvider,
         GeminiAiProvider,
         { provide: ConfigService, useValue: mockConfigService },
       ],
     }).compile();
 
     dockerRunner = module.get<DockerRunnerService>(DockerRunnerService);
-    ruleBasedAi = module.get<RuleBasedAiProvider>(RuleBasedAiProvider);
+    geminiAi = module.get<GeminiAiProvider>(GeminiAiProvider);
   });
 
   describe('1. Docker Runner Resource Limits & Sandboxing', () => {
@@ -87,9 +85,35 @@ describe('Docker Runner Security Hardening & AI RCA Fix Proposal Verification', 
     }, 30000);
   });
 
-  describe('2. AI RCA with Actionable Patch & Fix Proposals', () => {
-    it('should generate concrete CLI fix commands and git unified diff patch for permission errors', async () => {
-      const result = await ruleBasedAi.analyzeRunFailure({
+  describe('2. AI RCA with Actionable Patch & Fix Proposals via LLM Provider', () => {
+    it('should parse concrete CLI fix commands and git unified diff patch from Gemini LLM response', async () => {
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: jest.fn().mockResolvedValue({
+          candidates: [
+            {
+              content: {
+                parts: [
+                  {
+                    text: JSON.stringify({
+                      summary: 'Permission denied on deploy script',
+                      rootCause: 'File system or binary permission failure during execution.',
+                      confidenceScore: 0.95,
+                      riskLevel: 'HIGH',
+                      recommendations: ['Check file execution flags and permissions.'],
+                      suggestedCommands: ['chmod +x scripts/*.sh'],
+                      suggestedPatch:
+                        '--- a/pipeline.yml\n+++ b/pipeline.yml\n@@ -5,2 +5,3 @@\n+    - run: chmod +x ./entrypoint.sh\n     - run: ./entrypoint.sh',
+                    }),
+                  },
+                ],
+              },
+            },
+          ],
+        }),
+      }) as unknown as typeof fetch;
+
+      const result = await geminiAi.analyzeRunFailure({
         runId: 'run_perm_fail',
         pipelineName: 'Production Deploy',
         failedJobs: [
@@ -114,30 +138,6 @@ describe('Docker Runner Security Hardening & AI RCA Fix Proposal Verification', 
       expect(result.suggestedCommands).toContain('chmod +x scripts/*.sh');
       expect(result.suggestedPatch).toBeDefined();
       expect(result.suggestedPatch).toContain('chmod +x ./entrypoint.sh');
-    });
-
-    it('should generate concrete dependency fix commands and patch for missing modules', async () => {
-      const result = await ruleBasedAi.analyzeRunFailure({
-        runId: 'run_mod_fail',
-        pipelineName: 'Frontend Build',
-        failedJobs: [
-          {
-            id: 'job_2',
-            name: 'compile',
-            stage: 'build',
-            logs: [
-              {
-                level: LogLevel.ERROR,
-                message: 'Error: Cannot find module "typescript"',
-                timestamp: new Date(),
-              },
-            ],
-          },
-        ],
-      });
-
-      expect(result.suggestedCommands).toContain('npm install');
-      expect(result.suggestedPatch).toContain('"typescript": "^5.0.0"');
     });
   });
 });

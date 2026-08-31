@@ -155,7 +155,7 @@ export class PipelineOrchestratorService {
             status: PipelineRunStatus.QUEUED,
             triggerType: TriggerType.GIT_PUSH,
             triggeredBy: 'github-webhook',
-            commitSha: commitSha || 'e6f8b1a2c3d4',
+            commitSha: commitSha || null,
             branch: branch || 'main',
             queuedAt: new Date(),
           },

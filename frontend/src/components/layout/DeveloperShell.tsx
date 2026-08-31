@@ -163,7 +163,7 @@ export function DeveloperShell({ children }: DeveloperShellProps) {
       {/* Main Viewport */}
       <div className="flex-1 flex flex-col min-w-0 relative">
         {/* ── Topbar ── */}
-        <header className="h-12 border-b border-[var(--border)] bg-[var(--bg-primary)]/90 backdrop-blur-md px-5 flex items-center justify-between sticky top-0 z-30 shrink-0">
+        <header className="h-12 border-b border-[var(--border)] bg-[var(--bg-primary)]/95 backdrop-blur-sm px-5 flex items-center justify-between sticky top-0 z-30 shrink-0">
           {/* Left: Breadcrumb */}
           <div className="flex items-center gap-1.5 text-xs">
             <span className="text-[var(--text-muted)] font-medium">{workspaceName}</span>
@@ -180,7 +180,7 @@ export function DeveloperShell({ children }: DeveloperShellProps) {
                   new KeyboardEvent('keydown', { key: 'k', metaKey: true, bubbles: true })
                 );
               }}
-              className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border)] hover:border-[var(--border-bright)] text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors w-56 justify-between"
+              className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border)] hover:border-[var(--accent)] text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-all w-52 justify-between"
             >
               <div className="flex items-center gap-1.5">
                 <Search size={13} />
@@ -203,7 +203,7 @@ export function DeveloperShell({ children }: DeveloperShellProps) {
               >
                 <Bell size={14} />
                 {unreadCount > 0 && (
-                  <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-[var(--error)]" />
+                  <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-[var(--accent)]" />
                 )}
               </button>
 
@@ -226,6 +226,7 @@ export function DeveloperShell({ children }: DeveloperShellProps) {
             </button>
           </div>
         </header>
+
 
         {/* Page Content */}
         <main className="flex-1 p-6 lg:p-8 max-w-7xl w-full mx-auto animate-fade-in">

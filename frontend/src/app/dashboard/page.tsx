@@ -34,8 +34,8 @@ function timeAgo(iso?: string) {
   return `${Math.floor(h / 24)}d ago`;
 }
 
-function shortRepo(url?: string) {
-  if (!url) return 'Unknown repository';
+function shortRepo(url?: string | null) {
+  if (!url) return '—';
   try {
     const path = new URL(url).pathname.replace(/^\//, '').replace(/\.git$/, '');
     return path || url;
@@ -292,7 +292,7 @@ export default function DashboardPage() {
             </button>
             <button
               onClick={() => setScanOpen(true)}
-              className="inline-flex items-center gap-1.5 text-xs font-semibold bg-[var(--accent)] text-[var(--accent-fg)] px-3.5 py-1.5 rounded-lg transition-all"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold bg-[var(--accent)] text-[var(--accent-fg)] px-3.5 py-1.5 rounded-lg hover:bg-[var(--accent-hover)] transition-all shadow-[var(--shadow-accent)]"
             >
               <Plus size={14} />
               <span>New Pipeline</span>
@@ -399,7 +399,7 @@ export default function DashboardPage() {
               </div>
               <button
                 onClick={() => setCreateProjectOpen(true)}
-                className="inline-flex items-center gap-1.5 text-xs font-semibold bg-[var(--accent)] text-[var(--accent-fg)] px-4 py-2 rounded-lg transition-all hover:opacity-85 shadow-sm"
+                className="inline-flex items-center gap-1.5 text-xs font-semibold bg-[var(--accent)] text-[var(--accent-fg)] px-4 py-2 rounded-lg hover:bg-[var(--accent-hover)] transition-all shadow-sm"
               >
                 <Plus size={13} />
                 <span>+ Create Project</span>
@@ -653,7 +653,7 @@ export default function DashboardPage() {
                           <GitCommit size={11} /> {shortSha(run.commitSha)}
                         </span>
                         <span>•</span>
-                        <span>{run.branch || 'main'}</span>
+                        <span>{run.branch ?? '—'}</span>
                       </div>
                     </div>
                   </div>

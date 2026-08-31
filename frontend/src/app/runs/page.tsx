@@ -23,8 +23,8 @@ function timeAgo(dateStr?: string) {
   return `${Math.floor(h / 24)}d ago`;
 }
 function shortSha(s?: string) { return s ? s.slice(0, 7) : '—'; }
-function shortRepo(url?: string) {
-  if (!url) return 'Unknown';
+function shortRepo(url?: string | null) {
+  if (!url) return '—';
   try { return new URL(url).pathname.replace(/^\//, '').replace(/\.git$/, ''); } catch { return url; }
 }
 
@@ -34,7 +34,7 @@ type RunStatus = 'SUCCESS' | 'FAILED' | 'RUNNING' | 'QUEUED' | 'CANCELLED' | 'TI
 const STATUS_CFG: Record<RunStatus, { text: string; bg: string; dot: string; icon: React.ElementType }> = {
   SUCCESS:   { text: 'text-[var(--success)]',      bg: 'bg-[var(--success-dim)]',  dot: 'bg-[var(--success)]',                    icon: CheckCircle2   },
   FAILED:    { text: 'text-[var(--error)]',         bg: 'bg-[var(--error-dim)]',    dot: 'bg-[var(--error)]',                      icon: XCircle        },
-  RUNNING:   { text: 'text-[var(--info)]',          bg: 'bg-[var(--info-dim)]',     dot: 'bg-[var(--info)] animate-pulse',         icon: RefreshCw      },
+  RUNNING:   { text: 'text-[var(--accent)]',  bg: 'bg-[var(--accent-dim)]',   dot: 'bg-[var(--accent)] animate-pulse',         icon: RefreshCw      },
   QUEUED:    { text: 'text-[var(--warning)]',       bg: 'bg-[var(--warning-dim)]',  dot: 'bg-[var(--warning)]',                    icon: Clock          },
   CANCELLED: { text: 'text-[var(--text-muted)]',   bg: 'bg-[var(--bg-tertiary)]',  dot: 'bg-[var(--text-muted)]',                 icon: AlertTriangle  },
   TIMEOUT:   { text: 'text-[var(--warning)]',       bg: 'bg-[var(--warning-dim)]',  dot: 'bg-[var(--warning)]',                    icon: AlertTriangle  },
@@ -199,7 +199,7 @@ export default function RunsPage() {
 
                   <div className="w-32 font-mono text-[11px] text-[var(--text-muted)] flex items-center gap-1 truncate">
                     <GitBranch size={10} className="shrink-0" />
-                    <span className="truncate">{r.branch ?? 'main'}</span>
+                    <span className="truncate">{r.branch ?? '—'}</span>
                   </div>
 
                   <div className="w-24 font-mono text-[11px] text-[var(--text-muted)] flex items-center gap-1">

@@ -512,13 +512,15 @@ export class GitHubAppService {
       if (createRes.ok || createRes.status === 422) {
         return { ref: `refs/heads/${newBranch}`, sha: baseSha, created: true };
       }
+      throw new Error(
+        `GitHub createBranch returned HTTP ${createRes.status} for '${owner}/${repo}'`,
+      );
     } catch (err) {
       this.logger.warn(
-        `GitHub createBranch warning for '${owner}/${repo}': ${(err as Error).message}`,
+        `GitHub createBranch failed for '${owner}/${repo}': ${(err as Error).message}`,
       );
+      throw err;
     }
-
-    return { ref: `refs/heads/${newBranch}`, sha: 'mock_sha', created: true };
   }
 
   /**
@@ -562,13 +564,15 @@ export class GitHubAppService {
         const json = (await res.json()) as { commit?: { sha?: string } };
         return { path: filePath, commitSha: json.commit?.sha || 'committed', status: 'COMMITTED' };
       }
+      throw new Error(
+        `GitHub file commit failed with HTTP ${res.status} for '${owner}/${repo}/${filePath}'`,
+      );
     } catch (err) {
       this.logger.warn(
-        `GitHub commit warning for '${owner}/${repo}/${filePath}': ${(err as Error).message}`,
+        `GitHub commit error for '${owner}/${repo}/${filePath}': ${(err as Error).message}`,
       );
+      throw err;
     }
-
-    return { path: filePath, commitSha: 'mock_commit_sha', status: 'COMMITTED' };
   }
 
   /**

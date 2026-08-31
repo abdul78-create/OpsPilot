@@ -172,14 +172,22 @@ export function RunDetailPage({ runId }: RunDetailPageProps) {
       const res = await analyzeRun(runId);
       if (res?.data) {
         setAiReport(res.data);
-        toast({ kind: 'success', title: 'AI Root Cause Analysis complete' });
+        toast({ kind: 'success', title: 'AI Root Cause Analysis Complete' });
       } else {
-        setAiError('AI analysis returned no report payload.');
+        setAiError('AI Root Cause Analysis unavailable. Configure an AI provider (GEMINI_API_KEY) to enable automated RCA.');
       }
     } catch (err: any) {
-      const errorMsg = err?.message || 'AI analysis backend service unavailable.';
-      setAiError(errorMsg);
-      toast({ kind: 'warning', title: 'AI analysis unavailable', message: errorMsg });
+      const msg = err?.message || '';
+      const isUnconfigured = msg.includes('not configured') || msg.includes('GEMINI_API_KEY');
+      const formattedError = isUnconfigured
+        ? 'AI Root Cause Analysis unavailable: Configure an AI provider (GEMINI_API_KEY) in environment settings to enable automated RCA.'
+        : `AI Root Cause Analysis failed: ${msg || 'AI provider was unreachable or returned an error.'}`;
+      setAiError(formattedError);
+      toast({
+        kind: isUnconfigured ? 'info' : 'warning',
+        title: isUnconfigured ? 'AI Provider Not Configured' : 'AI Analysis Failed',
+        message: formattedError,
+      });
     } finally {
       setAnalyzing(false);
     }
@@ -305,7 +313,7 @@ export function RunDetailPage({ runId }: RunDetailPageProps) {
         </div>
       </div>
 
-      {/* AI Root Cause Analysis Report Card */}
+      {/* AI Root Cause Analysis Report Card — Real Analysis Only */}
       {aiReport && (
         <div
           className="p-4 border rounded-xl text-xs space-y-3 shrink-0"
@@ -318,7 +326,7 @@ export function RunDetailPage({ runId }: RunDetailPageProps) {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 font-bold" style={{ color: 'var(--text-primary)' }}>
               <Sparkles size={15} style={{ color: 'var(--accent)' }} />
-              <span>AI Root Cause Analysis (RCA)</span>
+              <span>AI Root Cause Analysis (Live LLM Diagnostic)</span>
             </div>
             <div className="flex items-center gap-2">
               <span
@@ -370,29 +378,51 @@ export function RunDetailPage({ runId }: RunDetailPageProps) {
         </div>
       )}
 
-      {/* AI Error / Unavailable State */}
-      {aiError && !aiReport && (
+      {/* AI Analysis in Progress State */}
+      {analyzing && (
         <div
-          className="p-3.5 border rounded-xl text-xs flex items-center justify-between shrink-0"
+          className="p-3.5 border rounded-xl text-xs flex items-center gap-2.5 shrink-0 animate-pulse"
           style={{
-            background: 'var(--warning-dim)',
-            borderColor: 'var(--warning)',
-            color: 'var(--warning)',
+            background: 'var(--bg-secondary)',
+            borderColor: 'var(--accent)',
+            color: 'var(--text-primary)',
           }}
         >
-          <div className="flex items-center gap-2">
-            <AlertCircle size={15} className="shrink-0" />
-            <span><strong>AI Analysis Unavailable:</strong> {aiError}</span>
+          <Loader2 size={15} className="animate-spin text-[var(--accent)] shrink-0" />
+          <span>Generating AI Root Cause Analysis from build logs and failure traces…</span>
+        </div>
+      )}
+
+      {/* AI Error / Unavailable State */}
+      {aiError && !aiReport && !analyzing && (
+        <div
+          className="p-4 border rounded-xl text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0"
+          style={{
+            background: 'var(--bg-secondary)',
+            borderColor: 'var(--border)',
+            color: 'var(--text-primary)',
+          }}
+        >
+          <div className="flex items-start gap-2.5">
+            <AlertCircle size={16} className="text-[var(--warning)] shrink-0 mt-0.5" />
+            <div>
+              <div className="font-semibold text-[var(--text-primary)]">AI Root Cause Analysis Unavailable</div>
+              <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">{aiError}</p>
+              <p className="text-[10px] text-[var(--text-muted)] mt-1 font-mono">
+                Configure <code className="bg-[var(--bg-tertiary)] px-1 py-0.5 rounded text-[var(--text-primary)]">GEMINI_API_KEY</code> in environment variables to enable automated RCA.
+              </p>
+            </div>
           </div>
           <button
             onClick={() => setAiError(null)}
-            className="text-[10px] underline font-mono cursor-pointer"
-            style={{ color: 'var(--text-primary)' }}
+            className="text-[10px] underline font-mono cursor-pointer self-start sm:self-center"
+            style={{ color: 'var(--text-muted)' }}
           >
             Dismiss
           </button>
         </div>
       )}
+
 
       {/* Main layout: Step Timeline + Log Viewer */}
       <div className="flex-1 min-h-0 grid grid-cols-[260px_1fr] gap-3">
