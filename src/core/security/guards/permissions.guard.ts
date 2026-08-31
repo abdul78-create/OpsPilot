@@ -3,6 +3,89 @@ import { Reflector } from '@nestjs/core';
 import { PERMISSIONS_KEY } from '../decorators/permissions.decorator';
 import { JwtPayload } from '../token.service';
 
+export const ROLE_PERMISSIONS: Record<string, string[]> = {
+  OWNER: [
+    'org:read',
+    'org:update',
+    'org:delete',
+    'org:billing',
+    'member:read',
+    'member:update',
+    'member:delete',
+    'member:invite',
+    'project:create',
+    'project:read',
+    'project:update',
+    'project:delete',
+    'env:create',
+    'env:read',
+    'env:update',
+    'env:delete',
+    'env:deploy',
+    'secret:create',
+    'secret:read',
+    'secret:update',
+    'secret:delete',
+    'secret:rotate',
+    'secret:reveal',
+    'pipeline:create',
+    'pipeline:read',
+    'pipeline:update',
+    'pipeline:delete',
+    'pipeline:trigger',
+    'pipeline:cancel',
+  ],
+  ADMIN: [
+    'org:read',
+    'org:update',
+    'org:billing',
+    'member:read',
+    'member:update',
+    'member:invite',
+    'project:create',
+    'project:read',
+    'project:update',
+    'project:delete',
+    'env:create',
+    'env:read',
+    'env:update',
+    'env:delete',
+    'env:deploy',
+    'secret:create',
+    'secret:read',
+    'secret:update',
+    'secret:delete',
+    'secret:rotate',
+    'secret:reveal',
+    'pipeline:create',
+    'pipeline:read',
+    'pipeline:update',
+    'pipeline:delete',
+    'pipeline:trigger',
+    'pipeline:cancel',
+  ],
+  MEMBER: [
+    'org:read',
+    'member:read',
+    'project:create',
+    'project:read',
+    'project:update',
+    'env:create',
+    'env:read',
+    'env:update',
+    'env:deploy',
+    'secret:create',
+    'secret:read',
+    'secret:update',
+    'pipeline:create',
+    'pipeline:read',
+    'pipeline:update',
+    'pipeline:trigger',
+    'pipeline:cancel',
+  ],
+  VIEWER: ['org:read', 'member:read', 'project:read', 'env:read', 'secret:read', 'pipeline:read'],
+};
+
 @Injectable()
 export class PermissionsGuard implements CanActivate {
   constructor(private readonly reflector: Reflector) {}
@@ -29,19 +112,35 @@ export class PermissionsGuard implements CanActivate {
       return true;
     }
 
-    // In a fully deployed tenant module, user scopes are mapped from Member role
-    // Default system fallback: ADMIN / OWNER roles possess default read/write permissions
+    // 1. Evaluate organization member role from tenant context (attached by TenantGuard)
+    const memberRole = request.member?.role;
+    if (memberRole && ROLE_PERMISSIONS[memberRole]) {
+      const allowedPermissions = ROLE_PERMISSIONS[memberRole];
+      const hasAllPermissions = requiredPermissions.every((perm) =>
+        allowedPermissions.includes(perm),
+      );
+
+      if (hasAllPermissions) {
+        return true;
+      }
+
+      throw new ForbiddenException(
+        `Insufficient permission scope. Required: ${requiredPermissions.join(', ')}`,
+      );
+    }
+
+    // 2. Fallback to global user role when request is outside tenant-scoped member context
     const userRole = user.role;
-    if (userRole === 'ADMIN' || userRole === 'OWNER') {
+    if (userRole === 'ADMIN' || userRole === 'OWNER' || userRole === 'SUPERADMIN') {
       return true;
     }
 
-    // Grant default read permissions for standard users
-    const hasPermission = requiredPermissions.every((perm) =>
+    // Grant default read permissions for standard authenticated users
+    const hasReadPermission = requiredPermissions.every((perm) =>
       userRole === 'USER' ? perm.endsWith(':read') : false,
     );
 
-    if (!hasPermission) {
+    if (!hasReadPermission) {
       throw new ForbiddenException(
         `Insufficient permission scope. Required: ${requiredPermissions.join(', ')}`,
       );
