@@ -3,17 +3,18 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { DeveloperShell } from '@/components/layout/DeveloperShell';
+import { CreateProjectModal } from '@/components/projects/CreateProjectModal';
 import {
   FolderGit2, GitBranch, GitCommit, Folder, FileCode, FileText,
   FileJson, File, Play, Plus, RefreshCw, Copy, Check, ExternalLink,
-  Loader2, Clock, User, ShieldCheck, Search,
+  Loader2, Clock, User, ShieldCheck, Search, FolderPlus,
 } from 'lucide-react';
 import {
   listRepositories, connectRepository, fetchRepositoryBranches,
   fetchRepositoryCommits, fetchRepositoryTree, fetchRepositoryFile,
   triggerPipeline, RepositoryConnection, GitHubBranchInfo,
   GitHubCommitInfo, GitHubFileItem, GitHubFileContent,
-  getActiveProjectId, setActiveProjectId, listProjects,
+  getActiveProjectId, setActiveProjectId, listProjects, Project,
 } from '@/lib/apiClient';
 import { useToast } from '@/components/ui/Toast';
 
@@ -42,6 +43,8 @@ export default function RepositoriesPage() {
   const [fileTree, setFileTree] = useState<GitHubFileItem[]>([]);
   const [selectedFile, setSelectedFile] = useState<string>('');
   const [fileContent, setFileContent] = useState<GitHubFileContent | null>(null);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [selectedProjectId, setSelectedProjectId] = useState<string>('');
   const [activeProjectId, setActiveProjectIdState] = useState<string | null>(null);
 
   const [loading, setLoading] = useState(true);
@@ -51,6 +54,7 @@ export default function RepositoriesPage() {
   const [showCommitDrawer, setShowCommitDrawer] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showConnectModal, setShowConnectModal] = useState(false);
+  const [showCreateProjectModal, setShowCreateProjectModal] = useState(false);
 
   const [newRepoUrl, setNewRepoUrl] = useState('');
   const [newRepoBranch, setNewRepoBranch] = useState('main');
@@ -60,26 +64,32 @@ export default function RepositoriesPage() {
   const loadRepositories = useCallback(async () => {
     setLoading(true);
     try {
+      const projRes = await listProjects();
+      const loadedProjects = projRes.data ?? [];
+      setProjects(loadedProjects);
+
       let projId = getActiveProjectId();
-      if (!projId) {
-        const projRes = await listProjects();
-        if (projRes.data && projRes.data.length > 0) {
-          projId = projRes.data[0].id;
+      if (!projId || !loadedProjects.some(p => p.id === projId)) {
+        if (loadedProjects.length > 0) {
+          projId = loadedProjects[0].id;
           setActiveProjectId(projId);
+        } else {
+          projId = null;
         }
       }
       setActiveProjectIdState(projId);
-      if (!projId) {
-        setRepositories([]);
-        setSelectedRepo(null);
-        return;
-      }
-      const res = await listRepositories(projId);
-      const repos = res.data ?? [];
-      setRepositories(repos);
-      if (repos.length > 0) {
-        setSelectedRepo(repos[0]);
+      if (projId) {
+        setSelectedProjectId(projId);
+        const res = await listRepositories(projId);
+        const repos = res.data ?? [];
+        setRepositories(repos);
+        if (repos.length > 0) {
+          setSelectedRepo(repos[0]);
+        } else {
+          setSelectedRepo(null);
+        }
       } else {
+        setRepositories([]);
         setSelectedRepo(null);
       }
     } catch {
@@ -168,22 +178,15 @@ export default function RepositoriesPage() {
   const handleConnectNewRepo = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newRepoUrl) return;
-    let projId = activeProjectId || getActiveProjectId();
-    if (!projId) {
-      const projRes = await listProjects();
-      if (projRes.data && projRes.data.length > 0) {
-        projId = projRes.data[0].id;
-        setActiveProjectId(projId);
-        setActiveProjectIdState(projId);
-      }
-    }
-    if (!projId) {
-      toast({ kind: 'warning', title: 'Project required', message: 'Please create a project in Settings first.' });
+    const targetProjId = selectedProjectId || activeProjectId || getActiveProjectId();
+    if (!targetProjId) {
+      setShowConnectModal(false);
+      setShowCreateProjectModal(true);
       return;
     }
     setConnecting(true);
     try {
-      const res = await connectRepository(projId, {
+      const res = await connectRepository(targetProjId, {
         provider: 'GITHUB',
         repositoryUrl: newRepoUrl,
         defaultBranch: newRepoBranch || 'main',
@@ -299,21 +302,35 @@ export default function RepositoriesPage() {
         ) : repositories.length === 0 ? (
           <div className="flex-1 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl flex flex-col items-center justify-center p-8 text-center space-y-4">
             <div className="w-14 h-14 rounded-2xl bg-[var(--bg-tertiary)] border border-[var(--border)] flex items-center justify-center text-[var(--text-muted)]">
-              <FolderGit2 size={26} />
+              {projects.length === 0 ? <FolderPlus size={26} className="text-[var(--accent)]" /> : <FolderGit2 size={26} />}
             </div>
             <div className="max-w-md space-y-1">
-              <h2 className="text-sm font-semibold text-[var(--text-primary)]">No repositories connected</h2>
+              <h2 className="text-sm font-semibold text-[var(--text-primary)]">
+                {projects.length === 0 ? 'No projects created yet' : 'No repositories connected'}
+              </h2>
               <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-                Connect your GitHub repository to browse files, inspect branches and commits, and compile automated CI/CD DAG pipelines.
+                {projects.length === 0
+                  ? 'Create your first project before connecting a GitHub repository and configuring CI/CD pipelines.'
+                  : 'Connect your GitHub repository to browse files, inspect branches and commits, and compile automated CI/CD DAG pipelines.'}
               </p>
             </div>
-            <button
-              onClick={() => setShowConnectModal(true)}
-              className="flex items-center gap-2 text-xs bg-[var(--accent)] text-[var(--accent-fg)] font-semibold px-4 py-2 rounded-lg transition-opacity hover:opacity-90"
-            >
-              <Plus size={14} />
-              <span>Connect First Repository</span>
-            </button>
+            {projects.length === 0 ? (
+              <button
+                onClick={() => setShowCreateProjectModal(true)}
+                className="flex items-center gap-2 text-xs bg-[var(--accent)] text-[var(--accent-fg)] font-semibold px-4 py-2 rounded-lg transition-opacity hover:opacity-90 shadow-sm"
+              >
+                <Plus size={14} />
+                <span>Create First Project</span>
+              </button>
+            ) : (
+              <button
+                onClick={() => setShowConnectModal(true)}
+                className="flex items-center gap-2 text-xs bg-[var(--accent)] text-[var(--accent-fg)] font-semibold px-4 py-2 rounded-lg transition-opacity hover:opacity-90 shadow-sm"
+              >
+                <Plus size={14} />
+                <span>Connect First Repository</span>
+              </button>
+            )}
           </div>
         ) : (
           /* Main 2-Column Explorer */
@@ -464,79 +481,149 @@ export default function RepositoriesPage() {
 
         {/* Connect Repository Modal */}
         {showConnectModal && (
-          <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
-            <div className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl w-full max-w-md p-5 space-y-4 shadow-[var(--shadow-md)]">
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-[2px] flex items-center justify-center p-4" onClick={() => setShowConnectModal(false)}>
+            <div
+              className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-2xl w-full max-w-md p-6 space-y-4 shadow-2xl animate-in fade-in zoom-in-95 duration-150"
+              onClick={e => e.stopPropagation()}
+            >
               <div className="flex items-center justify-between border-b border-[var(--border)] pb-3">
-                <div className="flex items-center gap-2 text-sm font-bold text-[var(--text-primary)]">
-                  <FolderGit2 size={15} className="text-[var(--text-muted)]" />
+                <div className="flex items-center gap-2.5 text-sm font-bold text-[var(--text-primary)]">
+                  <div className="w-8 h-8 rounded-lg bg-[var(--bg-tertiary)] border border-[var(--border)] flex items-center justify-center text-[var(--accent)]">
+                    <FolderGit2 size={16} />
+                  </div>
                   <span>Connect GitHub Repository</span>
                 </div>
                 <button
                   onClick={() => setShowConnectModal(false)}
-                  className="text-[var(--text-muted)] hover:text-[var(--text-secondary)] text-xs font-mono"
+                  className="w-7 h-7 rounded-lg hover:bg-[var(--bg-tertiary)] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
                 >
                   ✕
                 </button>
               </div>
 
-              <form onSubmit={handleConnectNewRepo} className="space-y-3 text-xs">
-                <div>
-                  <label className="block text-[var(--text-muted)] mb-1 font-medium">Repository URL</label>
-                  <input
-                    type="url"
-                    required
-                    placeholder="https://github.com/organization/repository"
-                    value={newRepoUrl}
-                    onChange={e => setNewRepoUrl(e.target.value)}
-                    className="w-full bg-[var(--bg-tertiary)] border border-[var(--border)] rounded-lg px-3 py-2 text-[var(--text-primary)] focus:outline-none focus:border-[var(--border-bright)] font-mono text-xs"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[var(--text-muted)] mb-1 font-medium">Default Branch</label>
-                  <input
-                    type="text"
-                    placeholder="main"
-                    value={newRepoBranch}
-                    onChange={e => setNewRepoBranch(e.target.value)}
-                    className="w-full bg-[var(--bg-tertiary)] border border-[var(--border)] rounded-lg px-3 py-2 text-[var(--text-primary)] focus:outline-none focus:border-[var(--border-bright)] font-mono text-xs"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[var(--text-muted)] mb-1 font-medium">
-                    Personal Access Token <span className="opacity-60">(optional for public repos)</span>
-                  </label>
-                  <input
-                    type="password"
-                    placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
-                    value={newRepoToken}
-                    onChange={e => setNewRepoToken(e.target.value)}
-                    className="w-full bg-[var(--bg-tertiary)] border border-[var(--border)] rounded-lg px-3 py-2 text-[var(--text-primary)] focus:outline-none focus:border-[var(--border-bright)] font-mono text-xs"
-                  />
-                </div>
-
-                <div className="flex items-center justify-end gap-2 pt-2">
+              {projects.length === 0 ? (
+                <div className="text-center py-6 space-y-4">
+                  <div className="w-12 h-12 rounded-2xl bg-[var(--bg-tertiary)] border border-[var(--border)] flex items-center justify-center mx-auto text-[var(--accent)]">
+                    <FolderPlus size={22} />
+                  </div>
+                  <div className="space-y-1">
+                    <h3 className="text-sm font-bold text-[var(--text-primary)]">No projects yet</h3>
+                    <p className="text-xs text-[var(--text-muted)] max-w-xs mx-auto">
+                      Create a project before connecting a repository and triggering builds.
+                    </p>
+                  </div>
                   <button
                     type="button"
-                    onClick={() => setShowConnectModal(false)}
-                    className="px-3 py-1.5 rounded-lg border border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors"
+                    onClick={() => {
+                      setShowConnectModal(false);
+                      setShowCreateProjectModal(true);
+                    }}
+                    className="inline-flex items-center gap-2 bg-[var(--accent)] text-[var(--accent-fg)] font-semibold px-4 py-2 rounded-xl transition-opacity hover:opacity-85 text-xs shadow-sm"
                   >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={connecting}
-                    className="flex items-center gap-1.5 bg-[var(--accent)] text-[var(--accent-fg)] font-semibold px-4 py-1.5 rounded-lg transition-opacity hover:opacity-80 disabled:opacity-50"
-                  >
-                    {connecting ? <Loader2 size={13} className="animate-spin" /> : <ShieldCheck size={13} />}
-                    <span>Connect</span>
+                    <Plus size={14} />
+                    <span>Create Project</span>
                   </button>
                 </div>
-              </form>
+              ) : (
+                <form onSubmit={handleConnectNewRepo} className="space-y-3.5 text-xs">
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-[var(--text-secondary)] font-medium">Project</label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowConnectModal(false);
+                          setShowCreateProjectModal(true);
+                        }}
+                        className="text-[11px] text-[var(--accent)] hover:underline flex items-center gap-1 font-medium"
+                      >
+                        <Plus size={11} />
+                        <span>New Project</span>
+                      </button>
+                    </div>
+                    <select
+                      value={selectedProjectId || activeProjectId || ''}
+                      onChange={e => {
+                        setSelectedProjectId(e.target.value);
+                        setActiveProjectId(e.target.value);
+                        setActiveProjectIdState(e.target.value);
+                      }}
+                      className="w-full bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl px-3.5 py-2.5 text-[var(--text-primary)] focus:outline-none focus:border-[var(--border-bright)] font-mono text-xs"
+                    >
+                      {projects.map(p => (
+                        <option key={p.id} value={p.id}>{p.name} ({p.slug})</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[var(--text-secondary)] mb-1.5 font-medium">Repository URL</label>
+                    <input
+                      type="url"
+                      required
+                      placeholder="https://github.com/organization/repository"
+                      value={newRepoUrl}
+                      onChange={e => setNewRepoUrl(e.target.value)}
+                      className="w-full bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl px-3.5 py-2.5 text-[var(--text-primary)] focus:outline-none focus:border-[var(--border-bright)] font-mono text-xs"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[var(--text-secondary)] mb-1.5 font-medium">Default Branch</label>
+                    <input
+                      type="text"
+                      placeholder="main"
+                      value={newRepoBranch}
+                      onChange={e => setNewRepoBranch(e.target.value)}
+                      className="w-full bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl px-3.5 py-2.5 text-[var(--text-primary)] focus:outline-none focus:border-[var(--border-bright)] font-mono text-xs"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[var(--text-secondary)] mb-1.5 font-medium">
+                      Personal Access Token <span className="text-[var(--text-muted)] font-normal">(optional for public repos)</span>
+                    </label>
+                    <input
+                      type="password"
+                      placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
+                      value={newRepoToken}
+                      onChange={e => setNewRepoToken(e.target.value)}
+                      className="w-full bg-[var(--bg-primary)] border border-[var(--border)] rounded-xl px-3.5 py-2.5 text-[var(--text-primary)] focus:outline-none focus:border-[var(--border-bright)] font-mono text-xs"
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-[var(--border)]">
+                    <button
+                      type="button"
+                      onClick={() => setShowConnectModal(false)}
+                      className="px-3.5 py-2 rounded-xl border border-[var(--border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={connecting}
+                      className="flex items-center gap-1.5 bg-[var(--accent)] text-[var(--accent-fg)] font-semibold px-4 py-2 rounded-xl transition-opacity hover:opacity-85 disabled:opacity-50 shadow-sm"
+                    >
+                      {connecting ? <Loader2 size={13} className="animate-spin" /> : <ShieldCheck size={13} />}
+                      <span>Connect</span>
+                    </button>
+                  </div>
+                </form>
+              )}
             </div>
           </div>
         )}
+
+        {/* Create Project Modal */}
+        <CreateProjectModal
+          open={showCreateProjectModal}
+          onClose={() => setShowCreateProjectModal(false)}
+          onProjectCreated={() => {
+            setShowCreateProjectModal(false);
+            loadRepositories();
+          }}
+        />
       </div>
     </DeveloperShell>
   );

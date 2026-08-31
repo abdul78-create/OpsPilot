@@ -5,15 +5,17 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { DeveloperShellWrapper } from '@/components/layout/DeveloperShell';
 import { RepoScannerModal } from '@/components/builder/RepoScannerModal';
+import { CreateProjectModal } from '@/components/projects/CreateProjectModal';
 import {
   fetchServiceHealth, listAllRuns, listPipelines, listAiReports,
+  listProjects, Project, getActiveProjectId, setActiveProjectId,
   PipelineRun, AiAnalysisReport, PipelineDefinition,
 } from '@/lib/apiClient';
 import {
   Activity, Rocket, CheckCircle2, Clock, GitCommit,
   ArrowUpRight, Play, Zap, Plus, TrendingUp, Server,
   Sparkles, RefreshCw, ArrowRight, ChevronRight,
-  Layers, Terminal,
+  Layers, Terminal, FolderPlus, Folder, Check,
 } from 'lucide-react';
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -132,6 +134,9 @@ export default function DashboardPage() {
   const [runs, setRuns] = useState<PipelineRun[]>([]);
   const [pipelines, setPipelines] = useState<PipelineDefinition[]>([]);
   const [reports, setReports] = useState<AiAnalysisReport[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [activeProjectId, setActiveProjectIdState] = useState<string | null>(null);
+  const [createProjectOpen, setCreateProjectOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [scanOpen, setScanOpen] = useState(false);
@@ -160,11 +165,12 @@ export default function DashboardPage() {
         }
       }
 
-      const [healthRes, runsRes, pipelinesRes, reportsRes] = await Promise.all([
+      const [healthRes, runsRes, pipelinesRes, reportsRes, projectsRes] = await Promise.all([
         fetchServiceHealth().catch(() => null),
         listAllRuns().catch(() => []),
         listPipelines().catch(() => ({ data: [] })),
         listAiReports().catch(() => ({ data: [] })),
+        listProjects().catch(() => ({ data: [] })),
       ]);
 
       if (healthRes) {
@@ -186,6 +192,18 @@ export default function DashboardPage() {
       setRuns(Array.isArray(runsRes) ? runsRes : []);
       setPipelines(pipelinesRes.data ?? []);
       setReports(reportsRes.data ?? []);
+
+      const loadedProjects = projectsRes.data ?? [];
+      setProjects(loadedProjects);
+      const currentActiveProjId = getActiveProjectId();
+      if (currentActiveProjId && loadedProjects.some(p => p.id === currentActiveProjId)) {
+        setActiveProjectIdState(currentActiveProjId);
+      } else if (loadedProjects.length > 0) {
+        setActiveProjectId(loadedProjects[0].id);
+        setActiveProjectIdState(loadedProjects[0].id);
+      } else {
+        setActiveProjectIdState(null);
+      }
     } catch {
       setSystemHealth({ isOnline: false, dbStatus: 'down', queueStatus: 'down', eventBusStatus: 'down' });
     } finally {
@@ -345,6 +363,112 @@ export default function DashboardPage() {
           </div>
         )}
 
+        {/* ── Projects Section ── */}
+        <div className="rounded-xl bg-[var(--bg-secondary)] border border-[var(--border)] p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-[var(--bg-tertiary)] border border-[var(--border)] flex items-center justify-center text-[var(--accent)]">
+                <Folder size={16} />
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-[var(--text-primary)]">Projects</h3>
+                <p className="text-xs text-[var(--text-muted)]">Active microservices & workload contexts</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setCreateProjectOpen(true)}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold bg-[var(--accent)] text-[var(--accent-fg)] px-3.5 py-1.5 rounded-lg transition-all hover:opacity-85 shadow-sm"
+            >
+              <Plus size={13} />
+              <span>{projects.length === 0 ? 'Create Project' : 'New Project'}</span>
+            </button>
+          </div>
+
+          {loading ? (
+            <div className="h-16 rounded-lg bg-[var(--bg-tertiary)] animate-pulse" />
+          ) : projects.length === 0 ? (
+            <div className="py-8 px-4 rounded-lg bg-[var(--bg-primary)] border border-dashed border-[var(--border-bright)] text-center space-y-3">
+              <div className="w-10 h-10 rounded-xl bg-[var(--bg-tertiary)] border border-[var(--border)] flex items-center justify-center mx-auto text-[var(--text-muted)]">
+                <FolderPlus size={18} />
+              </div>
+              <div className="max-w-md mx-auto">
+                <h4 className="text-xs font-bold text-[var(--text-primary)]">Welcome to OpsPilot</h4>
+                <p className="text-xs text-[var(--text-muted)] mt-1">
+                  Create your first project to connect a repository and start building pipelines.
+                </p>
+              </div>
+              <button
+                onClick={() => setCreateProjectOpen(true)}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold bg-[var(--accent)] text-[var(--accent-fg)] px-4 py-2 rounded-lg transition-all hover:opacity-85 shadow-sm"
+              >
+                <Plus size={13} />
+                <span>+ Create Project</span>
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+              {projects.map((proj) => {
+                const isActive = activeProjectId === proj.id;
+                return (
+                  <div
+                    key={proj.id}
+                    onClick={() => {
+                      setActiveProjectId(proj.id);
+                      setActiveProjectIdState(proj.id);
+                    }}
+                    className={`p-3.5 rounded-xl border transition-all cursor-pointer group flex flex-col justify-between space-y-3 ${
+                      isActive
+                        ? 'bg-[var(--bg-tertiary)] border-[var(--border-bright)] shadow-sm'
+                        : 'bg-[var(--bg-primary)] border-[var(--border)] hover:border-[var(--border-bright)] hover:bg-[var(--bg-tertiary)]'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-[var(--text-primary)] truncate">{proj.name}</span>
+                          {isActive && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded-full bg-[var(--success-dim)] border border-[var(--success)] text-[var(--success)] font-semibold">
+                              <Check size={10} /> Active
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[11px] font-mono text-[var(--text-muted)] truncate mt-0.5">{proj.slug}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-2 border-t border-[var(--border)] text-[11px]">
+                      <span className="text-[var(--text-muted)]">{proj.environments?.length ?? 0} envs</span>
+                      <div className="flex items-center gap-2">
+                        <Link
+                          href="/repositories"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveProjectId(proj.id);
+                          }}
+                          className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:underline"
+                        >
+                          Repos
+                        </Link>
+                        <span className="text-[var(--border)]">•</span>
+                        <Link
+                          href="/pipelines"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveProjectId(proj.id);
+                          }}
+                          className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:underline"
+                        >
+                          Pipelines
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
         {/* ── KPI Grid ── */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {loading ? (
@@ -447,6 +571,7 @@ export default function DashboardPage() {
 
             <div className="space-y-2">
               {[
+                { label: 'Create Project', desc: 'Provision project workspace', icon: FolderPlus, action: () => setCreateProjectOpen(true) },
                 { label: 'Import Repository', desc: 'Scan & generate CI/CD YAML', icon: GitCommit, action: () => setScanOpen(true) },
                 { label: 'New Pipeline', desc: 'Visual workflow node graph', icon: Plus, action: () => router.push('/builder') },
                 { label: 'Manage Secrets', desc: 'Encrypted environment variables', icon: Server, action: () => router.push('/secrets') },
@@ -560,6 +685,16 @@ export default function DashboardPage() {
           }}
         />
       )}
+
+      {/* Create Project Modal */}
+      <CreateProjectModal
+        open={createProjectOpen}
+        onClose={() => setCreateProjectOpen(false)}
+        onProjectCreated={() => {
+          setCreateProjectOpen(false);
+          loadData(true);
+        }}
+      />
     </DeveloperShellWrapper>
   );
 }

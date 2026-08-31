@@ -77,6 +77,7 @@ export interface Project {
   description?: string;
   status: string;
   createdAt: string;
+  environments?: { id: string; name: string }[];
 }
 
 export interface PipelineDefinition {
@@ -378,24 +379,74 @@ export async function createCheckout(plan: string, orgId?: string) {
   );
 }
 
+export async function ensureActiveOrgId(): Promise<string | null> {
+  let orgId = getActiveOrgId();
+  if (orgId) return orgId;
+  try {
+    const orgsRes = await listOrganizations();
+    if (orgsRes.data && orgsRes.data.length > 0) {
+      orgId = orgsRes.data[0].id;
+      setActiveOrgId(orgId);
+      return orgId;
+    }
+    const currentRes = await getCurrentOrganization().catch(() => null);
+    if (currentRes?.data?.id) {
+      orgId = currentRes.data.id;
+      setActiveOrgId(orgId);
+      return orgId;
+    }
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+
 // ─── Projects ────────────────────────────────────────────────────────────────
 
 export async function listProjects(orgId?: string) {
-  const targetOrgId = orgId || getActiveOrgId();
+  let targetOrgId = orgId || getActiveOrgId();
+  if (!targetOrgId) {
+    targetOrgId = await ensureActiveOrgId();
+  }
   if (!targetOrgId) {
     return { data: [] as Project[] };
   }
   return apiFetch<{ data: Project[] }>(`/organizations/${targetOrgId}/projects`);
 }
 
-export async function createProject(name: string, slug: string, orgId?: string) {
-  const targetOrgId = orgId || getActiveOrgId();
+export async function createProject(
+  name: string,
+  slug: string,
+  orgId?: string,
+  description?: string,
+) {
+  let targetOrgId = orgId || getActiveOrgId();
   if (!targetOrgId) {
-    throw new Error('No active organization selected.');
+    targetOrgId = await ensureActiveOrgId();
   }
+  if (!targetOrgId) {
+    try {
+      const user = getUser();
+      const orgName = user?.name ? `${user.name}'s Org` : 'Personal Organization';
+      const orgSlug =
+        (user?.email ? user.email.split('@')[0] : 'org') + '-' + Date.now().toString(36);
+      const newOrg = await createOrganization(orgName, orgSlug);
+      if (newOrg.data?.id) {
+        targetOrgId = newOrg.data.id;
+        setActiveOrgId(targetOrgId);
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+  if (!targetOrgId) {
+    throw new Error('No active organization context found.');
+  }
+  const body: Record<string, string> = { name, slug };
+  if (description) body.description = description;
   return apiFetch<{ data: Project }>(`/organizations/${targetOrgId}/projects`, {
     method: 'POST',
-    body: JSON.stringify({ name, slug }),
+    body: JSON.stringify(body),
   });
 }
 
