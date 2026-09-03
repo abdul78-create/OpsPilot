@@ -59,6 +59,8 @@ export interface UserProfile {
   name: string;
   avatarUrl?: string;
   role: string;
+  isVerified?: boolean;
+  createdAt?: string;
 }
 
 export interface Organization {
@@ -206,7 +208,7 @@ export async function apiFetch<T>(endpoint: string, options: RequestInit = {}): 
     headers: getHeaders((options.headers as Record<string, string>) ?? {}),
   });
 
-  if (res.status === 401) {
+  if (res.status === 401 && (endpoint.includes('/auth/me') || endpoint.includes('/auth/refresh'))) {
     if (typeof window !== 'undefined') {
       localStorage.removeItem('opspilot_token');
     }
@@ -313,8 +315,10 @@ export async function createOrganization(name: string, slug: string) {
   });
 }
 
-export async function getCurrentOrganization() {
-  return apiFetch<{ data: Organization }>('/organizations/current');
+export async function getCurrentOrganization(): Promise<{ data: Organization }> {
+  const res = await apiFetch<any>('/organizations/current');
+  const org = res?.data?.data || res?.data;
+  return { data: org };
 }
 
 // ─── Billing & Subscriptions ──────────────────────────────────────────────────
@@ -613,7 +617,7 @@ export function parsePrometheusMetric(raw: string, name: string): number {
 
 export interface AiAnalysisReport {
   id: string;
-  type: 'RUN_RCA' | 'DEPLOYMENT_RISK' | 'LOG_ANALYSIS' | 'SECURITY_AUDIT';
+  type: 'RUN_RCA' | 'DEPLOYMENT_RISK' | 'LOG_ANALYSIS' | 'SECURITY_AUDIT' | 'PIPELINE_OPTIMIZATION';
   targetId: string;
   summary: string;
   rootCause?: string | null;
@@ -624,10 +628,83 @@ export interface AiAnalysisReport {
   createdAt: string;
 }
 
+export interface AiStatusResponse {
+  configured: boolean;
+  provider: string;
+  model: string;
+  status: 'connected' | 'unavailable';
+  capabilities: string[];
+}
+
+export interface AiQueryResponse {
+  summary: string;
+  findings: string[];
+  evidence: string[];
+  recommendation: string;
+  nextAction: string;
+}
+
+export interface GeneratedPipelineResult {
+  name: string;
+  summary: string;
+  yamlConfig: string;
+  nodes: any[];
+  edges: any[];
+}
+
 // ─── AI ───────────────────────────────────────────────────────────────────────
+
+export async function fetchAiStatus() {
+  return apiFetch<{ message: string; data: AiStatusResponse }>('/ai/status');
+}
 
 export async function analyzeRun(runId: string) {
   return apiFetch<{ message: string; data: AiAnalysisReport }>(`/ai/analyze-run/${runId}`, {
+    method: 'POST',
+  });
+}
+
+export async function scoreDeploymentRisk(deploymentId: string) {
+  return apiFetch<{ message: string; data: AiAnalysisReport }>(`/ai/score-deployment/${deploymentId}`, {
+    method: 'POST',
+  });
+}
+
+export async function optimizePipeline(pipelineId: string) {
+  return apiFetch<{ message: string; data: AiAnalysisReport }>(`/ai/optimize-pipeline/${pipelineId}`, {
+    method: 'POST',
+  });
+}
+
+export async function auditSecurity(targetId: string) {
+  return apiFetch<{ message: string; data: AiAnalysisReport }>(`/ai/audit-security/${targetId}`, {
+    method: 'POST',
+  });
+}
+
+export async function queryAi(body: {
+  workspace: string;
+  projectId?: string;
+  pipelineId?: string;
+  runId?: string;
+  deploymentId?: string;
+  question: string;
+}) {
+  return apiFetch<{ message: string; data: AiQueryResponse }>('/ai/query', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
+
+export async function generateAiPipeline(prompt: string) {
+  return apiFetch<{ message: string; data: GeneratedPipelineResult }>('/ai/generate-pipeline', {
+    method: 'POST',
+    body: JSON.stringify({ prompt }),
+  });
+}
+
+export async function applyAiFix(reportId: string) {
+  return apiFetch<{ message: string; data: any }>(`/ai/apply-fix/${reportId}`, {
     method: 'POST',
   });
 }
@@ -813,3 +890,241 @@ export async function fetchRepositoryFile(
     },
   );
 }
+
+// ─── Settings 2.0 Types & Methods ──────────────────────────────────────────
+
+export interface OrganizationMember {
+  id: string;
+  userId: string;
+  organizationId: string;
+  role: 'OWNER' | 'ADMIN' | 'MEMBER' | 'VIEWER';
+  status: 'ACTIVE' | 'SUSPENDED';
+  joinedAt: string;
+  user: {
+    id: string;
+    email: string;
+    name: string;
+    avatarUrl?: string | null;
+  };
+}
+
+export interface ApiKeyItem {
+  id: string;
+  name: string;
+  keyPrefix: string;
+  scopes: string[];
+  isRevoked: boolean;
+  expiresAt: string | null;
+  lastUsedAt: string | null;
+  createdAt: string;
+}
+
+export interface UserSessionItem {
+  id: string;
+  userId: string;
+  ipAddress?: string | null;
+  userAgent?: string | null;
+  expiresAt: string;
+  createdAt: string;
+}
+
+export interface NotificationChannelItem {
+  id: string;
+  organizationId: string;
+  name: string;
+  type: 'SLACK' | 'PAGERDUTY' | 'WEBHOOK' | 'EMAIL';
+  webhookUrl?: string | null;
+  integrationKey?: string | null;
+  emailAddress?: string | null;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface AlertPolicyItem {
+  id: string;
+  organizationId: string;
+  notificationChannelId: string;
+  name: string;
+  eventTypes: string[];
+  minSeverity?: string | null;
+  isActive: boolean;
+  createdAt: string;
+  notificationChannel?: NotificationChannelItem;
+}
+
+export interface AuditLogItem {
+  id: string;
+  organizationId: string;
+  userId?: string | null;
+  action: string;
+  resourceType: string;
+  resourceId?: string | null;
+  payload?: any;
+  ipAddress?: string | null;
+  userAgent?: string | null;
+  createdAt: string;
+}
+
+export async function fetchCurrentUser(): Promise<{ data: UserProfile }> {
+  try {
+    const meRes = await apiFetch<any>('/auth/me');
+    const userPayload = meRes?.data?.user || meRes?.user;
+    const userId = userPayload?.sub || userPayload?.id;
+
+    if (userId) {
+      const userRes = await apiFetch<any>(`/users/${userId}`).catch(() => null);
+      const userData = userRes?.data?.data || userRes?.data;
+      if (userData && userData.id) {
+        return { data: userData };
+      }
+      return {
+        data: {
+          id: userId,
+          email: userPayload.email,
+          name: userPayload.name || userPayload.email.split('@')[0],
+          role: userPayload.role || 'USER',
+          isVerified: true,
+        },
+      };
+    }
+  } catch {
+    // fallback
+  }
+
+  const stored = getUser();
+  if (stored) {
+    return { data: stored };
+  }
+  throw new Error('Not authenticated');
+}
+
+export async function updateUserProfile(userId: string, dto: { name?: string; email?: string; avatarUrl?: string }) {
+  return apiFetch<{ data: UserProfile }>(`/users/${userId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(dto),
+  });
+}
+
+export async function updateOrganization(orgId: string, dto: { name?: string; slug?: string }) {
+  return apiFetch<{ data: Organization }>(`/organizations/${orgId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(dto),
+  });
+}
+
+export async function deleteOrganization(orgId: string) {
+  return apiFetch<void>(`/organizations/${orgId}`, {
+    method: 'DELETE',
+  });
+}
+
+function unwrapArray<T>(res: any): T[] {
+  if (Array.isArray(res)) return res;
+  if (Array.isArray(res?.data)) return res.data;
+  if (Array.isArray(res?.data?.data)) return res.data.data;
+  return [];
+}
+
+export async function listOrganizationMembers(orgId: string): Promise<{ data: OrganizationMember[] }> {
+  const res = await apiFetch<any>(`/organizations/${orgId}/members`).catch(() => ({ data: [] }));
+  return { data: unwrapArray<OrganizationMember>(res) };
+}
+
+export async function updateMemberRole(orgId: string, memberId: string, role: string) {
+  return apiFetch<{ data: OrganizationMember }>(`/organizations/${orgId}/members/${memberId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ role }),
+  });
+}
+
+export async function removeMember(orgId: string, memberId: string) {
+  return apiFetch<void>(`/organizations/${orgId}/members/${memberId}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function inviteMember(orgId: string, email: string, role: string) {
+  return apiFetch<{ data: any }>(`/organizations/${orgId}/invitations`, {
+    method: 'POST',
+    body: JSON.stringify({ email, role }),
+  });
+}
+
+export async function changeUserPassword(currentPassword: string, newPassword: string) {
+  return apiFetch<{ message: string }>('/auth/change-password', {
+    method: 'POST',
+    body: JSON.stringify({ currentPassword, newPassword }),
+  });
+}
+
+export async function fetchUserSessions(): Promise<{ data: UserSessionItem[] }> {
+  const res = await apiFetch<any>('/auth/sessions').catch(() => ({ data: [] }));
+  return { data: unwrapArray<UserSessionItem>(res) };
+}
+
+export async function revokeUserSession(sessionId: string) {
+  return apiFetch<{ message: string }>(`/auth/sessions/${sessionId}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function revokeAllOtherSessions() {
+  return apiFetch<{ message: string }>('/auth/sessions', {
+    method: 'DELETE',
+  });
+}
+
+export async function listApiKeys(orgId: string): Promise<{ data: ApiKeyItem[] }> {
+  const res = await apiFetch<any>(`/organizations/${orgId}/api-keys`).catch(() => ({ data: [] }));
+  return { data: unwrapArray<ApiKeyItem>(res) };
+}
+
+export async function createApiKey(orgId: string, name: string, scopes: string[] = ['pipeline:read', 'pipeline:trigger']) {
+  return apiFetch<{ data: ApiKeyItem & { rawKey: string } }>(`/organizations/${orgId}/api-keys`, {
+    method: 'POST',
+    body: JSON.stringify({ name, scopes }),
+  });
+}
+
+export async function revokeApiKey(orgId: string, id: string) {
+  return apiFetch<void>(`/organizations/${orgId}/api-keys/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function listNotificationChannels(orgId: string): Promise<{ data: NotificationChannelItem[] }> {
+  const res = await apiFetch<any>(`/organizations/${orgId}/notification-channels`).catch(() => ({ data: [] }));
+  return { data: unwrapArray<NotificationChannelItem>(res) };
+}
+
+export async function createNotificationChannel(orgId: string, dto: { name: string; type: string; webhookUrl?: string; emailAddress?: string; integrationKey?: string }) {
+  return apiFetch<{ data: NotificationChannelItem }>(`/organizations/${orgId}/notification-channels`, {
+    method: 'POST',
+    body: JSON.stringify(dto),
+  });
+}
+
+export async function deleteNotificationChannel(orgId: string, id: string) {
+  return apiFetch<void>(`/organizations/${orgId}/notification-channels/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function listAlertPolicies(orgId: string): Promise<{ data: AlertPolicyItem[] }> {
+  const res = await apiFetch<any>(`/organizations/${orgId}/alert-policies`).catch(() => ({ data: [] }));
+  return { data: unwrapArray<AlertPolicyItem>(res) };
+}
+
+export async function createAlertPolicy(orgId: string, dto: { notificationChannelId: string; name: string; eventTypes: string[]; minSeverity?: string }) {
+  return apiFetch<{ data: AlertPolicyItem }>(`/organizations/${orgId}/alert-policies`, {
+    method: 'POST',
+    body: JSON.stringify(dto),
+  });
+}
+
+export async function fetchAuditLogs(orgId: string, limit: number = 20): Promise<{ data: AuditLogItem[] }> {
+  const res = await apiFetch<any>(`/organizations/${orgId}/audit-logs?limit=${limit}`).catch(() => ({ data: [] }));
+  return { data: unwrapArray<AuditLogItem>(res) };
+}
+
+

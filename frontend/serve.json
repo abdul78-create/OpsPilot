@@ -1,0 +1,29 @@
+{
+  "cleanUrls": true,
+  "trailingSlash": false,
+  "rewrites": [
+    { "source": "/dashboard", "destination": "/dashboard/index.html" },
+    { "source": "/dashboard/**", "destination": "/dashboard/index.html" },
+    { "source": "/login", "destination": "/login/index.html" },
+    { "source": "/register", "destination": "/register/index.html" },
+    { "source": "/projects", "destination": "/projects/index.html" },
+    { "source": "/pipelines", "destination": "/pipelines/index.html" },
+    { "source": "/builder", "destination": "/builder/index.html" },
+    { "source": "/repositories", "destination": "/repositories/index.html" },
+    { "source": "/runs", "destination": "/runs/index.html" },
+    { "source": "/runs/:runId", "destination": "/runs/[runId]/index.html" },
+    { "source": "/deployments", "destination": "/deployments/index.html" },
+    { "source": "/observability", "destination": "/observability/index.html" },
+    { "source": "/secrets", "destination": "/secrets/index.html" },
+    { "source": "/settings", "destination": "/settings/index.html" },
+    { "source": "/billing", "destination": "/billing/index.html" },
+    { "source": "/pricing", "destination": "/pricing/index.html" },
+    { "source": "/docs", "destination": "/docs/index.html" },
+    { "source": "/features", "destination": "/features/index.html" },
+    { "source": "/security", "destination": "/security/index.html" },
+    { "source": "/workspace", "destination": "/workspace/index.html" },
+    { "source": "/forgot-password", "destination": "/forgot-password/index.html" },
+    { "source": "/reset-password", "destination": "/reset-password/index.html" },
+    { "source": "/onboarding", "destination": "/onboarding/index.html" }
+  ]
+}

@@ -74,14 +74,39 @@ export class RunsService {
         },
       });
 
-      const defaultJobs = [
-        { name: 'Build Source & Assets', stage: 'build' },
-        { name: 'Run Unit & Integration Tests', stage: 'test' },
-        { name: 'Deploy Artifacts', stage: 'deploy' },
-      ];
+      let jobDefinitions: { name: string; stage: string }[] = [];
+      if (latestVersion.yamlConfig) {
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-var-requires
+          const yaml = require('js-yaml');
+          const parsed = yaml.load(latestVersion.yamlConfig) as Record<string, any>;
+          if (parsed && typeof parsed === 'object' && parsed['jobs']) {
+            const keys = Object.keys(parsed['jobs']);
+            if (keys.length > 0) {
+              jobDefinitions = keys.map((key) => {
+                const j = parsed['jobs'][key];
+                return {
+                  name: j && typeof j.name === 'string' ? j.name : key,
+                  stage: j && typeof j.stage === 'string' ? j.stage : key,
+                };
+              });
+            }
+          }
+        } catch {
+          // fallback to defaults if YAML parse fails
+        }
+      }
+
+      if (jobDefinitions.length === 0) {
+        jobDefinitions = [
+          { name: 'Build Source & Assets', stage: 'build' },
+          { name: 'Run Unit & Integration Tests', stage: 'test' },
+          { name: 'Deploy Artifacts', stage: 'deploy' },
+        ];
+      }
 
       const createdJobs: PipelineJob[] = [];
-      for (const j of defaultJobs) {
+      for (const j of jobDefinitions) {
         const job = await tx.pipelineJob.create({
           data: {
             pipelineRun: { connect: { id: run.id } },

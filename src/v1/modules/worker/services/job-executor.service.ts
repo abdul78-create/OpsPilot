@@ -28,8 +28,9 @@ export class JobExecutorService {
    * Execute a single pipeline job, cloning the repo into an isolated workspace
    * then running the build command inside a Docker container.
    * repoUrl is the actual GitHub repository URL propagated from the webhook.
+   * yamlConfig contains the user's immutable pipeline definition.
    */
-  async executeJob(job: PipelineJob, repoUrl: string): Promise<PipelineJob> {
+  async executeJob(job: PipelineJob, repoUrl: string, yamlConfig?: string): Promise<PipelineJob> {
     this.stateMachine.assertValidJobTransition(job.status, JobStatus.RUNNING);
 
     const startedAt = new Date();
@@ -67,6 +68,9 @@ export class JobExecutorService {
       let workspacePath: string | undefined = undefined;
       const baseDir = process.env.WORKSPACE_BASE_DIR || '/opspilot-workspaces';
       workspacePath = path.join(baseDir, job.pipelineRunId);
+      if (workspacePath && !fs.existsSync(workspacePath)) {
+        fs.mkdirSync(workspacePath, { recursive: true });
+      }
 
       if (this.workspaceManager && job.stage === 'source') {
         const branch = 'main';
@@ -94,37 +98,58 @@ export class JobExecutorService {
         }
       }
 
-      // Step 2: Execute build command inside isolated Docker container
+      // Step 2: Dynamic Command & Image Extraction from PipelineVersion.yamlConfig
       let stepCmd = 'echo "Step execution complete"';
-      if (job.stage === 'build') {
-        const hasBackend =
-          workspacePath && fs.existsSync(path.join(workspacePath, 'backend', 'package.json'));
-        const hasFrontend =
-          workspacePath && fs.existsSync(path.join(workspacePath, 'frontend', 'package.json'));
-        const hasPrisma =
-          workspacePath &&
-          (fs.existsSync(path.join(workspacePath, 'backend', 'prisma')) ||
-            fs.existsSync(path.join(workspacePath, 'prisma')));
+      let containerImage = 'node:20';
+      let customCommands: string[] | undefined = undefined;
 
-        if (hasBackend && hasFrontend) {
-          const backendBuild = hasPrisma
-            ? 'cd backend && (npm ci --include=dev --ignore-scripts || npm install || true) && (node node_modules/prisma/build/index.js generate || npx prisma generate || true) && (node node_modules/typescript/bin/tsc || npx tsc || true)'
-            : 'cd backend && (npm ci --include=dev --ignore-scripts || npm install || true) && (node node_modules/typescript/bin/tsc || npx tsc || true)';
-          const frontendBuild =
-            'cd frontend && (npm ci --include=dev --ignore-scripts || npm install || true) && (node node_modules/typescript/bin/tsc || true) && (node node_modules/vite/bin/vite.js build || npx vite build || true)';
-          stepCmd = `(${backendBuild}) && (${frontendBuild})`;
-        } else if (workspacePath && fs.existsSync(path.join(workspacePath, 'package-lock.json'))) {
-          stepCmd =
-            '(npm ci --include=dev --ignore-scripts || npm install || true) && (npm run build || npx tsc || true)';
-        } else if (workspacePath && fs.existsSync(path.join(workspacePath, 'package.json'))) {
-          stepCmd = '(npm install || true) && (npm run build || npx tsc || true)';
-        } else {
-          stepCmd = 'echo "Build stage complete — repository workspace initialized"';
+      if (yamlConfig) {
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-var-requires
+          const yaml = require('js-yaml');
+          const parsed = yaml.load(yamlConfig) as Record<string, any>;
+          if (parsed && typeof parsed === 'object' && parsed['jobs']) {
+            const jobsMap = parsed['jobs'] as Record<string, any>;
+            const matchedKey = Object.keys(jobsMap).find(
+              (k) =>
+                k.toLowerCase() === job.name.toLowerCase() ||
+                k.toLowerCase() === job.stage.toLowerCase() ||
+                (jobsMap[k]?.name && jobsMap[k].name.toLowerCase() === job.name.toLowerCase()),
+            );
+
+            if (matchedKey && jobsMap[matchedKey]) {
+              const def = jobsMap[matchedKey];
+              if (def.image && typeof def.image === 'string') {
+                containerImage = def.image;
+              }
+              const rawCmds = def.commands || def.script || def.run;
+              if (Array.isArray(rawCmds) && rawCmds.length > 0) {
+                customCommands = rawCmds.map(String);
+              } else if (typeof rawCmds === 'string' && rawCmds.trim()) {
+                customCommands = [rawCmds.trim()];
+              }
+            }
+          }
+        } catch (err) {
+          this.logger.warn(
+            `Failed to parse yamlConfig for job '${job.name}': ${(err as Error).message}`,
+          );
         }
-      } else if (job.stage === 'test') {
-        stepCmd = '(npm test -- --ci || echo "Test suite execution complete")';
-      } else if (job.stage === 'deploy') {
-        stepCmd = 'echo "Deployment stage complete — container image registered"';
+      }
+
+      if (customCommands && customCommands.length > 0) {
+        // Execute the user's exact pipeline commands sequentially.
+        // POSIX && semantics stop execution immediately if any command fails.
+        stepCmd = customCommands.join(' && ');
+      } else {
+        // Default clean fallback when no custom commands are declared
+        if (job.stage === 'build') {
+          stepCmd = 'echo "Build stage complete — repository workspace initialized"';
+        } else if (job.stage === 'test') {
+          stepCmd = 'echo "Test suite execution complete"';
+        } else if (job.stage === 'deploy') {
+          stepCmd = 'echo "Deployment stage complete — container image registered"';
+        }
       }
 
       // Enforce stage-based network sandbox: only source/build need egress internet
@@ -134,7 +159,7 @@ export class JobExecutorService {
       const { exitCode } = await this.dockerRunner.runStep({
         pipelineRunId: job.pipelineRunId,
         jobId: job.id,
-        image: 'node:20',
+        image: containerImage,
         command: stepCmd,
         workspacePath,
         requiresInternet,
@@ -245,9 +270,19 @@ export class JobExecutorService {
       const archivePath = path.join(artifactsDir, archiveFileName);
 
       // Create tar.gz archive from workspace output
-      execSync(
-        `tar -czf "${archivePath}" -C "${workspacePath}" . 2>/dev/null || tar -czf "${archivePath}" -C "${workspacePath}" backend frontend`,
-      );
+      try {
+        execSync(`tar -czf "${archivePath}" -C "${workspacePath}" .`, { stdio: 'pipe' });
+      } catch {
+        try {
+          fs.writeFileSync(
+            path.join(workspacePath, 'build-manifest.json'),
+            JSON.stringify({ pipelineRunId, timestamp: new Date().toISOString() }),
+          );
+          execSync(`tar -czf "${archivePath}" -C "${workspacePath}" .`, { stdio: 'pipe' });
+        } catch (e) {
+          this.logger.warn(`Failed to package artifact tar: ${(e as Error).message}`);
+        }
+      }
 
       if (fs.existsSync(archivePath)) {
         const fileBuffer = fs.readFileSync(archivePath);

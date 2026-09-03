@@ -55,28 +55,12 @@ const MonacoEditor = dynamic(() => import('@monaco-editor/react'), { ssr: false 
 const STEP_DURATIONS = [1000, 2400, 1500, 1800, 1200, 2000, 1200, 1000, 800];
 const STEP_ELAPSED   = ['1.0s', '34.2s', '11.8s', '8.4s', 'Approved', '1m 12s', '200 OK', 'Standby', 'Sent'];
 
-// ─── Initial full-lifecycle pipeline ─────────────────────────────────────────
+// ─── Clean Starter Pipeline Canvas ─────────────────────────────────────────
 const initialNodes: Node[] = [
-  { id: '1', type: 'source',       position: { x: 40,   y: 180 }, data: { label: 'GitHub Trigger',    repo: 'opspilot/production-backend:main', runState: 'idle' } },
-  { id: '2', type: 'build',        position: { x: 320,  y: 180 }, data: { label: 'Docker Build',      image: 'node:20-alpine',                  runState: 'idle' } },
-  { id: '3', type: 'test',         position: { x: 600,  y: 80  }, data: { label: 'Jest Test Suite',   command: 'npm test -- --ci',              runState: 'idle' } },
-  { id: '4', type: 'security',     position: { x: 600,  y: 280 }, data: { label: 'Trivy SAST Audit',                                            runState: 'idle' } },
-  { id: '5', type: 'approval',     position: { x: 880,  y: 180 }, data: { label: 'Production Gate',   approvers: 'Role: ADMIN required',        runState: 'idle' } },
-  { id: '6', type: 'deploy',       position: { x: 1160, y: 180 }, data: { label: 'Cluster Rollout',   target: 'prod-us-east-1',                 runState: 'idle' } },
-  { id: '7', type: 'health',       position: { x: 1440, y: 180 }, data: { label: 'Health Probe',      endpoint: 'GET /v1/health : 200',         runState: 'idle' } },
-  { id: '8', type: 'notification', position: { x: 1720, y: 180 }, data: { label: 'Slack Alert',                                                runState: 'idle' } },
+  { id: '1', type: 'source', position: { x: 100, y: 200 }, data: { label: 'Git Source Trigger', runState: 'idle' } },
 ];
 
-const initialEdges: Edge[] = [
-  { id: 'e1-2', source: '1', target: '2', animated: true, style: { stroke: 'var(--accent)', strokeWidth: 2 } },
-  { id: 'e2-3', source: '2', target: '3', animated: true, style: { stroke: 'var(--info)', strokeWidth: 2 } },
-  { id: 'e2-4', source: '2', target: '4', animated: true, style: { stroke: 'var(--info)', strokeWidth: 2 } },
-  { id: 'e3-5', source: '3', target: '5', animated: true, style: { stroke: 'var(--success)', strokeWidth: 2 } },
-  { id: 'e4-5', source: '4', target: '5', animated: true, style: { stroke: 'var(--warning)', strokeWidth: 2 } },
-  { id: 'e5-6', source: '5', target: '6', animated: true, style: { stroke: 'var(--warning)', strokeWidth: 2 } },
-  { id: 'e6-7', source: '6', target: '7', animated: true, style: { stroke: 'var(--accent)', strokeWidth: 2 } },
-  { id: 'e7-8', source: '7', target: '8', animated: true, style: { stroke: 'var(--info)', strokeWidth: 2 } },
-];
+const initialEdges: Edge[] = [];
 
 // ─── Inner canvas (needs ReactFlowProvider context) ───────────────────────────
 function BuilderCanvas() {

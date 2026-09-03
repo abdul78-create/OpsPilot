@@ -4,6 +4,7 @@ import {
   ConflictException,
   ForbiddenException,
   BadRequestException,
+  NotFoundException,
   Logger,
   Inject,
 } from '@nestjs/common';
@@ -521,5 +522,60 @@ export class AuthService {
         refreshToken: rawRefreshToken,
       },
     };
+  }
+
+  async changePassword(
+    userId: string,
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<{ message: string }> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId, deletedAt: null },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const isCurrentValid = await this.hashService.verifyPassword(
+      user.passwordHash,
+      currentPassword,
+    );
+    if (!isCurrentValid) {
+      throw new UnauthorizedException('Current password does not match');
+    }
+
+    const newPasswordHash = await this.hashService.hashPassword(newPassword);
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash: newPasswordHash },
+    });
+
+    return { message: 'Password successfully updated' };
+  }
+
+  async getUserSessions(userId: string) {
+    return this.prisma.session.findMany({
+      where: { userId, expiresAt: { gt: new Date() } },
+      orderBy: { createdAt: 'desc' },
+      take: 10,
+    });
+  }
+
+  async revokeSession(userId: string, sessionId: string) {
+    await this.prisma.session.deleteMany({
+      where: { id: sessionId, userId },
+    });
+    return { message: 'Session revoked successfully' };
+  }
+
+  async revokeAllOtherSessions(userId: string, currentSessionId?: string) {
+    await this.prisma.session.deleteMany({
+      where: {
+        userId,
+        ...(currentSessionId ? { id: { not: currentSessionId } } : {}),
+      },
+    });
+    return { message: 'All other sessions revoked successfully' };
   }
 }

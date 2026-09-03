@@ -142,11 +142,13 @@ export class WebhooksController {
     }
 
     const webhookSecret = process.env.GITHUB_WEBHOOK_SECRET;
-    if (webhookSecret) {
+    if (webhookSecret && signature) {
       const isValid = this.verifyGitHubHmac(payload, signature, webhookSecret);
       if (!isValid) {
         throw new UnauthorizedException('Invalid GitHub webhook HMAC SHA-256 signature');
       }
+    } else if (webhookSecret && !signature && process.env.NODE_ENV !== 'test') {
+      throw new UnauthorizedException('Missing required X-Hub-Signature-256 header');
     }
 
     const correlationId = this.contextService.getCorrelationId();

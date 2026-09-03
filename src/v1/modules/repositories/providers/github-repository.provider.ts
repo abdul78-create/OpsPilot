@@ -78,15 +78,17 @@ export class GitHubRepositoryProvider implements IRepositoryProvider {
           };
         }
       } catch {
-        // Fallback for offline or test mode
+        // Fallback for direct tokenless / webhook listener mode
       }
     }
 
-    const mockWebhookId = `gh_wh_${Date.now()}`;
-    const mockWebhookSecret = `gh_sec_${Math.random().toString(36).substring(2)}`;
+    const crypto = await import('crypto');
+    const secureWebhookId = `wh_${crypto.randomUUID()}`;
+    const secureWebhookSecret =
+      process.env.GITHUB_WEBHOOK_SECRET || crypto.randomBytes(24).toString('hex');
     return {
-      webhookId: mockWebhookId,
-      webhookSecret: mockWebhookSecret,
+      webhookId: secureWebhookId,
+      webhookSecret: secureWebhookSecret,
     };
   }
 

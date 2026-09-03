@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { PrismaService } from '../../../core/database/prisma.service';
 
 export interface PlanLimits {
@@ -135,14 +140,23 @@ export class BillingService {
   }
 
   async createCheckoutSession(orgId: string, plan: string) {
-    if (!PLAN_CONFIGS[plan.toUpperCase()]) {
+    const planConfig = PLAN_CONFIGS[plan.toUpperCase()];
+    if (!planConfig) {
       throw new BadRequestException(`Invalid subscription plan: '${plan}'`);
     }
 
+    const billingUrl = process.env.BILLING_CHECKOUT_BASE_URL;
+    if (!billingUrl) {
+      throw new ServiceUnavailableException(
+        'Billing checkout gateway is currently unavailable: Payment provider is not configured. Please contact enterprise sales.',
+      );
+    }
+
+    const sessionId = `checkout_${Date.now()}`;
     return {
-      checkoutUrl: `https://billing.opspilot.ai/checkout?orgId=${orgId}&plan=${plan.toLowerCase()}&session=cs_test_${Date.now()}`,
-      sessionId: `cs_test_${Date.now()}`,
-      plan: PLAN_CONFIGS[plan.toUpperCase()],
+      checkoutUrl: `${billingUrl}?orgId=${orgId}&plan=${plan.toLowerCase()}&session=${sessionId}`,
+      sessionId,
+      plan: planConfig,
     };
   }
 

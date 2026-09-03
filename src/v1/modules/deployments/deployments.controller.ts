@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, UseGuards, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Req, UseGuards, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
 import { DeploymentsService } from './deployments.service';
 import { CreateDeploymentDto } from './dto/create-deployment.dto';
@@ -37,6 +37,20 @@ export class DeploymentsController {
     return {
       message: 'Deployment release triggered successfully',
       data: deployment,
+    };
+  }
+
+  @Get('deployments')
+  @Get('organizations/:orgId/deployments')
+  @Permissions(EnvironmentPermissions.READ)
+  @ApiOperation({ summary: 'List all recent deployments across environments' })
+  @ApiResponse({ status: HttpStatus.OK, type: [DeploymentResponseDto] })
+  async listAll(@Req() req: any, @Param('orgId') orgIdParam?: string) {
+    const orgId = orgIdParam || req.organization?.id;
+    const deployments = await this.deploymentsService.listAll(orgId);
+    return {
+      message: 'Deployments retrieved successfully',
+      data: deployments,
     };
   }
 

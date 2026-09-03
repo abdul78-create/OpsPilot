@@ -247,6 +247,19 @@ export class SecretsService {
     return this.mapToMaskedResponse(deletedSecret);
   }
 
+  async findAllByOrganization(organizationId: string): Promise<SecretResponseDto[]> {
+    const secrets = await this.secretsRepository.findByOrganization(organizationId);
+    return secrets.map((s) => this.mapToMaskedResponse(s));
+  }
+
+  async deleteDirect(userId: string, secretId: string): Promise<SecretResponseDto> {
+    const secret = await this.secretsRepository.findById(secretId);
+    if (!secret) {
+      throw new NotFoundException(`Secret '${secretId}' not found`);
+    }
+    return this.softDelete(secret.environmentId, userId, secretId);
+  }
+
   private async getSecretEntity(environmentId: string, secretId: string): Promise<Secret> {
     const secret = await this.secretsRepository.findById(secretId);
 

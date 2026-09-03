@@ -86,55 +86,69 @@ export default function DeploymentsPage() {
 
   return (
     <DeveloperShell>
-      <div className="flex flex-col h-[calc(100vh-5.5rem)] space-y-3">
+      <div className="flex flex-col h-[calc(100vh-5.5rem)] space-y-4 max-w-7xl mx-auto w-full">
 
         {/* Header */}
-        <div className="h-14 px-4 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border)] flex items-center justify-between shrink-0">
+        <div className="h-14 px-5 rounded-2xl bg-[var(--bg-secondary)] border border-[var(--border)] flex items-center justify-between shrink-0 shadow-sm">
           <div className="flex items-center gap-3">
-            <Rocket size={15} className="text-[var(--text-muted)]" />
-            <h1 className="text-sm font-bold text-[var(--text-primary)]">Deployments</h1>
-            <span className="text-[10px] font-mono text-[var(--text-muted)] border border-[var(--border)] px-2 py-0.5 rounded-full">{stats.total} total</span>
-            {stats.active > 0 && (
-              <span className="text-[10px] font-mono text-[var(--success)] border border-[var(--border)] bg-[var(--success-dim)] px-2 py-0.5 rounded-full">{stats.active} active</span>
-            )}
-            {stats.failed > 0 && (
-              <span className="text-[10px] font-mono text-[var(--error)] border border-[var(--border)] bg-[var(--error-dim)] px-2 py-0.5 rounded-full">{stats.failed} failed</span>
-            )}
+            <div className="p-2 rounded-xl bg-[var(--bg-tertiary)] border border-[var(--border)] text-[var(--accent)]">
+              <Rocket size={16} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-sm font-bold text-[var(--text-primary)]">Deployments</h1>
+                <span className="text-[10px] font-mono text-[var(--text-muted)] border border-[var(--border)] px-2 py-0.5 rounded-full">{stats.total} total</span>
+                {stats.active > 0 && (
+                  <span className="text-[10px] font-mono text-[var(--success)] border border-[var(--border)] bg-[var(--success-dim)] px-2 py-0.5 rounded-full font-semibold">● {stats.active} active</span>
+                )}
+                {stats.failed > 0 && (
+                  <span className="text-[10px] font-mono text-[var(--error)] border border-[var(--border)] bg-[var(--error-dim)] px-2 py-0.5 rounded-full font-semibold">● {stats.failed} failed</span>
+                )}
+              </div>
+              <p className="text-[11px] text-[var(--text-muted)]">Multi-environment cluster rollouts, versions & instant rollback</p>
+            </div>
           </div>
-          <button onClick={load} className="flex items-center gap-1.5 text-[11px] text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors">
-            <RefreshCw size={12} className={loading ? 'animate-spin' : ''} /> Refresh
+
+          <button
+            onClick={load}
+            className="flex items-center gap-1.5 text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] px-3 py-1.5 rounded-xl border border-[var(--border)] hover:bg-[var(--bg-tertiary)] transition-all"
+          >
+            <RefreshCw size={12} className={loading ? 'animate-spin' : ''} />
+            <span>Refresh</span>
           </button>
         </div>
 
         {/* Search */}
-        <div className="shrink-0 max-w-sm">
-          <SearchInput value={search} onChange={setSearch} placeholder="Filter environments or image tags..." />
+        <div className="shrink-0 max-w-md">
+          <SearchInput value={search} onChange={setSearch} placeholder="Filter environments, versions, or image tags..." />
         </div>
 
         {/* List by Environment */}
         <div className="flex-1 min-h-0 overflow-y-auto space-y-4 pr-1">
           {loading ? (
-            <div className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl p-4">
+            <div className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-2xl p-5">
               <SkeletonTableRows rows={4} cols={4} />
             </div>
           ) : byEnv.length === 0 ? (
-            <div className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl">
-              <EmptyState icon={<Rocket size={32} />} title="No deployments" description="Trigger a pipeline to deploy your first version" />
+            <div className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-2xl p-8 shadow-sm">
+              <EmptyState icon={<Rocket size={32} />} title="No active deployments" description="Trigger a production pipeline from the Builder to release your first deployment version." />
             </div>
           ) : (
             byEnv.map(({ env, deployments: envDeps }) => (
-              <div key={env} className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-xl overflow-hidden">
-                <div className="h-10 px-4 bg-[var(--bg-tertiary)] border-b border-[var(--border)] flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Globe size={13} className="text-[var(--text-muted)]" />
-                    <span className="text-xs font-bold text-[var(--text-primary)] capitalize">{env}</span>
-                    <span className="text-[10px] font-mono text-[var(--text-muted)]">({envDeps.length})</span>
+              <div key={env} className="bg-[var(--bg-secondary)] border border-[var(--border)] rounded-2xl overflow-hidden shadow-sm">
+                <div className="h-11 px-5 bg-[var(--bg-tertiary)] border-b border-[var(--border)] flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <Globe size={14} className="text-[var(--accent)]" />
+                    <span className="text-xs font-bold text-[var(--text-primary)] capitalize">{env} Environment</span>
+                    <span className="text-[10px] font-mono text-[var(--text-muted)] border border-[var(--border)] px-1.5 py-0.5 rounded bg-[var(--bg-secondary)]">
+                      {envDeps.length} {envDeps.length === 1 ? 'release' : 'releases'}
+                    </span>
                   </div>
                 </div>
 
                 <div className="divide-y divide-[var(--border)]">
                   {envDeps.map(dep => (
-                    <div key={dep.id} className="p-4 flex items-center justify-between hover:bg-[var(--bg-tertiary)] transition-colors">
+                    <div key={dep.id} className="p-4 px-5 flex items-center justify-between hover:bg-[var(--bg-tertiary)] transition-colors">
                       <div className="flex items-center gap-4">
                         <StatusPill status={dep.status?.toLowerCase() ?? 'active'} />
                         <div>
@@ -148,8 +162,8 @@ export default function DeploymentsPage() {
                           </div>
                           <div className="text-[11px] font-mono text-[var(--text-muted)] flex items-center gap-2 mt-0.5">
                             <span>Tag: {dep.imageTag ?? 'latest'}</span>
-                            <span>·</span>
-                            <span className="flex items-center gap-1"><Clock size={10} /> Deployed {timeAgo(dep.deployedAt)}</span>
+                            <span>•</span>
+                            <span className="flex items-center gap-1"><Clock size={11} /> Deployed {timeAgo(dep.deployedAt)}</span>
                           </div>
                         </div>
                       </div>
@@ -159,7 +173,7 @@ export default function DeploymentsPage() {
                           <button
                             onClick={() => setRollbackTarget(dep)}
                             disabled={rolling === dep.id}
-                            className="flex items-center gap-1.5 text-[11px] font-semibold text-[var(--error)] bg-[var(--error-dim)] hover:opacity-80 border border-[var(--error)] px-3 py-1.5 rounded-lg transition-opacity disabled:opacity-40"
+                            className="flex items-center gap-1.5 text-xs font-semibold text-[var(--error)] bg-[var(--error-dim)] hover:opacity-85 border border-[var(--error)] px-3 py-1.5 rounded-xl transition-all disabled:opacity-40 shadow-sm"
                           >
                             {rolling === dep.id ? <Loader2 size={12} className="animate-spin" /> : <RotateCcw size={12} />}
                             Rollback

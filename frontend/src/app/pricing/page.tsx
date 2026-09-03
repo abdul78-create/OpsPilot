@@ -38,7 +38,7 @@ const PRICING_TIERS = [
       'Up to 15 team seats with RBAC',
       'Priority email support',
     ],
-    cta: 'Start 14-Day Free Trial',
+    cta: 'Upgrade to Pro',
     highlight: true,
   },
   {

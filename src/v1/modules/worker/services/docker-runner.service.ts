@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { spawn } from 'child_process';
 import * as fs from 'fs';
+import * as path from 'path';
 import { LogsService } from '../../log-streaming/logs.service';
 import { LogLevel } from '@prisma/client';
 
@@ -34,7 +35,6 @@ export class DockerRunnerService {
   async runStep(options: DockerRunOptions): Promise<{ exitCode: number }> {
     const image = options.image || 'node:20-alpine';
     const cmdStr = options.command;
-    const volumeName = process.env.DOCKER_VOLUME_NAME || 'opspilot_workspaces_data';
     const cacheVolume =
       options.cacheVolumeName || process.env.DOCKER_CACHE_VOLUME || 'opspilot_cache_data';
     const memLimit = options.memoryLimit || process.env.RUNNER_MEMORY_LIMIT || '2g';
@@ -70,7 +70,8 @@ export class DockerRunnerService {
       if (options.workspacePath.includes('docker.sock')) {
         throw new Error('Security Violation: Mounting docker.sock is strictly forbidden');
       }
-      volumeArgs.push('-v', `${volumeName}:/opspilot-workspaces`, '-w', options.workspacePath);
+      const hostWorkspace = path.resolve(options.workspacePath).replace(/\\/g, '/');
+      volumeArgs.push('-v', `${hostWorkspace}:/workspace`, '-w', '/workspace');
     }
 
     if (options.enableCache !== false) {

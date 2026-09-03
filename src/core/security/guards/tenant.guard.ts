@@ -40,11 +40,21 @@ export class TenantGuard implements CanActivate {
       return true;
     }
 
-    // Resolve target Organization ID or Slug from request headers or orgId param
-    const orgIdOrSlug =
+    // Resolve target Organization ID or Slug from request headers, orgId param, or projectId param
+    let orgIdOrSlug =
       request.headers['x-organization-id'] ||
       request.headers['x-tenant-id'] ||
-      request.params.orgId;
+      request.params?.orgId ||
+      request.params?.organizationId;
+
+    if (!orgIdOrSlug && request.params?.projectId) {
+      const project = await this.prisma.project.findFirst({
+        where: { id: request.params.projectId, deletedAt: null },
+      });
+      if (project) {
+        orgIdOrSlug = project.organizationId;
+      }
+    }
 
     if (!orgIdOrSlug) {
       throw new BadRequestException('Organization identifier (orgId / slug) is required');

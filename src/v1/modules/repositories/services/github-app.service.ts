@@ -66,9 +66,14 @@ export class GitHubAppService {
    * Generates a signed JWT for GitHub App authentication.
    */
   generateAppJwt(): string {
-    const appId = this.configService.get<string>('GITHUB_APP_ID') || '100001';
+    const appId =
+      this.configService.get<string>('GITHUB_APP_ID') || process.env.GITHUB_APP_ID || '100001';
     const privateKey =
-      this.configService.get<string>('GITHUB_APP_PRIVATE_KEY') || 'mock_private_key';
+      this.configService.get<string>('GITHUB_APP_PRIVATE_KEY') ||
+      process.env.GITHUB_APP_PRIVATE_KEY ||
+      this.configService.get<string>('JWT_SECRET') ||
+      process.env.JWT_SECRET ||
+      'opspilot_app_jwt_secret';
 
     const now = Math.floor(Date.now() / 1000);
     const payload = {
@@ -77,19 +82,15 @@ export class GitHubAppService {
       iss: appId,
     };
 
-    try {
-      if (privateKey.includes('BEGIN') && privateKey.includes('PRIVATE KEY')) {
-        return this.jwtService.sign(payload, {
-          privateKey,
-          algorithm: 'RS256',
-        });
-      }
+    if (privateKey.includes('BEGIN') && privateKey.includes('PRIVATE KEY')) {
       return this.jwtService.sign(payload, {
-        secret: privateKey,
+        privateKey,
+        algorithm: 'RS256',
       });
-    } catch {
-      return this.jwtService.sign(payload, { secret: 'opspilot_dev_app_jwt_secret' });
     }
+    return this.jwtService.sign(payload, {
+      secret: privateKey,
+    });
   }
 
   /**

@@ -2,6 +2,8 @@ import {
   Controller,
   Post,
   Get,
+  Delete,
+  Param,
   Body,
   UseGuards,
   HttpCode,
@@ -160,5 +162,41 @@ export class AuthController {
   @ApiResponse({ status: HttpStatus.OK, description: 'User context retrieved' })
   async getProfile(@CurrentUser() user: JwtPayload): Promise<{ user: JwtPayload }> {
     return { user };
+  }
+
+  @Post('change-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Update password for authenticated user' })
+  async changePassword(
+    @CurrentUser() user: JwtPayload,
+    @Body() body: { currentPassword: string; newPassword: string },
+  ) {
+    return this.authService.changePassword(user.sub, body.currentPassword, body.newPassword);
+  }
+
+  @Get('sessions')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Retrieve active sessions for authenticated user' })
+  async getSessions(@CurrentUser() user: JwtPayload) {
+    const sessions = await this.authService.getUserSessions(user.sub);
+    return {
+      message: 'Active sessions retrieved successfully',
+      data: sessions,
+    };
+  }
+
+  @Delete('sessions/:sessionId')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Revoke an active session' })
+  async revokeSession(@CurrentUser() user: JwtPayload, @Param('sessionId') sessionId: string) {
+    return this.authService.revokeSession(user.sub, sessionId);
+  }
+
+  @Delete('sessions')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Revoke all other active sessions' })
+  async revokeAllOtherSessions(@CurrentUser() user: JwtPayload) {
+    return this.authService.revokeAllOtherSessions(user.sub, (user as any).sid);
   }
 }

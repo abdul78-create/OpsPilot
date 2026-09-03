@@ -9,35 +9,35 @@
 /* ── DEFAULT / DARK ── */
 :root,
 [data-theme="dark"] {
-  --bg-primary:    #0C0C0E;
-  --bg-secondary:  #141416;
-  --bg-tertiary:   #1C1C1F;
-  --bg-overlay:    rgba(12, 12, 14, 0.94);
+  --bg-primary:    #09090B;
+  --bg-secondary:  #121215;
+  --bg-tertiary:   #1A1A1E;
+  --bg-overlay:    rgba(9, 9, 11, 0.95);
 
-  --border:        #252528;
-  --border-subtle: #1C1C1F;
-  --border-bright: #353539;
+  --border:        #27272A;
+  --border-subtle: #1C1C20;
+  --border-bright: #3F3F46;
 
-  --text-primary:  #F2F2F3;
-  --text-secondary:#9E9EA7;
-  --text-muted:    #4E4E57;
-  --text-disabled: #38383F;
+  --text-primary:  #F8FAFC;
+  --text-secondary:#94A3B8;
+  --text-muted:    #64748B;
+  --text-disabled: #334155;
 
   /* Brand accent — deep indigo */
   --accent:        #6366F1;
-  --accent-hover:  #7577F3;
-  --accent-dim:    rgba(99, 102, 241, 0.12);
-  --accent-glow:   rgba(99, 102, 241, 0.25);
+  --accent-hover:  #818CF8;
+  --accent-dim:    rgba(99, 102, 241, 0.14);
+  --accent-glow:   rgba(99, 102, 241, 0.28);
   --accent-fg:     #FFFFFF;
 
   /* Neutral action (buttons/fills) */
-  --action:        #F2F2F3;
-  --action-hover:  #E8E8EA;
-  --action-fg:     #0C0C0E;
+  --action:        #F8FAFC;
+  --action-hover:  #E2E8F0;
+  --action-fg:     #09090B;
 
   /* Semantic status */
-  --success:      #22C55E;
-  --success-dim:  rgba(34, 197, 94, 0.12);
+  --success:      #10B981;
+  --success-dim:  rgba(16, 185, 129, 0.12);
   --error:        #EF4444;
   --error-dim:    rgba(239, 68, 68, 0.12);
   --warning:      #F59E0B;
@@ -48,9 +48,9 @@
 
   /* Shadows */
   --shadow-xs:    none;
-  --shadow-sm:    0 1px 3px rgba(0,0,0,0.4);
-  --shadow-md:    0 4px 16px rgba(0,0,0,0.5);
-  --shadow-lg:    0 8px 32px rgba(0,0,0,0.6);
+  --shadow-sm:    0 1px 3px rgba(0,0,0,0.5);
+  --shadow-md:    0 4px 16px rgba(0,0,0,0.6);
+  --shadow-lg:    0 8px 32px rgba(0,0,0,0.7);
   --shadow-accent: 0 0 20px var(--accent-glow);
 
   /* Terminal always dark */
@@ -75,26 +75,26 @@
   --violet-dim:      var(--accent-dim);
   --violet-glow:     var(--accent-glow);
   --gradient-brand:  linear-gradient(135deg, #6366F1 0%, #818CF8 50%, #A5B4FC 100%);
-  --gradient-hero:   radial-gradient(ellipse at 50% 0%, rgba(99, 102, 241, 0.12) 0%, transparent 70%);
+  --gradient-hero:   radial-gradient(ellipse at 50% 0%, rgba(99, 102, 241, 0.14) 0%, transparent 70%);
 }
 
-/* ── LIGHT MODE ── */
+/* ── LIGHT MODE (Pure Crisp White, Slate Hierarchy, Deep Indigo Accent) ── */
 [data-theme="light"] {
-  --bg-primary:    #FAFAFA;
-  --bg-secondary:  #F4F4F5;
-  --bg-tertiary:   #ECECED;
-  --bg-overlay:    rgba(250, 250, 250, 0.95);
+  --bg-primary:    #F8FAFC;
+  --bg-secondary:  #FFFFFF;
+  --bg-tertiary:   #F1F5F9;
+  --bg-overlay:    rgba(255, 255, 255, 0.96);
 
-  --border:        #E4E4E7;
-  --border-subtle: #EBEBED;
-  --border-bright: #D4D4D8;
+  --border:        rgba(226, 232, 240, 0.8);
+  --border-subtle: rgba(241, 245, 249, 0.6);
+  --border-bright: #CBD5E1;
 
-  --text-primary:  #09090B;
-  --text-secondary:#52525B;
-  --text-muted:    #A1A1AA;
-  --text-disabled: #D4D4D8;
+  --text-primary:  #0F172A;
+  --text-secondary:#334155;
+  --text-muted:    #64748B;
+  --text-disabled: #94A3B8;
 
-  /* Brand accent — slightly darker for light mode */
+  /* Brand accent — professional rich indigo */
   --accent:        #4F46E5;
   --accent-hover:  #4338CA;
   --accent-dim:    rgba(79, 70, 229, 0.08);
@@ -102,13 +102,13 @@
   --accent-fg:     #FFFFFF;
 
   /* Neutral action */
-  --action:        #18181B;
-  --action-hover:  #27272A;
+  --action:        #0F172A;
+  --action-hover:  #1E293B;
   --action-fg:     #FFFFFF;
 
   /* Semantic status */
-  --success:      #16A34A;
-  --success-dim:  rgba(22, 163, 74, 0.08);
+  --success:      #059669;
+  --success-dim:  rgba(5, 150, 105, 0.08);
   --error:        #DC2626;
   --error-dim:    rgba(220, 38, 38, 0.08);
   --warning:      #D97706;
@@ -117,11 +117,11 @@
   --info-dim:     rgba(37, 99, 235, 0.08);
   --cyan:         #0891B2;
 
-  /* Shadows */
-  --shadow-xs:    0 1px 2px rgba(0,0,0,0.04);
-  --shadow-sm:    0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
-  --shadow-md:    0 4px 12px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.04);
-  --shadow-lg:    0 10px 30px rgba(0,0,0,0.08), 0 4px 8px rgba(0,0,0,0.04);
+  /* Soft Ambient Shadows for borderless elevation */
+  --shadow-xs:    0 1px 2px rgba(15,23,42,0.02);
+  --shadow-sm:    0 1px 3px rgba(15,23,42,0.04), 0 1px 2px rgba(15,23,42,0.02);
+  --shadow-md:    0 4px 12px rgba(15,23,42,0.05), 0 2px 4px rgba(15,23,42,0.02);
+  --shadow-lg:    0 10px 25px rgba(15,23,42,0.06), 0 4px 6px rgba(15,23,42,0.02);
   --shadow-accent: 0 0 16px rgba(79, 70, 229, 0.12);
 
   /* Terminal always dark */

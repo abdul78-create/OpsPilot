@@ -37,11 +37,13 @@ coverage
 # Temporary files
 /tmp
 /temp
+/scratch
 *.tmp
 *.bak
 *.old
 *.copy
 *.backup
+*.tsbuildinfo
 backups/*.sql
 
 # Docker volumes

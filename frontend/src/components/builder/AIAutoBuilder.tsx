@@ -13,109 +13,31 @@ interface AIAutoBuilderProps {
   onGenerate: (pipeline: GeneratedPipeline) => void;
 }
 
-// ─── Pattern-match engine ─────────────────────────────────────────────────────
-function generatePipelineFromPrompt(prompt: string): GeneratedPipeline {
-  const p = prompt.toLowerCase();
-
-  const hasNext    = p.includes('next') || p.includes('nextjs') || p.includes('next.js');
-  const hasNode    = p.includes('node') || p.includes('nodejs') || p.includes('express');
-  const hasGo      = p.includes('go ') || p.includes('golang') || p.includes('go api');
-  const hasPython  = p.includes('python') || p.includes('fastapi') || p.includes('django') || p.includes('flask');
-  const hasDocker  = p.includes('docker') || p.includes('container') || p.includes('image');
-  const hasK8s     = p.includes('kubernetes') || p.includes('k8s') || p.includes('helm') || p.includes('cluster');
-  const hasRailway = p.includes('railway') || p.includes('vercel') || p.includes('fly') || p.includes('cloud run');
-  const hasSecurity= p.includes('security') || p.includes('trivy') || p.includes('sast') || p.includes('scan') || p.includes('vuln');
-  const hasTest    = p.includes('test') || p.includes('jest') || p.includes('pytest') || p.includes('spec');
-  const hasTerraform = p.includes('terraform') || p.includes('infra') || p.includes('iac');
-
-  let nodeList: Array<{ type: string; label: string; subtext: string }> = [];
-
-  // Always start with source
-  nodeList.push({ type: 'source', label: 'Git Repository', subtext: 'main branch trigger' });
-
-  if (hasTerraform) {
-    nodeList = [
-      { type: 'source', label: 'Git Repository', subtext: 'main branch trigger' },
-      { type: 'test',   label: 'tf fmt + validate', subtext: 'terraform fmt -check' },
-      { type: 'security', label: 'tfsec / Checkov', subtext: 'IaC vulnerability scan' },
-      { type: 'deploy', label: 'Terraform Apply', subtext: 'prod environment' },
-      { type: 'notification', label: 'Slack Notify', subtext: '#infra-changes' },
-    ];
-  } else {
-    if (hasTest || hasNext || hasNode || hasGo || hasPython) {
-      const testLabel = hasPython
-        ? 'PyTest Suite'
-        : hasGo
-        ? 'Go Test & Vet'
-        : hasNext
-        ? 'Jest / Vitest'
-        : 'Integration Tests';
-      const testCmd = hasPython ? 'pytest -v' : hasGo ? 'go test ./...' : 'npm test';
-      nodeList.push({ type: 'test', label: testLabel, subtext: testCmd });
-    }
-
-    if (hasSecurity) {
-      nodeList.push({ type: 'security', label: 'Trivy SAST Scan', subtext: 'CVE vulnerability check' });
-    }
-
-    if (hasDocker || hasK8s || hasNext || hasNode || hasGo || hasPython) {
-      const image = hasGo ? 'scratch' : hasPython ? 'python:3.12-slim' : 'node:20-alpine';
-      nodeList.push({ type: 'build', label: 'Docker Container Build', subtext: `FROM ${image}` });
-    }
-
-    if (hasK8s) {
-      nodeList.push({ type: 'deploy', label: 'Kubernetes Rollout', subtext: 'prod-us-east-1/default' });
-    } else if (hasRailway) {
-      const target = p.includes('vercel') ? 'Vercel Edge Deploy' : p.includes('fly') ? 'Fly.io Deploy' : p.includes('cloud run') ? 'GCP Cloud Run Deploy' : 'Railway Deploy';
-      nodeList.push({ type: 'deploy', label: target, subtext: 'production environment' });
-    } else {
-      nodeList.push({ type: 'deploy', label: 'Container Registry Push', subtext: 'docker.io/workspace' });
-    }
-
-    nodeList.push({ type: 'notification', label: 'Slack Webhook', subtext: '#deployments' });
-  }
-
-  const spacing = 270;
-  const nodes: Node[] = nodeList.map((n, i) => ({
-    id: `ai-${Date.now()}-${i}`,
-    type: n.type,
-    position: { x: 50 + i * spacing, y: 160 },
-    data: { label: n.label, repo: n.subtext, image: n.subtext, command: n.subtext, target: n.subtext, runState: 'idle' },
-  }));
-
-  const edges: Edge[] = nodes.slice(0, -1).map((node, i) => ({
-    id: `ai-e-${i}`,
-    source: node.id,
-    target: nodes[i + 1].id,
-    animated: true,
-    style: { stroke: 'var(--border-bright)', strokeWidth: 2 },
-  }));
-
-  return { nodes, edges };
-}
+import { useToast } from '@/components/ui/Toast';
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export function AIAutoBuilder({ onGenerate }: AIAutoBuilderProps) {
+  const [isOpen, setIsOpen] = useState(false);
   const [prompt, setPrompt] = useState('');
-  const [thinking, setThinking] = useState(false);
+  const { toast } = useToast();
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleGenerate = () => {
     if (!prompt.trim()) return;
-    setThinking(true);
-    // Realistic "AI thinking" delay before revealing nodes
-    setTimeout(() => {
-      const pipeline = generatePipelineFromPrompt(prompt);
-      onGenerate(pipeline);
-      setPrompt('');
-      setThinking(false);
-    }, 1400);
+    toast({
+      kind: 'warning',
+      title: 'AI Builder Unavailable',
+      message: 'The AI generation backend is not currently configured or reachable.',
+    });
   };
 
   const handleKey = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleGenerate();
+    }
+    if (e.key === 'Escape') {
+      setIsOpen(false);
     }
   };
 
@@ -126,24 +48,39 @@ export function AIAutoBuilder({ onGenerate }: AIAutoBuilderProps) {
     'Terraform AWS infrastructure pipeline',
   ];
 
+  if (!isOpen) {
+    return (
+      <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-20 select-none">
+        <button
+          onClick={() => {
+            setIsOpen(true);
+            setTimeout(() => inputRef.current?.focus(), 50);
+          }}
+          className="flex items-center gap-2.5 px-4 py-2 rounded-full bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] border border-[var(--border)] hover:border-[var(--border-bright)] text-xs font-semibold text-[var(--text-primary)] shadow-lg backdrop-blur-md transition-all group"
+        >
+          <Sparkles size={14} className="text-[var(--accent)] group-hover:rotate-12 transition-transform" />
+          <span>Generate Pipeline with AI</span>
+          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[var(--bg-tertiary)] text-[var(--text-muted)] border border-[var(--border)]">
+            Prompt
+          </span>
+        </button>
+      </div>
+    );
+  }
+
   return (
-    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 w-full max-w-2xl px-4 select-none">
+    <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-30 w-full max-w-2xl px-4 select-none">
       <div
-        className="rounded-2xl border backdrop-blur-xl shadow-2xl overflow-hidden"
-        style={{
-          background: 'var(--bg-overlay)',
-          borderColor: 'var(--border)',
-        }}
+        className="rounded-2xl border bg-[var(--bg-secondary)] border-[var(--border-bright)] shadow-2xl backdrop-blur-xl overflow-hidden animate-in fade-in slide-in-from-bottom-3 duration-200"
       >
         {/* Input row */}
-        <div className="flex items-center gap-3 px-4 py-3">
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-[var(--border)]">
           <div className="flex items-center gap-2 shrink-0">
-            {thinking ? (
-              <Loader2 size={15} className="animate-spin" style={{ color: 'var(--accent)' }} />
-            ) : (
-              <Sparkles size={15} style={{ color: 'var(--accent)' }} />
-            )}
-            <span className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>AI Auto Builder</span>
+            <Sparkles size={15} className="text-[var(--text-muted)]" />
+            <span className="text-xs font-bold text-[var(--text-primary)]">AI Pipeline Generator</span>
+            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[var(--warning-dim)] text-[var(--warning)] border border-[var(--warning)]">
+              Unavailable
+            </span>
           </div>
 
           <input
@@ -152,57 +89,39 @@ export function AIAutoBuilder({ onGenerate }: AIAutoBuilderProps) {
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             onKeyDown={handleKey}
-            placeholder="Describe your pipeline… e.g. 'Deploy my Go API to K8s with Trivy scan'"
-            disabled={thinking}
-            className="flex-1 bg-transparent text-xs focus:outline-none disabled:opacity-50"
-            style={{
-              color: 'var(--text-primary)',
-            }}
+            placeholder="Describe your workflow… (e.g. 'Go API to Kubernetes with SAST security scan')"
+            className="flex-1 bg-transparent text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none disabled:opacity-50"
           />
 
-          <button
-            onClick={handleGenerate}
-            disabled={!prompt.trim() || thinking}
-            className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-            style={{
-              background: 'var(--accent)',
-              color: 'var(--accent-fg)',
-            }}
-          >
-            {thinking ? 'Generating…' : <>Generate <ArrowRight size={12} /></>}
-          </button>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              onClick={handleGenerate}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:opacity-90 transition-all cursor-not-allowed"
+            >
+              Build DAG <ArrowRight size={12} />
+            </button>
+            <button
+              onClick={() => setIsOpen(false)}
+              className="px-2 py-1.5 rounded-lg text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-tertiary)] transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
         </div>
 
         {/* Example chips */}
-        {!thinking && (
-          <div className="px-4 pb-3 flex flex-wrap gap-1.5">
-            {examples.map((ex) => (
-              <button
-                key={ex}
-                onClick={() => { setPrompt(ex); inputRef.current?.focus(); }}
-                className="text-[10px] rounded-full px-2.5 py-1 transition-colors border hover:opacity-80"
-                style={{
-                  background: 'var(--bg-tertiary)',
-                  borderColor: 'var(--border)',
-                  color: 'var(--text-muted)',
-                }}
-              >
-                {ex}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {thinking && (
-          <div className="px-4 pb-3">
-            <div className="h-1 rounded-full overflow-hidden" style={{ background: 'var(--border)' }}>
-              <div
-                className="h-full rounded-full animate-pulse w-2/3"
-                style={{ background: 'var(--accent)' }}
-              />
-            </div>
-          </div>
-        )}
+        <div className="px-4 py-2.5 bg-[var(--bg-primary)] flex flex-wrap items-center gap-1.5">
+          <span className="text-[10px] uppercase font-bold tracking-wider text-[var(--text-muted)] mr-1">Suggestions:</span>
+          {examples.map((ex) => (
+            <button
+              key={ex}
+              disabled
+              className="text-[10px] rounded-md px-2 py-1 bg-[var(--bg-secondary)] border border-[var(--border)] text-[var(--text-muted)] opacity-50 cursor-not-allowed truncate max-w-xs"
+            >
+              {ex}
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   );

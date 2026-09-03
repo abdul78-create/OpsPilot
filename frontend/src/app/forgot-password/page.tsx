@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { Mail, ArrowLeft, ArrowRight, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Mail, ArrowLeft, ArrowRight, Loader2, CheckCircle2, AlertCircle, ShieldCheck } from 'lucide-react';
 import { ThemeToggle } from '../../components/ui/ThemeToggle';
 import { getApiBaseUrl } from '@/lib/apiClient';
 
@@ -25,13 +25,14 @@ export default function ForgotPasswordPage() {
       });
       let data: Record<string, unknown> = {};
       try { data = await res.json(); } catch { /* ignore */ }
+
       if (!res.ok) {
-        setError((data.message as string) || `HTTP ${res.status}: Request failed.`);
+        setError((data.message as string) || `HTTP ${res.status}: Password reset request failed.`);
         return;
       }
       setSent(true);
     } catch {
-      setError('Network error. Ensure the backend is reachable.');
+      setError('Network connection error. Ensure the NestJS backend is reachable.');
     } finally {
       setLoading(false);
     }
@@ -40,44 +41,56 @@ export default function ForgotPasswordPage() {
   return (
     <div
       className="min-h-screen flex items-center justify-center p-6 relative"
-      style={{ background: 'var(--bg-primary)', color: 'var(--text-primary)', fontFamily: 'Inter, system-ui, sans-serif' }}
+      style={{
+        background: 'var(--bg-primary)',
+        color: 'var(--text-primary)',
+        fontFamily: 'Inter, system-ui, sans-serif',
+      }}
     >
       <div className="absolute top-6 right-6">
         <ThemeToggle />
       </div>
-      <div className="w-full max-w-md space-y-6">
 
+      <div className="w-full max-w-md space-y-6">
         {/* Brand Header */}
         <div className="text-center space-y-2">
-          <Link href="/" className="inline-flex items-center gap-2 text-decoration-none">
+          <Link href="/" className="inline-flex items-center gap-3 text-decoration-none group">
             <div
-              className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm"
-              style={{ background: 'var(--accent)', color: 'var(--accent-fg)' }}
+              className="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs shadow-md transition-transform group-hover:scale-105"
+              style={{
+                background: 'linear-gradient(135deg, var(--accent), var(--info))',
+                color: '#FFFFFF',
+              }}
             >
               OP
             </div>
-            <span className="text-base font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>
-              OpsPilot
-            </span>
+            <div className="flex flex-col text-left">
+              <span className="font-extrabold text-base tracking-tight leading-none" style={{ color: 'var(--text-primary)' }}>
+                OpsPilot AI
+              </span>
+              <span className="text-[10px] font-mono tracking-wider font-semibold" style={{ color: 'var(--text-muted)' }}>
+                ACCOUNT RECOVERY
+              </span>
+            </div>
           </Link>
-          <p className="text-xs tracking-wider uppercase font-semibold" style={{ color: 'var(--text-muted)' }}>
-            Enterprise CI/CD & DevOps
-          </p>
         </div>
 
         {/* Card */}
         <div
-          className="rounded-2xl p-8 border space-y-6"
-          style={{ background: 'var(--bg-secondary)', borderColor: 'var(--border)', boxShadow: 'var(--shadow-md)' }}
+          className="rounded-2xl p-8 border space-y-6 shadow-xl backdrop-blur-md"
+          style={{
+            background: 'var(--bg-secondary)',
+            borderColor: 'var(--border)',
+          }}
         >
           {!sent ? (
             <>
-              <div className="text-center space-y-1.5">
-                <h1 className="text-xl font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>
+              <div className="text-center space-y-2">
+                <h1 className="text-2xl font-extrabold tracking-tight" style={{ color: 'var(--text-primary)' }}>
                   Reset your password
                 </h1>
-                <p className="text-xs" style={{ color: 'var(--text-muted)', lineHeight: '1.5' }}>
-                  Enter your verified account email address and we&apos;ll dispatch a secure password reset link.
+                <p className="text-xs sm:text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+                  Enter your registered account email and we will dispatch a cryptographically secure reset link.
                 </p>
               </div>
 
@@ -96,13 +109,13 @@ export default function ForgotPasswordPage() {
               )}
 
               <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
+                <div className="space-y-1.5">
                   <label
                     htmlFor="forgot-email"
-                    className="block text-[11px] uppercase tracking-wider font-semibold mb-1.5"
-                    style={{ color: 'var(--text-muted)' }}
+                    className="block text-[11px] uppercase tracking-wider font-semibold"
+                    style={{ color: 'var(--text-secondary)' }}
                   >
-                    Email Address
+                    Account Email Address
                   </label>
                   <div className="relative">
                     <Mail
@@ -114,12 +127,12 @@ export default function ForgotPasswordPage() {
                       id="forgot-email"
                       type="email"
                       value={email}
-                      onChange={e => setEmail(e.target.value)}
+                      onChange={(e) => setEmail(e.target.value)}
                       placeholder="engineer@company.com"
                       required
-                      className="w-full pl-9 pr-3.5 py-2.5 rounded-xl border text-xs transition-colors focus:outline-none"
+                      className="w-full pl-9 pr-4 py-2.5 rounded-xl border text-xs transition-colors focus:outline-none focus:border-[var(--accent)]"
                       style={{
-                        background: 'var(--bg-tertiary)',
+                        background: 'var(--bg-primary)',
                         borderColor: 'var(--border)',
                         color: 'var(--text-primary)',
                       }}
@@ -131,53 +144,59 @@ export default function ForgotPasswordPage() {
                   id="forgot-submit"
                   type="submit"
                   disabled={loading}
-                  className="w-full py-2.5 px-4 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-opacity disabled:opacity-50"
+                  className="w-full py-3 px-4 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-sm hover:opacity-90 active:scale-95 disabled:opacity-50"
                   style={{ background: 'var(--accent)', color: 'var(--accent-fg)' }}
                 >
                   {loading ? (
-                    <Loader2 size={14} className="animate-spin" />
+                    <Loader2 size={15} className="animate-spin" />
                   ) : (
                     <>
-                      <span>Send Reset Link</span>
+                      <span>Send Recovery Link</span>
                       <ArrowRight size={14} />
                     </>
                   )}
                 </button>
               </form>
 
-              <div className="text-center pt-2 border-t" style={{ borderColor: 'var(--border)' }}>
+              <div className="text-center pt-3 border-t" style={{ borderColor: 'var(--border)' }}>
                 <Link
                   href="/login"
-                  className="inline-flex items-center gap-1.5 text-xs font-medium transition-colors"
-                  style={{ color: 'var(--text-muted)' }}
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold hover:text-[var(--accent)] transition-colors"
+                  style={{ color: 'var(--text-secondary)' }}
                 >
                   <ArrowLeft size={13} />
-                  <span>Back to login</span>
+                  <span>Back to sign in</span>
                 </Link>
               </div>
             </>
           ) : (
-            <div className="text-center space-y-4">
+            <div className="text-center space-y-5">
               <div
-                className="w-14 h-14 rounded-full flex items-center justify-center mx-auto border"
-                style={{ background: 'var(--success-dim)', borderColor: 'var(--success)', color: 'var(--success)' }}
+                className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto border shadow-sm"
+                style={{
+                  background: 'var(--success-dim)',
+                  borderColor: 'var(--success)',
+                  color: 'var(--success)',
+                }}
               >
-                <CheckCircle2 size={28} />
+                <CheckCircle2 size={32} />
               </div>
-              <div className="space-y-1.5">
-                <h2 className="text-lg font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>
+
+              <div className="space-y-2">
+                <h2 className="text-2xl font-extrabold tracking-tight" style={{ color: 'var(--text-primary)' }}>
                   Check your inbox
                 </h2>
-                <p className="text-xs" style={{ color: 'var(--text-muted)', lineHeight: '1.6' }}>
-                  If <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>{email}</span> is registered, you&apos;ll receive a password reset link shortly.
+                <p className="text-xs sm:text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+                  If <span className="font-bold text-[var(--text-primary)]">{email}</span> is registered with OpsPilot, a secure password reset token has been dispatched.
                 </p>
               </div>
 
               <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
-                Didn&apos;t receive the email? Check your spam folder or{' '}
+                Didn&apos;t receive the email? Check your spam filter or{' '}
                 <button
+                  type="button"
                   onClick={() => { setSent(false); setEmail(''); }}
-                  className="underline font-semibold cursor-pointer"
+                  className="underline font-bold hover:text-[var(--accent)] cursor-pointer"
                   style={{ color: 'var(--text-primary)', background: 'transparent', border: 'none', padding: 0 }}
                 >
                   try again
@@ -187,11 +206,11 @@ export default function ForgotPasswordPage() {
               <div className="pt-4 border-t" style={{ borderColor: 'var(--border)' }}>
                 <Link
                   href="/login"
-                  className="inline-flex items-center gap-1.5 text-xs font-semibold transition-colors"
+                  className="inline-flex items-center gap-1.5 text-xs font-bold transition-colors hover:text-[var(--accent)]"
                   style={{ color: 'var(--text-primary)' }}
                 >
                   <ArrowLeft size={13} />
-                  <span>Back to sign in</span>
+                  <span>Return to sign in</span>
                 </Link>
               </div>
             </div>
@@ -199,13 +218,12 @@ export default function ForgotPasswordPage() {
         </div>
 
         {/* Footer */}
-        <div className="text-center text-[11px]" style={{ color: 'var(--text-muted)' }}>
+        <div className="text-center text-xs" style={{ color: 'var(--text-muted)' }}>
           Need assistance?{' '}
-          <Link href="/docs" className="underline font-medium" style={{ color: 'var(--text-secondary)' }}>
-            Visit Documentation
+          <Link href="/docs" className="font-semibold underline hover:text-[var(--text-primary)]" style={{ color: 'var(--text-secondary)' }}>
+            Visit Platform Documentation
           </Link>
         </div>
-
       </div>
     </div>
   );

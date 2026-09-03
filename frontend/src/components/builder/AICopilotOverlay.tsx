@@ -39,29 +39,26 @@ export function AICopilotOverlay({ onAutoAddStep }: AICopilotOverlayProps) {
             <span
               className="text-[10px] font-mono px-1.5 py-0.5 rounded border"
               style={{
-                background: 'var(--bg-primary)',
-                borderColor: 'var(--border)',
-                color: 'var(--text-muted)',
+                background: 'var(--warning-dim)',
+                borderColor: 'var(--warning)',
+                color: 'var(--warning)',
               }}
             >
-              Confidence: 96%
+              Unavailable
             </span>
           </div>
           <p className="text-[11px] truncate mt-0.5" style={{ color: 'var(--text-secondary)' }}>
-            Deployment step detected without prior SAST security scan. Insert Trivy vulnerability check?
+            Real-time DAG analysis is currently offline. Missing backend AI service.
           </p>
         </div>
       </div>
 
       <div className="flex items-center gap-2 shrink-0">
         <Button
-          variant="primary"
+          variant="secondary"
           size="sm"
-          onClick={() => {
-            onAutoAddStep?.('security', 'Trivy SAST Scan');
-            setDismissed(true);
-          }}
-          className="gap-1 text-[11px]"
+          disabled
+          className="gap-1 text-[11px] cursor-not-allowed opacity-50"
         >
           <Plus size={12} />
           <span>Auto-Insert</span>

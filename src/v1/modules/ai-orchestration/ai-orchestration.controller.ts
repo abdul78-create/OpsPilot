@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Param, Query, UseGuards, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Param, Query, Body, UseGuards, HttpStatus } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
@@ -25,6 +25,19 @@ import {
 export class AiOrchestrationController {
   constructor(private readonly aiService: AiOrchestrationService) {}
 
+  @Get('ai/status')
+  @Permissions(OrganizationPermissions.READ)
+  @ApiOperation({
+    summary: 'Retrieve AI Provider status, model information, and active capabilities',
+  })
+  async getAiStatus() {
+    const status = await this.aiService.getAiStatus();
+    return {
+      message: 'AI status retrieved',
+      data: status,
+    };
+  }
+
   @Post('ai/analyze-run/:runId')
   @Permissions(PipelinePermissions.READ)
   @ApiOperation({ summary: 'Trigger AI Root Cause Analysis (RCA) on a failed Pipeline Run' })
@@ -48,6 +61,64 @@ export class AiOrchestrationController {
     return {
       message: 'AI Deployment Risk Evaluation completed',
       data: report,
+    };
+  }
+
+  @Post('ai/optimize-pipeline/:pipelineId')
+  @Permissions(PipelinePermissions.READ)
+  @ApiOperation({ summary: 'Calculate AI Pipeline Optimization recommendations' })
+  @ApiParam({ name: 'pipelineId', description: 'Pipeline UUID' })
+  @ApiResponse({ status: HttpStatus.CREATED, type: AiReportResponseDto })
+  async optimizePipeline(@Param('pipelineId') pipelineId: string) {
+    const report = await this.aiService.optimizePipeline(pipelineId);
+    return {
+      message: 'AI Pipeline Optimization completed',
+      data: report,
+    };
+  }
+
+  @Post('ai/audit-security/:targetId')
+  @Permissions(PipelinePermissions.READ)
+  @ApiOperation({ summary: 'Perform AI Security Audit on pipeline or run' })
+  @ApiParam({ name: 'targetId', description: 'Pipeline or Run UUID' })
+  @ApiResponse({ status: HttpStatus.CREATED, type: AiReportResponseDto })
+  async auditSecurity(@Param('targetId') targetId: string) {
+    const report = await this.aiService.auditSecurity(targetId);
+    return {
+      message: 'AI Security Audit completed',
+      data: report,
+    };
+  }
+
+  @Post('ai/query')
+  @Permissions(OrganizationPermissions.READ)
+  @ApiOperation({ summary: 'Context-aware AI assistance query' })
+  async queryAi(
+    @Body()
+    body: {
+      workspace: string;
+      projectId?: string;
+      pipelineId?: string;
+      runId?: string;
+      deploymentId?: string;
+      question: string;
+    },
+  ) {
+    const response = await this.aiService.queryAi(body);
+    return {
+      message: 'AI response generated',
+      data: response,
+    };
+  }
+
+  @Post('ai/generate-pipeline')
+  @Permissions(PipelinePermissions.TRIGGER)
+  @ApiOperation({ summary: 'Generate structured pipeline DAG from prompt' })
+  async generatePipeline(@Body() body: { prompt: string }) {
+    const result = await this.aiService.generatePipeline(body.prompt);
+    return {
+      message: 'Pipeline specification generated successfully',
+      data: result,
     };
   }
 

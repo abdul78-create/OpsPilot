@@ -29,7 +29,15 @@ function getSystemTheme(): ResolvedTheme {
 }
 
 function applyTheme(resolved: ResolvedTheme) {
+  if (typeof document === 'undefined') return;
   document.documentElement.setAttribute('data-theme', resolved);
+  if (resolved === 'dark') {
+    document.documentElement.classList.add('dark');
+    document.documentElement.classList.remove('light');
+  } else {
+    document.documentElement.classList.remove('dark');
+    document.documentElement.classList.add('light');
+  }
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
@@ -43,6 +51,19 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     setThemeState(stored);
     setResolvedTheme(resolved);
     applyTheme(resolved);
+
+    // Multi-tab synchronization
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === STORAGE_KEY && e.newValue) {
+        const newTheme = e.newValue as Theme;
+        const res = newTheme === 'system' ? getSystemTheme() : (newTheme as ResolvedTheme);
+        setThemeState(newTheme);
+        setResolvedTheme(res);
+        applyTheme(res);
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
   }, []);
 
   // Listen for system preference changes (only relevant when theme === 'system')
@@ -65,6 +86,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const resolved = t === 'system' ? getSystemTheme() : t;
     setResolvedTheme(resolved);
     applyTheme(resolved);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('opspilot_theme_change', { detail: t }));
+    }
   }, []);
 
   return (

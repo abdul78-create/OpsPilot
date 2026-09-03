@@ -22,20 +22,20 @@ export class WorkflowCompilerService {
     let stagesYaml = `stages:
   - name: lint
     commands:
-      - npm run lint || echo "No lint script configured"
+      - npm run lint
   - name: test
     commands:
-      - npm test || echo "No test script configured"
+      - npm test
   - name: build
     commands:
-      - npm run build || echo "No build script configured"`;
+      - npm run build`;
 
     if (stackLanguage === 'python') {
       stagesYaml = `stages:
   - name: test
     commands:
-      - pip install -r requirements.txt || true
-      - pytest || echo "No pytest suite configured"`;
+      - pip install -r requirements.txt
+      - pytest`;
     } else if (stackLanguage === 'go') {
       stagesYaml = `stages:
   - name: test

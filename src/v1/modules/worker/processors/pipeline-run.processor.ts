@@ -87,7 +87,10 @@ export class PipelineRunProcessor extends WorkerHost implements OnApplicationBoo
 
     const run = await this.prisma.pipelineRun.findFirst({
       where: { id: pipelineRunId, deletedAt: null },
-      include: { jobs: { orderBy: { createdAt: 'asc' } } },
+      include: {
+        jobs: { orderBy: { createdAt: 'asc' } },
+        pipelineVersion: true,
+      },
     });
 
     if (!run) {
@@ -126,9 +129,17 @@ export class PipelineRunProcessor extends WorkerHost implements OnApplicationBoo
       const stages = [...new Set(run.jobs.map((j) => j.stage))];
 
       for (const stage of stages) {
-        const stageJobs = run.jobs.filter((j) => j.stage === stage);
+        const stageJobs = run.jobs.filter(
+          (j) => j.stage === stage && j.status !== JobStatus.SUCCESS,
+        );
+        if (stageJobs.length === 0) continue;
+
         const results = await Promise.all(
-          stageJobs.map((j) => this.jobExecutor.executeJob(j, repoUrl)),
+          stageJobs.map((j) =>
+            run.pipelineVersion?.yamlConfig
+              ? this.jobExecutor.executeJob(j, repoUrl, run.pipelineVersion.yamlConfig)
+              : this.jobExecutor.executeJob(j, repoUrl),
+          ),
         );
 
         const anyFailed = results.some((j) => j.status === JobStatus.FAILED);
@@ -180,6 +191,15 @@ export class PipelineRunProcessor extends WorkerHost implements OnApplicationBoo
       const durationSeconds = Math.round((finishedAt.getTime() - startedAt.getTime()) / 1000);
 
       this.logger.error(`Pipeline run '${pipelineRunId}' failed: ${(err as Error).message}`);
+
+      // Mark remaining unstarted jobs in downstream stages as SKIPPED
+      await this.prisma.pipelineJob.updateMany({
+        where: {
+          pipelineRunId,
+          status: JobStatus.QUEUED,
+        },
+        data: { status: JobStatus.SKIPPED },
+      });
 
       await this.prisma.pipelineRun.update({
         where: { id: pipelineRunId },

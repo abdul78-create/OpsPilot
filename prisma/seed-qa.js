@@ -1,20 +1,18 @@
 const { PrismaClient } = require('@prisma/client');
 const argon2 = require('argon2');
 
-const prisma = new PrismaClient();
+async function provisionQaAccount(options = {}) {
+  const prisma = options.prismaClient || new PrismaClient();
+  const plainPassword = options.password || process.env.QA_PASSWORD;
 
-async function main() {
-  console.log('═══════════════════════════════════════════════════════');
-  console.log('OPSPILOT PRODUCTION QA SEEDING');
-  console.log('═══════════════════════════════════════════════════════');
+  if (!plainPassword) {
+    throw new Error('QA_PASSWORD is required to provision the QA account. Usage: QA_PASSWORD="<password>" npm run seed:qa');
+  }
 
-  const email = process.env.QA_EMAIL || 'qa@opspilot.dev';
-  const plainPassword = process.env.QA_PASSWORD || process.env.SEED_PASSWORD || 'OpsPilotQA@2026!';
-  const name = process.env.QA_NAME || 'OpsPilot QA';
-  const orgName = process.env.QA_ORG_NAME || 'OpsPilot QA Workspace';
-  const orgSlug = process.env.QA_ORG_SLUG || 'opspilot-qa-workspace';
-
-  console.log(`▸ Seeding dedicated QA account: ${email}`);
+  const email = options.email || process.env.QA_EMAIL || 'qa@opspilot.dev';
+  const name = options.name || process.env.QA_NAME || 'OpsPilot QA';
+  const orgName = options.orgName || process.env.QA_ORG_NAME || 'OpsPilot QA Workspace';
+  const orgSlug = options.orgSlug || process.env.QA_ORG_SLUG || 'opspilot-qa-workspace';
 
   // 1. Hash password with argon2id matching application HashService parameters
   const passwordHash = await argon2.hash(plainPassword, {
@@ -24,7 +22,7 @@ async function main() {
     parallelism: 4,
   });
 
-  // 2. Upsert/Find QA User
+  // 2. Upsert QA User (Idempotent)
   let user = await prisma.user.findFirst({
     where: { email, deletedAt: null },
   });
@@ -40,7 +38,6 @@ async function main() {
         isVerified: true,
       },
     });
-    console.log(`✓ Created new QA User: ${user.id} (${user.email})`);
   } else {
     user = await prisma.user.update({
       where: { id: user.id },
@@ -50,10 +47,9 @@ async function main() {
         name,
       },
     });
-    console.log(`✓ Verified and updated existing QA User: ${user.id} (${user.email})`);
   }
 
-  // 3. Upsert QA Organization
+  // 3. Upsert QA Organization (Idempotent)
   let org = await prisma.organization.findUnique({
     where: { slug: orgSlug },
   });
@@ -67,7 +63,6 @@ async function main() {
         status: 'ACTIVE',
       },
     });
-    console.log(`✓ Created QA Organization: ${org.id} (${org.name})`);
   } else {
     org = await prisma.organization.update({
       where: { id: org.id },
@@ -76,10 +71,9 @@ async function main() {
         status: 'ACTIVE',
       },
     });
-    console.log(`✓ Verified QA Organization: ${org.id} (${org.name})`);
   }
 
-  // 4. Ensure OWNER membership
+  // 4. Ensure OWNER membership (Idempotent)
   let member = await prisma.member.findFirst({
     where: {
       userId: user.id,
@@ -96,7 +90,6 @@ async function main() {
         status: 'ACTIVE',
       },
     });
-    console.log(`✓ Linked User as OWNER of Organization: Member ID ${member.id}`);
   } else {
     member = await prisma.member.update({
       where: { id: member.id },
@@ -105,29 +98,39 @@ async function main() {
         status: 'ACTIVE',
       },
     });
-    console.log(`✓ Verified User OWNER role in Organization: Member ID ${member.id}`);
   }
 
-  console.log('═══════════════════════════════════════════════════════');
-  console.log('QA PROVISIONING SUMMARY');
-  console.log('═══════════════════════════════════════════════════════');
-  console.log(`User ID:              ${user.id}`);
-  console.log(`Email:                ${user.email}`);
-  console.log(`Name:                 ${user.name}`);
-  console.log(`Email Verified:       ${user.isVerified}`);
-  console.log(`Organization ID:      ${org.id}`);
-  console.log(`Organization Name:    ${org.name}`);
-  console.log(`Organization Slug:    ${org.slug}`);
-  console.log(`Organization Role:    ${member.role}`);
-  console.log(`Member Status:        ${member.status}`);
-  console.log('═══════════════════════════════════════════════════════');
+  return { user, org, member };
 }
 
-main()
-  .catch((e) => {
-    console.error('Error during QA seeding:', e);
+async function main() {
+  const prisma = new PrismaClient();
+  try {
+    console.log('═══════════════════════════════════════════════════════');
+    console.log('OPSPILOT MANUAL QA ACCOUNT PROVISIONING');
+    console.log('═══════════════════════════════════════════════════════');
+
+    const result = await provisionQaAccount({ prismaClient: prisma });
+
+    console.log('QA PROVISIONING COMPLETED SUCCESSFULLY');
+    console.log(`User Email:           ${result.user.email}`);
+    console.log(`Email Verified:       ${result.user.isVerified}`);
+    console.log(`Organization Name:    ${result.org.name}`);
+    console.log(`Organization Slug:    ${result.org.slug}`);
+    console.log(`Membership Role:      ${result.member.role}`);
+    console.log(`Membership Status:    ${result.member.status}`);
+    console.log('Operational Entities: 0 Projects, 0 Repositories, 0 Pipelines, 0 Runs');
+    console.log('═══════════════════════════════════════════════════════');
+  } catch (err) {
+    console.error('❌ Error during QA account provisioning:', err.message);
     process.exit(1);
-  })
-  .finally(async () => {
+  } finally {
     await prisma.$disconnect();
-  });
+  }
+}
+
+if (require.main === module) {
+  main();
+}
+
+module.exports = { provisionQaAccount };

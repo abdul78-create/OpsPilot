@@ -132,9 +132,18 @@ export class DeploymentRunnerService {
       }
       fs.mkdirSync(deployDir, { recursive: true });
 
-      execSync(
-        `tar -xzf "${artifact.storageLocation}" -C "${deployDir}" 2>/dev/null || unzip -q "${artifact.storageLocation}" -d "${deployDir}" 2>/dev/null || cp "${artifact.storageLocation}" "${deployDir}/"`,
-      );
+      try {
+        execSync(`tar -xzf "${artifact.storageLocation}" -C "${deployDir}"`, { stdio: 'pipe' });
+      } catch {
+        try {
+          execSync(`unzip -q "${artifact.storageLocation}" -d "${deployDir}"`, { stdio: 'pipe' });
+        } catch {
+          fs.copyFileSync(
+            artifact.storageLocation,
+            path.join(deployDir, path.basename(artifact.storageLocation)),
+          );
+        }
+      }
 
       await this.log(
         runId,
@@ -162,15 +171,21 @@ server.listen(8080, '0.0.0.0', () => {
 `;
       fs.writeFileSync(path.join(deployDir, 'server.js'), serverScript);
 
-      // Stop any previous container instance
+      // Stop any previous container instance cleanly
       try {
-        execSync('docker rm -f opspilot_app_target 2>/dev/null || true');
+        execSync('docker rm -f opspilot_app_target', { stdio: 'pipe' });
       } catch (e) {}
 
       // Launch live target application Docker container
       const containerName = 'opspilot_app_target';
-      const inlineScript = serverScript.replace(/\n/g, ' ').replace(/"/g, '\\"');
-      const containerCmd = `docker run -d --name ${containerName} --network opspilot_network -p 8080:8080 node:20 node -e "${inlineScript}"`;
+      const inlineScript = serverScript.replace(/\r?\n/g, ' ').replace(/"/g, '\\"');
+      let containerCmd = `docker run -d --name ${containerName} -p 8080:8080 node:20 node -e "${inlineScript}"`;
+      try {
+        const netCheck = execSync('docker network ls --format "{{.Name}}"').toString();
+        if (netCheck.includes('opspilot_network')) {
+          containerCmd = `docker run -d --name ${containerName} --network opspilot_network -p 8080:8080 node:20 node -e "${inlineScript}"`;
+        }
+      } catch {}
 
       let containerId = 'local_proc';
       try {
@@ -192,15 +207,17 @@ server.listen(8080, '0.0.0.0', () => {
       await this.log(
         runId,
         LogLevel.INFO,
-        `▸ Performing HTTP Health Verification against GET http://opspilot_app_target:8080/health...`,
+        `▸ Performing HTTP Health Verification against target container on port 8080...`,
       );
 
       let healthResponseText = '';
       let healthStatusCode = 0;
 
-      for (let attempt = 1; attempt <= 6; attempt++) {
+      for (let attempt = 1; attempt <= 10; attempt++) {
         try {
-          const res = await this.httpGet('http://opspilot_app_target:8080/health');
+          const res = await this.httpGet('http://localhost:8080/health').catch(() =>
+            this.httpGet('http://opspilot_app_target:8080/health'),
+          );
           healthStatusCode = res.statusCode;
           healthResponseText = res.body;
           if (healthStatusCode === 200) break;
@@ -215,11 +232,7 @@ server.listen(8080, '0.0.0.0', () => {
         );
       }
 
-      await this.log(
-        runId,
-        LogLevel.INFO,
-        `✓ HTTP GET http://opspilot_app_target:8080/health → Status 200 OK`,
-      );
+      await this.log(runId, LogLevel.INFO, `✓ HTTP GET /health → Status 200 OK`);
       await this.log(runId, LogLevel.INFO, `  Response: ${healthResponseText}`);
 
       const healthStatus = `200 OK · Container: ${containerId} · Version: ${targetVersion}`;

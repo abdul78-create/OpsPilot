@@ -120,6 +120,36 @@ export class DeploymentsService {
     return result;
   }
 
+  async listAll(organizationId?: string): Promise<any[]> {
+    const where: any = { deletedAt: null };
+    if (organizationId) {
+      where.environment = {
+        project: {
+          organizationId,
+          deletedAt: null,
+        },
+      };
+    }
+    const list = await this.prisma.deployment.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        environment: true,
+        pipelineRun: true,
+      },
+    });
+    return list.map((d) => ({
+      id: d.id,
+      environment: d.environment?.name || 'Staging',
+      status: d.status,
+      version: d.releaseVersion,
+      imageTag: d.releaseVersion,
+      deployedAt: d.startedAt ? d.startedAt.toISOString() : d.createdAt.toISOString(),
+      health: d.status === 'SUCCESS' ? 'HEALTHY' : d.status === 'FAILED' ? 'UNHEALTHY' : 'PENDING',
+      url: d.status === 'SUCCESS' ? 'http://localhost:8080' : undefined,
+    }));
+  }
+
   async findAll(environmentId: string): Promise<Deployment[]> {
     const environment = await this.prisma.environment.findFirst({
       where: { id: environmentId, deletedAt: null },

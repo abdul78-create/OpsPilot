@@ -180,5 +180,76 @@ describe('Worker Module', () => {
         expect.objectContaining({ eventName: 'pipeline.job_completed.v1' }),
       );
     });
+
+    it('should dynamically extract commands and image from YAML and pass to dockerRunner', async () => {
+      mockPrisma.pipelineJob.update
+        .mockResolvedValueOnce({ ...mockJob, status: JobStatus.RUNNING })
+        .mockResolvedValueOnce({ ...mockJob, status: JobStatus.SUCCESS });
+
+      const yamlConfig = `
+version: "1"
+name: "Custom Pipeline"
+jobs:
+  build:
+    image: "golang:1.22-alpine"
+    commands:
+      - echo "Starting Go compilation"
+      - go build -v ./...
+`;
+
+      await jobExecutor.executeJob(
+        mockJob as never,
+        'https://github.com/acme-corp/go-service.git',
+        yamlConfig,
+      );
+
+      expect(mockDockerRunner.runStep).toHaveBeenCalledWith(
+        expect.objectContaining({
+          image: 'golang:1.22-alpine',
+          command: 'echo "Starting Go compilation" && go build -v ./...',
+        }),
+      );
+    });
+
+    it('should fail job and publish pipeline.job_failed.v1 when command exits non-zero', async () => {
+      mockPrisma.pipelineJob.update
+        .mockResolvedValueOnce({ ...mockJob, status: JobStatus.RUNNING })
+        .mockResolvedValueOnce({ ...mockJob, status: JobStatus.FAILED });
+
+      mockDockerRunner.runStep.mockResolvedValueOnce({ exitCode: 42 });
+
+      const failingYaml = `
+version: "1"
+jobs:
+  build:
+    commands:
+      - echo "Fatal Error"
+      - exit 42
+`;
+
+      await expect(
+        jobExecutor.executeJob(
+          mockJob as never,
+          'https://github.com/acme-corp/backend-api.git',
+          failingYaml,
+        ),
+      ).rejects.toThrow('exited with code 42');
+
+      expect(mockPrisma.pipelineJob.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: mockJob.id },
+          data: expect.objectContaining({ status: JobStatus.FAILED }),
+        }),
+      );
+      expect(mockEventBus.publish).toHaveBeenCalledWith(
+        expect.objectContaining({
+          eventName: 'pipeline.job_failed.v1',
+          payload: expect.objectContaining({
+            status: JobStatus.FAILED,
+            error: expect.stringContaining('exited with code 42'),
+          }),
+        }),
+      );
+    });
   });
 });

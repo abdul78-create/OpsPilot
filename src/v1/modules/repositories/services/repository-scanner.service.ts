@@ -89,7 +89,7 @@ export class RepositoryScannerService {
       const frontendBuild = 'cd frontend && npm ci --include=dev && npm run build';
 
       buildCommand = `(${backendBuild}) && (${frontendBuild})`;
-      testCommand = `(cd backend && npm test -- --ci || true) && (cd frontend && npm test -- --ci || true)`;
+      testCommand = `(cd backend && npm test -- --ci) && (cd frontend && npm test -- --ci)`;
     } else if (hasPackageJson) {
       language = 'node';
       try {

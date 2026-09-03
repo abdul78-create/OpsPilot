@@ -59,25 +59,12 @@ const XTermPanel = dynamic(
 const STEP_DURATIONS = [1200, 2800, 1600, 3400, 2200, 800];
 const STEP_ELAPSED   = ['1.2s', '38.4s', '12.1s', '2m 18s', '14.8s', '—'];
 
-// ─── Default pipeline ─────────────────────────────────────────────────────────
+// ─── Starter Pipeline Canvas ─────────────────────────────────────────────
 const initialNodes: Node[] = [
-  { id: '1', type: 'source',       position: { x: 50,   y: 160 }, data: { label: 'Git Source',            repo: 'production/app-backend:main', runState: 'idle' } },
-
-  { id: '2', type: 'build',        position: { x: 310,  y: 160 }, data: { label: 'Docker Build',          image: 'node:20-alpine',            runState: 'idle' } },
-  { id: '3', type: 'security',     position: { x: 570,  y: 80  }, data: { label: 'Trivy SAST',                                               runState: 'idle' } },
-  { id: '4', type: 'test',         position: { x: 570,  y: 240 }, data: { label: 'Jest Tests',            command: 'npm test',                runState: 'idle' } },
-  { id: '5', type: 'deploy',       position: { x: 830,  y: 160 }, data: { label: 'K8s Rollout',           target: 'prod-us-east-1',           runState: 'idle' } },
-  { id: '6', type: 'notification', position: { x: 1090, y: 160 }, data: { label: 'Slack Notify',                                             runState: 'idle' } },
+  { id: '1', type: 'source', position: { x: 50, y: 160 }, data: { label: 'Git Source Trigger', runState: 'idle' } },
 ];
 
-const initialEdges: Edge[] = [
-  { id: 'e1-2', source: '1', target: '2', animated: true, style: { stroke: '#475569', strokeWidth: 2 } },
-  { id: 'e2-3', source: '2', target: '3', animated: true, style: { stroke: '#475569', strokeWidth: 2 } },
-  { id: 'e2-4', source: '2', target: '4', animated: true, style: { stroke: '#475569', strokeWidth: 2 } },
-  { id: 'e3-5', source: '3', target: '5', animated: true, style: { stroke: '#475569', strokeWidth: 2 } },
-  { id: 'e4-5', source: '4', target: '5', animated: true, style: { stroke: '#475569', strokeWidth: 2 } },
-  { id: 'e5-6', source: '5', target: '6', animated: true, style: { stroke: '#475569', strokeWidth: 2 } },
-];
+const initialEdges: Edge[] = [];
 
 const TERMINAL_LINES = [
   '$ opspilot --version',

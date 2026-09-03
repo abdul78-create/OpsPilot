@@ -25,4 +25,20 @@ export class SecretsRepository extends BaseRepository<
       orderBy: { key: 'asc' },
     });
   }
+
+  async findByOrganization(organizationId: string): Promise<Secret[]> {
+    return this.prismaService.secret.findMany({
+      where: {
+        environment: {
+          project: {
+            organizationId,
+            deletedAt: null,
+          },
+          deletedAt: null,
+        },
+        deletedAt: null,
+      },
+      orderBy: { key: 'asc' },
+    });
+  }
 }
