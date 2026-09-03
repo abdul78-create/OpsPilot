@@ -27,15 +27,20 @@ import {
 import { Public } from '../../../core/security/decorators/public.decorator';
 import { CurrentUser } from '../../../core/security/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../../../core/security/guards/jwt-auth.guard';
+import { ConfigService } from '@nestjs/config';
 import { GoogleAuthGuard } from './guards/google-auth.guard';
 import { GitHubAuthGuard } from './guards/github-auth.guard';
 import { JwtPayload } from '../../../core/security/token.service';
+import { getFrontendRedirectUrl } from './utils/auth-url.util';
 
 @ApiTags('Authentication')
 @Controller('auth')
 @UseGuards(JwtAuthGuard)
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly configService: ConfigService,
+  ) {}
 
   @Public()
   @Post('register')
@@ -99,6 +104,31 @@ export class AuthController {
     return this.authService.refreshTokens(dto);
   }
 
+  @Public()
+  @Get('providers')
+  @ApiOperation({ summary: 'Retrieve status of configured OAuth providers' })
+  getProviders(): { google: boolean; github: boolean } {
+    const googleId = this.configService.get<string>('GOOGLE_CLIENT_ID');
+    const googleSecret = this.configService.get<string>('GOOGLE_CLIENT_SECRET');
+    const githubId = this.configService.get<string>('GITHUB_CLIENT_ID');
+    const githubSecret = this.configService.get<string>('GITHUB_CLIENT_SECRET');
+
+    return {
+      google: Boolean(
+        googleId &&
+        googleSecret &&
+        !googleId.includes('UNCONFIGURED') &&
+        !googleId.includes('placeholder'),
+      ),
+      github: Boolean(
+        githubId &&
+        githubSecret &&
+        !githubId.includes('UNCONFIGURED') &&
+        !githubId.includes('placeholder'),
+      ),
+    };
+  }
+
   // ─────────────────────────────────────────────
   // GOOGLE OAUTH ENDPOINTS
   // ─────────────────────────────────────────────
@@ -107,7 +137,7 @@ export class AuthController {
   @UseGuards(GoogleAuthGuard)
   @ApiOperation({ summary: 'Initiate Google OAuth2 authentication flow' })
   async googleAuth(): Promise<void> {
-    // Handled automatically by Passport Google strategy redirect
+    // Handled automatically by Passport Google strategy redirect or GoogleAuthGuard
   }
 
   @Public()
@@ -116,7 +146,7 @@ export class AuthController {
   @ApiOperation({ summary: 'Google OAuth2 callback endpoint' })
   async googleAuthCallback(@Req() req: any, @Res() res: Response): Promise<void> {
     const authResult = await this.authService.validateOAuthUser(req.user);
-    const frontendUrl = process.env.FRONTEND_URL ?? 'https://opspilot-frontend-zuxp.onrender.com';
+    const frontendUrl = getFrontendRedirectUrl(req, this.configService);
     const redirectUrl = `${frontendUrl}/login?token=${encodeURIComponent(
       authResult.tokens.accessToken,
     )}&user=${encodeURIComponent(JSON.stringify(authResult.user))}`;
@@ -131,7 +161,7 @@ export class AuthController {
   @UseGuards(GitHubAuthGuard)
   @ApiOperation({ summary: 'Initiate GitHub OAuth2 authentication flow' })
   async githubAuth(): Promise<void> {
-    // Handled automatically by Passport GitHub strategy redirect
+    // Handled automatically by Passport GitHub strategy redirect or GitHubAuthGuard
   }
 
   @Public()
@@ -140,7 +170,7 @@ export class AuthController {
   @ApiOperation({ summary: 'GitHub OAuth2 callback endpoint' })
   async githubAuthCallback(@Req() req: any, @Res() res: Response): Promise<void> {
     const authResult = await this.authService.validateOAuthUser(req.user);
-    const frontendUrl = process.env.FRONTEND_URL ?? 'https://opspilot-frontend-zuxp.onrender.com';
+    const frontendUrl = getFrontendRedirectUrl(req, this.configService);
     const redirectUrl = `${frontendUrl}/login?token=${encodeURIComponent(
       authResult.tokens.accessToken,
     )}&user=${encodeURIComponent(JSON.stringify(authResult.user))}`;

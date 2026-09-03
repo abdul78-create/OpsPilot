@@ -3,9 +3,22 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
-  Eye, EyeOff, Mail, Lock, ArrowRight, Loader2,
-  AlertCircle, CheckCircle2, Terminal, Shield, Sparkles,
-  Layers, GitBranch, Server, Activity, Box,
+  Eye,
+  EyeOff,
+  Mail,
+  Lock,
+  ArrowRight,
+  Loader2,
+  AlertCircle,
+  CheckCircle2,
+  Terminal,
+  Shield,
+  Sparkles,
+  Layers,
+  GitBranch,
+  Server,
+  Activity,
+  Box,
 } from 'lucide-react';
 import { ThemeToggle } from '../../components/ui/ThemeToggle';
 import { getApiBaseUrl, getOAuthBaseUrl } from '@/lib/apiClient';
@@ -13,7 +26,11 @@ import { getApiBaseUrl, getOAuthBaseUrl } from '@/lib/apiClient';
 function GithubIcon({ size = 16 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
-      <path fillRule="evenodd" clipRule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" />
+      <path
+        fillRule="evenodd"
+        clipRule="evenodd"
+        d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"
+      />
     </svg>
   );
 }
@@ -21,10 +38,22 @@ function GithubIcon({ size = 16 }: { size?: number }) {
 function GoogleIcon({ size = 16 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24">
-      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
-      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+      <path
+        fill="#4285F4"
+        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+      />
+      <path
+        fill="#34A853"
+        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+      />
+      <path
+        fill="#FBBC05"
+        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+      />
+      <path
+        fill="#EA4335"
+        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+      />
     </svg>
   );
 }
@@ -32,8 +61,16 @@ function GoogleIcon({ size = 16 }: { size?: number }) {
 const CONTROL_PILLARS = [
   { icon: Layers, label: 'Visual DAG Pipelines', desc: 'Drag-and-drop multi-stage orchestration' },
   { icon: Server, label: 'Ephemeral Docker Runners', desc: 'Hermetic container isolation per run' },
-  { icon: Terminal, label: 'Sub-Second SSE Logs', desc: 'Real-time stdout streaming without refresh' },
-  { icon: Sparkles, label: 'AI Root Cause Analysis', desc: 'Actionable compiler fix diffs & commands' },
+  {
+    icon: Terminal,
+    label: 'Sub-Second SSE Logs',
+    desc: 'Real-time stdout streaming without refresh',
+  },
+  {
+    icon: Sparkles,
+    label: 'AI Root Cause Analysis',
+    desc: 'Actionable compiler fix diffs & commands',
+  },
 ];
 
 export default function LoginPage() {
@@ -43,6 +80,10 @@ export default function LoginPage() {
   const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [oauthProviders, setOauthProviders] = useState<{ google: boolean; github: boolean }>({
+    google: true,
+    github: true,
+  });
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -56,18 +97,48 @@ export default function LoginPage() {
     } else if (token) {
       localStorage.setItem('opspilot_token', token);
       if (userParam) {
-        try { localStorage.setItem('opspilot_user', userParam); } catch { /* ignore */ }
+        try {
+          localStorage.setItem('opspilot_user', userParam);
+        } catch {
+          /* ignore */
+        }
       }
       window.location.href = '/dashboard';
     }
+
+    const checkProviders = async () => {
+      try {
+        const apiBase = getApiBaseUrl();
+        const res = await fetch(`${apiBase}/auth/providers`);
+        if (res.ok) {
+          const data = await res.json();
+          setOauthProviders(data);
+        }
+      } catch {
+        // network or offline fallback
+      }
+    };
+    checkProviders();
   }, []);
 
   const handleGoogleLogin = () => {
+    if (!oauthProviders.google) {
+      setError(
+        'Google OAuth is not configured on this instance. Please sign in with your email and password, or set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in .env.',
+      );
+      return;
+    }
     const oauthBase = getOAuthBaseUrl();
     window.location.href = `${oauthBase}/auth/google`;
   };
 
   const handleGitHubLogin = () => {
+    if (!oauthProviders.github) {
+      setError(
+        'GitHub OAuth is not configured on this instance. Please sign in with your email and password, or set GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET in .env.',
+      );
+      return;
+    }
     const oauthBase = getOAuthBaseUrl();
     window.location.href = `${oauthBase}/auth/github`;
   };
@@ -84,19 +155,26 @@ export default function LoginPage() {
         body: JSON.stringify({ email, password }),
       });
       let data: Record<string, unknown> = {};
-      try { data = await res.json(); } catch { /* ignore */ }
+      try {
+        data = await res.json();
+      } catch {
+        /* ignore */
+      }
 
       if (!res.ok) {
         const msg = (data.message as string) || `HTTP ${res.status}: Authentication failed`;
         if (res.status === 401 && msg.toLowerCase().includes('verif')) {
-          setError('Please verify your email before signing in. Check your inbox for the verification link.');
+          setError(
+            'Please verify your email before signing in. Check your inbox for the verification link.',
+          );
         } else {
           setError(msg);
         }
         return;
       }
 
-      const tokens = (data.data as Record<string, unknown>)?.tokens as Record<string, string> | undefined;
+      const tokens = (data.data as Record<string, unknown>)?.tokens as
+        Record<string, string> | undefined;
       const user = (data.data as Record<string, unknown>)?.user;
       localStorage.setItem('opspilot_token', tokens?.accessToken || '');
       localStorage.setItem('opspilot_user', JSON.stringify(user || {}));
@@ -144,10 +222,16 @@ export default function LoginPage() {
               OP
             </div>
             <div className="flex flex-col">
-              <span className="font-extrabold text-base tracking-tight leading-none" style={{ color: 'var(--text-primary)' }}>
+              <span
+                className="font-extrabold text-base tracking-tight leading-none"
+                style={{ color: 'var(--text-primary)' }}
+              >
                 OpsPilot AI
               </span>
-              <span className="text-[10px] font-mono tracking-wider font-semibold" style={{ color: 'var(--text-muted)' }}>
+              <span
+                className="text-[10px] font-mono tracking-wider font-semibold"
+                style={{ color: 'var(--text-muted)' }}
+              >
                 CONTROL PLANE
               </span>
             </div>
@@ -167,11 +251,18 @@ export default function LoginPage() {
             >
               ENGINEERING WORKSPACE
             </span>
-            <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight" style={{ color: 'var(--text-primary)' }}>
+            <h1
+              className="text-3xl sm:text-4xl font-extrabold tracking-tight"
+              style={{ color: 'var(--text-primary)' }}
+            >
               Your Unified Delivery Engine.
             </h1>
-            <p className="text-sm max-w-md leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-              Orchestrate multi-stage pipelines, stream execution logs in real-time, and deploy artifacts safely with continuous observability.
+            <p
+              className="text-sm max-w-md leading-relaxed"
+              style={{ color: 'var(--text-secondary)' }}
+            >
+              Orchestrate multi-stage pipelines, stream execution logs in real-time, and deploy
+              artifacts safely with continuous observability.
             </p>
           </div>
 
@@ -195,8 +286,15 @@ export default function LoginPage() {
                     <Icon size={14} />
                   </div>
                   <div>
-                    <div className="font-bold text-xs" style={{ color: 'var(--text-primary)' }}>{p.label}</div>
-                    <div className="text-[11px] leading-snug mt-0.5" style={{ color: 'var(--text-muted)' }}>{p.desc}</div>
+                    <div className="font-bold text-xs" style={{ color: 'var(--text-primary)' }}>
+                      {p.label}
+                    </div>
+                    <div
+                      className="text-[11px] leading-snug mt-0.5"
+                      style={{ color: 'var(--text-muted)' }}
+                    >
+                      {p.desc}
+                    </div>
                   </div>
                 </div>
               );
@@ -214,7 +312,10 @@ export default function LoginPage() {
           >
             <div
               className="px-4 py-2 border-b flex items-center justify-between text-[11px]"
-              style={{ background: 'rgba(255,255,255,0.03)', borderColor: 'rgba(255,255,255,0.08)' }}
+              style={{
+                background: 'rgba(255,255,255,0.03)',
+                borderColor: 'rgba(255,255,255,0.08)',
+              }}
             >
               <div className="flex items-center gap-2">
                 <div className="w-2.5 h-2.5 rounded-full bg-[#EF4444]" />
@@ -226,15 +327,24 @@ export default function LoginPage() {
             </div>
             <div className="p-4 space-y-1 text-[11px] leading-relaxed">
               <div className="text-[var(--text-muted)]">$ opspilot connect --status</div>
-              <div className="text-[var(--success)]">✓ Control Plane Connected (NestJS API : 3000)</div>
-              <div className="text-[var(--text-secondary)]">✓ Docker Runner Pool active (cgroup isolation enabled)</div>
-              <div className="text-[var(--accent)]">✓ Authentication Engine ready (Argon2id + JWT)</div>
+              <div className="text-[var(--success)]">
+                ✓ Control Plane Connected (NestJS API : 3000)
+              </div>
+              <div className="text-[var(--text-secondary)]">
+                ✓ Docker Runner Pool active (cgroup isolation enabled)
+              </div>
+              <div className="text-[var(--accent)]">
+                ✓ Authentication Engine ready (Argon2id + JWT)
+              </div>
             </div>
           </div>
         </div>
 
         {/* Bottom Status */}
-        <div className="flex items-center justify-between text-xs z-10 pt-4 border-t" style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
+        <div
+          className="flex items-center justify-between text-xs z-10 pt-4 border-t"
+          style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}
+        >
           <span>OpsPilot Platform v2.0</span>
           <span>AES-256 GCM Security</span>
         </div>
@@ -252,7 +362,10 @@ export default function LoginPage() {
               >
                 OP
               </div>
-              <span className="font-bold text-sm tracking-tight" style={{ color: 'var(--text-primary)' }}>
+              <span
+                className="font-bold text-sm tracking-tight"
+                style={{ color: 'var(--text-primary)' }}
+              >
                 OpsPilot
               </span>
             </Link>
@@ -265,7 +378,10 @@ export default function LoginPage() {
         {/* Form Container */}
         <div className="w-full max-w-md mx-auto my-auto space-y-6 py-8">
           <div className="space-y-2">
-            <h2 className="text-2xl font-extrabold tracking-tight" style={{ color: 'var(--text-primary)' }}>
+            <h2
+              className="text-2xl font-extrabold tracking-tight"
+              style={{ color: 'var(--text-primary)' }}
+            >
               Sign in to Control Plane
             </h2>
             <p className="text-xs sm:text-sm" style={{ color: 'var(--text-secondary)' }}>
@@ -278,6 +394,7 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={handleGitHubLogin}
+              title={!oauthProviders.github ? 'GitHub OAuth unconfigured' : 'Continue with GitHub'}
               className="py-2.5 px-4 rounded-xl border text-xs font-semibold flex items-center justify-center gap-2 transition-all hover:bg-[var(--bg-secondary)]"
               style={{
                 borderColor: 'var(--border)',
@@ -287,10 +404,19 @@ export default function LoginPage() {
             >
               <GithubIcon size={15} />
               <span>GitHub</span>
+              {!oauthProviders.github && (
+                <span
+                  className="text-[9px] px-1.5 py-0.5 rounded font-mono font-normal"
+                  style={{ background: 'var(--bg-tertiary)', color: 'var(--text-muted)' }}
+                >
+                  off
+                </span>
+              )}
             </button>
             <button
               type="button"
               onClick={handleGoogleLogin}
+              title={!oauthProviders.google ? 'Google OAuth unconfigured' : 'Continue with Google'}
               className="py-2.5 px-4 rounded-xl border text-xs font-semibold flex items-center justify-center gap-2 transition-all hover:bg-[var(--bg-secondary)]"
               style={{
                 borderColor: 'var(--border)',
@@ -300,6 +426,14 @@ export default function LoginPage() {
             >
               <GoogleIcon size={15} />
               <span>Google</span>
+              {!oauthProviders.google && (
+                <span
+                  className="text-[9px] px-1.5 py-0.5 rounded font-mono font-normal"
+                  style={{ background: 'var(--bg-tertiary)', color: 'var(--text-muted)' }}
+                >
+                  off
+                </span>
+              )}
             </button>
           </div>
 
@@ -418,7 +552,11 @@ export default function LoginPage() {
                 onChange={(e) => setRememberMe(e.target.checked)}
                 className="rounded border-[var(--border)] text-[var(--accent)] focus:ring-[var(--accent)] cursor-pointer"
               />
-              <label htmlFor="remember-session" className="text-xs cursor-pointer select-none" style={{ color: 'var(--text-secondary)' }}>
+              <label
+                htmlFor="remember-session"
+                className="text-xs cursor-pointer select-none"
+                style={{ color: 'var(--text-secondary)' }}
+              >
                 Keep me signed in on this device
               </label>
             </div>
@@ -445,7 +583,10 @@ export default function LoginPage() {
           </form>
 
           {/* Footer Signup Link */}
-          <div className="text-center text-xs pt-4 border-t" style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}>
+          <div
+            className="text-center text-xs pt-4 border-t"
+            style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}
+          >
             Don&apos;t have an account yet?{' '}
             <Link
               href="/register"
@@ -460,9 +601,14 @@ export default function LoginPage() {
         {/* Bottom Legal / Support */}
         <div className="text-center text-[11px] pt-4" style={{ color: 'var(--text-muted)' }}>
           By signing in, you agree to OpsPilot&apos;s{' '}
-          <Link href="/docs" className="underline hover:text-[var(--text-secondary)]">Security Policy</Link>
-          {' '}and{' '}
-          <Link href="/docs" className="underline hover:text-[var(--text-secondary)]">Terms of Service</Link>.
+          <Link href="/docs" className="underline hover:text-[var(--text-secondary)]">
+            Security Policy
+          </Link>{' '}
+          and{' '}
+          <Link href="/docs" className="underline hover:text-[var(--text-secondary)]">
+            Terms of Service
+          </Link>
+          .
         </div>
       </div>
     </div>

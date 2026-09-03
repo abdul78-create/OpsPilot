@@ -432,11 +432,58 @@ export class AuthService {
         },
       });
 
-      this.logger.log(`Provisioned new user ${user.id} via ${provider} OAuth`);
+      // Automatically create a personal default workspace Organization for new OAuth user
+      const cleanSlug = user.email
+        .split('@')[0]
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '-');
+      const orgSlug = `${cleanSlug || 'user'}-workspace-${Date.now()}`;
+      await this.prisma.organization.create({
+        data: {
+          name: `${user.name}'s Workspace`,
+          slug: orgSlug,
+          members: {
+            create: {
+              userId: user.id,
+              role: 'OWNER',
+              status: 'ACTIVE',
+            },
+          },
+        },
+      });
+
+      this.logger.log(
+        `Provisioned new user ${user.id} and default workspace via ${provider} OAuth`,
+      );
     } else if (!user.isVerified) {
       user = await this.prisma.user.update({
         where: { id: user.id },
         data: { isVerified: true, avatarUrl: avatarUrl ?? user.avatarUrl },
+      });
+    }
+
+    // Ensure the user has at least one active Organization
+    const existingMembership = await this.prisma.member.findFirst({
+      where: { userId: user.id, status: 'ACTIVE' },
+    });
+    if (!existingMembership) {
+      const cleanSlug = user.email
+        .split('@')[0]
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '-');
+      const orgSlug = `${cleanSlug || 'user'}-workspace-${Date.now()}`;
+      await this.prisma.organization.create({
+        data: {
+          name: `${user.name}'s Workspace`,
+          slug: orgSlug,
+          members: {
+            create: {
+              userId: user.id,
+              role: 'OWNER',
+              status: 'ACTIVE',
+            },
+          },
+        },
       });
     }
 
