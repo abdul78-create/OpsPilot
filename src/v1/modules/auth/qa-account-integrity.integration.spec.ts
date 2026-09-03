@@ -13,21 +13,41 @@ describe('Permanent QA Account Provisioning & Data Integrity Verification', () =
   let createdUserId: string;
   let createdOrgId: string;
 
+  let isDbConnected = false;
+
   beforeAll(async () => {
+    if (!process.env.DATABASE_URL) {
+      process.env.DATABASE_URL =
+        'postgresql://postgres:postgres@localhost:5432/nest_db?schema=public';
+    }
     prisma = new PrismaService();
     hashService = new HashService();
-    await prisma.$connect();
+    try {
+      await prisma.$connect();
+      isDbConnected = true;
+    } catch (err) {
+      console.warn(
+        'PostgreSQL database not available for QA account integrity spec:',
+        (err as Error).message,
+      );
+    }
   });
 
   afterAll(async () => {
-    if (createdOrgId) {
-      await prisma.member.deleteMany({ where: { organizationId: createdOrgId } });
-      await prisma.organization.deleteMany({ where: { id: createdOrgId } });
+    if (isDbConnected) {
+      try {
+        if (createdOrgId) {
+          await prisma.member.deleteMany({ where: { organizationId: createdOrgId } });
+          await prisma.organization.deleteMany({ where: { id: createdOrgId } });
+        }
+        if (createdUserId) {
+          await prisma.user.deleteMany({ where: { id: createdUserId } });
+        }
+        await prisma.$disconnect();
+      } catch {
+        // teardown cleanup
+      }
     }
-    if (createdUserId) {
-      await prisma.user.deleteMany({ where: { id: createdUserId } });
-    }
-    await prisma.$disconnect();
   });
 
   it('1. should refuse to provision if QA_PASSWORD is missing', async () => {

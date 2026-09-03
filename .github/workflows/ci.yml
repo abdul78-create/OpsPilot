@@ -2,13 +2,22 @@ name: OpsPilot CI
 
 on:
   push:
-    branches: [ main, dev ]
+    branches: [main, dev]
   pull_request:
-    branches: [ main, dev ]
+    branches: [main, dev]
 
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nest_db?schema=public
+      JWT_SECRET: dev-jwt-secret-min-32-chars-long-opspilot
+      JWT_REFRESH_SECRET: dev-jwt-refresh-secret-min-32-chars-long-opspilot
+      ENCRYPTION_KEY: 01234567890123456789012345678901
+      WORKSPACE_BASE_DIR: /tmp/opspilot-workspaces
+      QA_PASSWORD: QASecretPassword@2026!
 
     services:
       postgres:
@@ -35,6 +44,7 @@ jobs:
 
       - run: npm ci --legacy-peer-deps
       - run: npx prisma generate
+      - run: npx prisma db push --skip-generate
       - run: npm run lint
       - run: npm run build
       - run: npm run test

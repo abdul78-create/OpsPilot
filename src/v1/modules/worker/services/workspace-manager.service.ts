@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { spawn } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as os from 'os';
 
 export interface WorkspaceLease {
   pipelineRunId: string;
@@ -15,7 +16,10 @@ export class WorkspaceManagerService {
   private readonly baseWorkspaceDir: string;
 
   constructor() {
-    this.baseWorkspaceDir = process.env.WORKSPACE_BASE_DIR || '/opspilot-workspaces';
+    const defaultDir = fs.existsSync('/opspilot-workspaces')
+      ? '/opspilot-workspaces'
+      : path.join(os.tmpdir(), 'opspilot-workspaces');
+    this.baseWorkspaceDir = process.env.WORKSPACE_BASE_DIR || defaultDir;
     try {
       if (!fs.existsSync(this.baseWorkspaceDir)) {
         fs.mkdirSync(this.baseWorkspaceDir, { recursive: true });

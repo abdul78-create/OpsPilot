@@ -3,10 +3,12 @@ const argon2 = require('argon2');
 
 async function provisionQaAccount(options = {}) {
   const prisma = options.prismaClient || new PrismaClient();
-  const plainPassword = options.password || process.env.QA_PASSWORD;
+  const plainPassword = options.password !== undefined ? options.password : process.env.QA_PASSWORD;
 
   if (!plainPassword) {
-    throw new Error('QA_PASSWORD is required to provision the QA account. Usage: QA_PASSWORD="<password>" npm run seed:qa');
+    throw new Error(
+      'QA_PASSWORD is required to provision the QA account. Usage: QA_PASSWORD="<password>" npm run seed:qa',
+    );
   }
 
   const email = options.email || process.env.QA_EMAIL || 'qa@opspilot.dev';

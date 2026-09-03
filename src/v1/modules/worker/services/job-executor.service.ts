@@ -1,6 +1,7 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as os from 'os';
 import * as crypto from 'crypto';
 import { execSync } from 'child_process';
 import { PrismaService } from '../../../../core/database/prisma.service';
@@ -66,10 +67,20 @@ export class JobExecutorService {
     try {
       // Step 1: Clone repository into isolated workspace (source stage only)
       let workspacePath: string | undefined = undefined;
-      const baseDir = process.env.WORKSPACE_BASE_DIR || '/opspilot-workspaces';
+      const baseDir =
+        process.env.WORKSPACE_BASE_DIR ||
+        (fs.existsSync('/opspilot-workspaces')
+          ? '/opspilot-workspaces'
+          : path.join(os.tmpdir(), 'opspilot-workspaces'));
       workspacePath = path.join(baseDir, job.pipelineRunId);
-      if (workspacePath && !fs.existsSync(workspacePath)) {
-        fs.mkdirSync(workspacePath, { recursive: true });
+      try {
+        if (workspacePath && !fs.existsSync(workspacePath)) {
+          fs.mkdirSync(workspacePath, { recursive: true });
+        }
+      } catch (err) {
+        this.logger.warn(
+          `Could not create workspace path '${workspacePath}': ${(err as Error).message}`,
+        );
       }
 
       if (this.workspaceManager && job.stage === 'source') {

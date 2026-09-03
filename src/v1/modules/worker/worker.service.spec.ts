@@ -6,6 +6,8 @@ import { PrismaService } from '../../../core/database/prisma.service';
 import { EventBusService } from '../../../core/events/event-bus.service';
 import { PipelineRunStatus, JobStatus } from '@prisma/client';
 
+import * as path from 'path';
+import * as os from 'os';
 import { DockerRunnerService } from './services/docker-runner.service';
 
 describe('Worker Module', () => {
@@ -25,6 +27,10 @@ describe('Worker Module', () => {
   const mockDockerRunner = {
     runStep: jest.fn().mockResolvedValue({ exitCode: 0 }),
   };
+
+  beforeAll(() => {
+    process.env.WORKSPACE_BASE_DIR = path.join(os.tmpdir(), 'opspilot-test-workspaces');
+  });
 
   beforeEach(async () => {
     jest.clearAllMocks();
