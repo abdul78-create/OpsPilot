@@ -84,6 +84,8 @@ export default function LoginPage() {
     google: true,
     github: true,
   });
+  const [oauthHelp, setOauthHelp] = useState<'google' | 'github' | null>(null);
+  const [showEnvGuide, setShowEnvGuide] = useState(false);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -111,8 +113,12 @@ export default function LoginPage() {
         const apiBase = getApiBaseUrl();
         const res = await fetch(`${apiBase}/auth/providers`);
         if (res.ok) {
-          const data = await res.json();
-          setOauthProviders(data);
+          const json = await res.json();
+          const providers = json?.data ?? json;
+          setOauthProviders({
+            google: Boolean(providers?.google),
+            github: Boolean(providers?.github),
+          });
         }
       } catch {
         // network or offline fallback
@@ -123,9 +129,8 @@ export default function LoginPage() {
 
   const handleGoogleLogin = () => {
     if (!oauthProviders.google) {
-      setError(
-        'Google OAuth is not configured on this instance. Please sign in with your email and password, or set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in .env.',
-      );
+      setOauthHelp('google');
+      setError('');
       return;
     }
     const oauthBase = getOAuthBaseUrl();
@@ -134,13 +139,50 @@ export default function LoginPage() {
 
   const handleGitHubLogin = () => {
     if (!oauthProviders.github) {
-      setError(
-        'GitHub OAuth is not configured on this instance. Please sign in with your email and password, or set GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET in .env.',
-      );
+      setOauthHelp('github');
+      setError('');
       return;
     }
     const oauthBase = getOAuthBaseUrl();
     window.location.href = `${oauthBase}/auth/github`;
+  };
+
+  const handleQuickLoginQA = async () => {
+    setEmail('qa@opspilot.dev');
+    setPassword('QASecretPassword@2026!');
+    setError('');
+    setOauthHelp(null);
+    setLoading(true);
+    try {
+      const apiBase = getApiBaseUrl();
+      const res = await fetch(`${apiBase}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: 'qa@opspilot.dev', password: 'QASecretPassword@2026!' }),
+      });
+      let data: Record<string, unknown> = {};
+      try {
+        data = await res.json();
+      } catch {
+        /* ignore */
+      }
+
+      if (!res.ok) {
+        setError((data.message as string) || 'Demo QA login failed');
+        return;
+      }
+
+      const tokens = (data.data as Record<string, unknown>)?.tokens as
+        Record<string, string> | undefined;
+      const user = (data.data as Record<string, unknown>)?.user;
+      localStorage.setItem('opspilot_token', tokens?.accessToken || '');
+      localStorage.setItem('opspilot_user', JSON.stringify(user || {}));
+      window.location.href = '/dashboard';
+    } catch {
+      setError('Network connection error. Ensure the NestJS backend is reachable.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -437,6 +479,139 @@ export default function LoginPage() {
             </button>
           </div>
 
+          {/* OAuth Setup Helper (Shown when unconfigured button is clicked) */}
+          {oauthHelp && (
+            <div
+              className="p-4 rounded-xl border text-xs space-y-3 transition-all animate-fadeIn"
+              style={{
+                background: 'var(--bg-secondary)',
+                borderColor: 'var(--border-bright, var(--border))',
+              }}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  {oauthHelp === 'github' ? <GithubIcon size={16} /> : <GoogleIcon size={16} />}
+                  <span className="font-bold text-xs" style={{ color: 'var(--text-primary)' }}>
+                    {oauthHelp === 'github' ? 'GitHub' : 'Google'} OAuth Not Configured
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setOauthHelp(null)}
+                  className="text-[var(--text-muted)] hover:text-[var(--text-primary)] px-1 font-bold"
+                  title="Dismiss"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <p className="text-[11px] leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+                Third-party {oauthHelp === 'github' ? 'GitHub' : 'Google'} OAuth credentials are not set in your local <code className="px-1.5 py-0.5 rounded font-mono text-[10px]" style={{ background: 'var(--bg-tertiary)' }}>.env</code>. You can log in instantly with the verified demo account or view setup instructions.
+              </p>
+
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={handleQuickLoginQA}
+                  disabled={loading}
+                  className="flex-1 py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all shadow-sm"
+                  style={{
+                    background: 'var(--accent)',
+                    color: '#FFFFFF',
+                  }}
+                >
+                  {loading ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
+                  <span>Sign in with Demo QA Account</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowEnvGuide((prev) => !prev)}
+                  className="py-2 px-3 rounded-lg text-xs font-semibold border transition-all hover:bg-[var(--bg-tertiary)]"
+                  style={{
+                    borderColor: 'var(--border)',
+                    color: 'var(--text-secondary)',
+                  }}
+                >
+                  {showEnvGuide ? 'Hide .env Setup' : 'How to Configure'}
+                </button>
+              </div>
+
+              {showEnvGuide && (
+                <div
+                  className="p-3 rounded-lg font-mono text-[10px] space-y-1 mt-2 overflow-x-auto border"
+                  style={{
+                    background: 'var(--terminal-bg, #0d1117)',
+                    borderColor: 'var(--border)',
+                    color: 'var(--terminal-text, #c9d1d9)',
+                  }}
+                >
+                  <div className="text-[var(--text-muted)] font-sans font-semibold text-[10px] mb-1">
+                    Add the following to your root <span className="font-mono">.env</span> file:
+                  </div>
+                  {oauthHelp === 'github' ? (
+                    <>
+                      <div>GITHUB_CLIENT_ID=your_github_client_id</div>
+                      <div>GITHUB_CLIENT_SECRET=your_github_client_secret</div>
+                      <div className="text-[var(--accent)] mt-1.5"># Authorization callback URL in GitHub Settings:</div>
+                      <div>http://localhost:3000/v1/auth/github/callback</div>
+                    </>
+                  ) : (
+                    <>
+                      <div>GOOGLE_CLIENT_ID=your_google_client_id.apps.googleusercontent.com</div>
+                      <div>GOOGLE_CLIENT_SECRET=your_google_client_secret</div>
+                      <div className="text-[var(--accent)] mt-1.5"># Authorized redirect URI in Google Cloud Console:</div>
+                      <div>http://localhost:3000/v1/auth/google/callback</div>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Quick Demo QA Access Pill */}
+          <div
+            className="p-3 rounded-xl border flex items-center justify-between gap-3 text-xs"
+            style={{
+              background: 'var(--bg-secondary)',
+              borderColor: 'var(--border)',
+            }}
+          >
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div
+                className="w-2 h-2 rounded-full shrink-0"
+                style={{ background: 'var(--success, #10B981)' }}
+              />
+              <div className="min-w-0">
+                <div className="font-semibold text-xs flex items-center gap-1.5" style={{ color: 'var(--text-primary)' }}>
+                  <span>Demo QA Account</span>
+                  <span
+                    className="text-[9px] px-1.5 py-0.2 rounded font-mono uppercase font-bold"
+                    style={{ background: 'var(--accent-dim)', color: 'var(--accent)' }}
+                  >
+                    Verified
+                  </span>
+                </div>
+                <div className="text-[11px] truncate font-mono" style={{ color: 'var(--text-muted)' }}>
+                  qa@opspilot.dev
+                </div>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleQuickLoginQA}
+              disabled={loading}
+              className="shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold border flex items-center gap-1.5 transition-all hover:bg-[var(--accent)] hover:text-white"
+              style={{
+                borderColor: 'var(--border)',
+                background: 'var(--bg-tertiary)',
+                color: 'var(--accent)',
+              }}
+            >
+              {loading ? <Loader2 size={12} className="animate-spin" /> : <ArrowRight size={12} />}
+              <span>1-Click Sign In</span>
+            </button>
+          </div>
+
           {/* Divider */}
           <div className="relative flex items-center justify-center">
             <div className="w-full border-t" style={{ borderColor: 'var(--border)' }} />
@@ -451,15 +626,25 @@ export default function LoginPage() {
           {/* Error Message */}
           {error && (
             <div
-              className="flex items-start gap-2.5 p-3.5 rounded-xl text-xs border animate-shake"
+              className="flex items-start justify-between gap-2.5 p-3.5 rounded-xl text-xs border animate-shake"
               style={{
                 background: 'var(--error-dim)',
                 borderColor: 'var(--error)',
                 color: 'var(--error)',
               }}
             >
-              <AlertCircle size={15} className="shrink-0 mt-0.5" />
-              <span>{error}</span>
+              <div className="flex items-start gap-2.5">
+                <AlertCircle size={15} className="shrink-0 mt-0.5" />
+                <span>{error}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setError('')}
+                className="shrink-0 text-xs hover:opacity-80 px-1 font-bold"
+                title="Dismiss"
+              >
+                ✕
+              </button>
             </div>
           )}
 

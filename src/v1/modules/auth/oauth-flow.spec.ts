@@ -4,6 +4,7 @@ import { AuthController } from './auth.controller';
 import { GoogleAuthGuard } from './guards/google-auth.guard';
 import { GitHubAuthGuard } from './guards/github-auth.guard';
 import { AuthService } from './auth.service';
+import { getFrontendRedirectUrl, TRUSTED_PRODUCTION_FRONTEND } from './utils/auth-url.util';
 
 describe('OAuth Flow & Resilience Verification Spec', () => {
   let configService: ConfigService;
@@ -208,6 +209,133 @@ describe('OAuth Flow & Resilience Verification Spec', () => {
           name: 'No Email User',
         }),
       ).rejects.toThrow('OAuth provider did not return an email address');
+    });
+  });
+
+  describe('4. Production OAuth Forensic Regression Tests (AUTH-OAUTH-001 to 006)', () => {
+    it('AUTH-OAUTH-001: /auth/providers returns standard envelope and unwrapping reads google=true and github=true', () => {
+      jest.spyOn(configService, 'get').mockImplementation((key: string) => {
+        if (key === 'GOOGLE_CLIENT_ID') return 'google-id';
+        if (key === 'GOOGLE_CLIENT_SECRET') return 'google-secret';
+        if (key === 'GITHUB_CLIENT_ID') return 'github-id';
+        if (key === 'GITHUB_CLIENT_SECRET') return 'github-secret';
+        return undefined;
+      });
+      authController = new AuthController(authService as AuthService, configService);
+      const rawResponse = authController.getProviders();
+      // Simulate TransformInterceptor wrapping:
+      const envelope = { success: true, message: 'Operation successful', data: rawResponse };
+
+      // Verify client unwrapping logic:
+      const clientPayload = envelope.data ?? envelope;
+      expect(clientPayload.google).toBe(true);
+      expect(clientPayload.github).toBe(true);
+    });
+
+    it('AUTH-OAUTH-002: Production Google callback uses configured FRONTEND_URL as trusted application redirect', () => {
+      const prodConfigService = new ConfigService({});
+      jest.spyOn(prodConfigService, 'get').mockImplementation((key: string) => {
+        if (key === 'FRONTEND_URL') return 'https://opspilot-frontend-zuxp.onrender.com';
+        return undefined;
+      });
+      const req = {
+        headers: {
+          host: 'opspilot-backend-gd60.onrender.com',
+          referer: 'https://accounts.google.com/signin/oauth',
+        },
+      };
+
+      const redirectUrl = getFrontendRedirectUrl(req, prodConfigService);
+      expect(redirectUrl).toBe('https://opspilot-frontend-zuxp.onrender.com');
+    });
+
+    it('AUTH-OAUTH-003: Production GitHub callback uses configured FRONTEND_URL as trusted application redirect', () => {
+      const prodConfigService = new ConfigService({});
+      jest.spyOn(prodConfigService, 'get').mockImplementation((key: string) => {
+        if (key === 'FRONTEND_URL') return 'https://opspilot-frontend-zuxp.onrender.com';
+        return undefined;
+      });
+      const req = {
+        headers: {
+          host: 'opspilot-backend-gd60.onrender.com',
+          referer: 'https://github.com/login/oauth/authorize',
+        },
+      };
+
+      const redirectUrl = getFrontendRedirectUrl(req, prodConfigService);
+      expect(redirectUrl).toBe('https://opspilot-frontend-zuxp.onrender.com');
+    });
+
+    it('AUTH-OAUTH-004: Google/GitHub Referer cannot override configured FRONTEND_URL', () => {
+      const prodConfigService = new ConfigService({});
+      jest.spyOn(prodConfigService, 'get').mockImplementation((key: string) => {
+        if (key === 'FRONTEND_URL') return 'https://opspilot-frontend-zuxp.onrender.com';
+        return undefined;
+      });
+      const req = {
+        headers: {
+          referer: 'https://accounts.google.com/o/oauth2/v2/auth',
+          origin: 'https://accounts.google.com',
+        },
+      };
+
+      const redirectUrl = getFrontendRedirectUrl(req, prodConfigService);
+      expect(redirectUrl).toBe('https://opspilot-frontend-zuxp.onrender.com');
+      expect(redirectUrl).not.toContain('accounts.google.com');
+    });
+
+    it('AUTH-OAUTH-005: Arbitrary Referer cannot cause redirect to an external malicious domain (Open Redirect Protection)', () => {
+      const prodConfigService = new ConfigService({});
+      jest.spyOn(prodConfigService, 'get').mockImplementation((key: string) => {
+        if (key === 'FRONTEND_URL') return 'https://opspilot-frontend-zuxp.onrender.com';
+        return undefined;
+      });
+      const attackerReq = {
+        headers: {
+          referer: 'https://attacker-controlled-phishing.com/harvest',
+          origin: 'https://attacker-controlled-phishing.com',
+        },
+      };
+
+      const redirectUrl = getFrontendRedirectUrl(attackerReq, prodConfigService);
+      expect(redirectUrl).toBe('https://opspilot-frontend-zuxp.onrender.com');
+      expect(redirectUrl).not.toContain('attacker');
+    });
+
+    it('AUTH-OAUTH-006: Local development behavior works only when explicitly configured or in non-production on localhost', () => {
+      const oldNodeEnv = process.env.NODE_ENV;
+      const oldFrontendUrl = process.env.FRONTEND_URL;
+      try {
+        // Case 1: Local development with explicitly configured localhost FRONTEND_URL
+        process.env.NODE_ENV = 'development';
+        const devConfigService = new ConfigService({});
+        jest.spyOn(devConfigService, 'get').mockReturnValue('http://localhost:3001');
+        const localReq = {
+          headers: { host: 'localhost:3000' },
+        };
+        const localUrl = getFrontendRedirectUrl(localReq, devConfigService);
+        expect(localUrl).toBe('http://localhost:3001');
+
+        // Case 2: Production mode with localhost configured -> rejected and falls back to trusted production frontend
+        process.env.NODE_ENV = 'production';
+        const prodLocalConfigService = new ConfigService({});
+        jest.spyOn(prodLocalConfigService, 'get').mockReturnValue('http://localhost:3001');
+        const prodReq = {
+          headers: { host: 'localhost:3000' },
+        };
+        const fallbackUrl = getFrontendRedirectUrl(prodReq, prodLocalConfigService);
+        expect(fallbackUrl).toBe(TRUSTED_PRODUCTION_FRONTEND);
+
+        // Case 3: Production mode without FRONTEND_URL -> defaults to trusted production frontend
+        const emptyConfigService = new ConfigService({});
+        jest.spyOn(emptyConfigService, 'get').mockReturnValue(undefined);
+        delete process.env.FRONTEND_URL;
+        const defaultProdUrl = getFrontendRedirectUrl(prodReq, emptyConfigService);
+        expect(defaultProdUrl).toBe(TRUSTED_PRODUCTION_FRONTEND);
+      } finally {
+        process.env.NODE_ENV = oldNodeEnv;
+        process.env.FRONTEND_URL = oldFrontendUrl;
+      }
     });
   });
 });

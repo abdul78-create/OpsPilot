@@ -663,11 +663,11 @@ export default function LandingPage() {
                 color: 'var(--terminal-text)',
               }}
             >
-              <div className="text-[var(--text-muted)]">2026-09-01T15:10:01.000Z [INFO] Initializing isolated Docker runner for job step 'build'</div>
+              <div className="text-[var(--text-muted)]">2026-09-01T15:10:01.000Z [INFO] Initializing isolated Docker runner for job step &apos;build&apos;</div>
               <div className="text-[var(--text-secondary)]">2026-09-01T15:10:02.120Z [INFO] Mounting ephemeral directory /tmp/opspilot/runs/10492</div>
-              <div className="text-[var(--text-secondary)]">2026-09-01T15:10:05.400Z [INFO] Running 'npm run build' inside container node:20-alpine</div>
+              <div className="text-[var(--text-secondary)]">2026-09-01T15:10:05.400Z [INFO] Running &apos;npm run build&apos; inside container node:20-alpine</div>
               <div className="text-[var(--success)]">2026-09-01T15:10:18.200Z [SUCCESS] ✓ Compiled successfully in 12.8s</div>
-              <div className="text-[var(--text-secondary)]">2026-09-01T15:10:19.100Z [INFO] Executing step 'security-sast' using Trivy scanner</div>
+              <div className="text-[var(--text-secondary)]">2026-09-01T15:10:19.100Z [INFO] Executing step &apos;security-sast&apos; using Trivy scanner</div>
               <div className="text-[var(--success)]">2026-09-01T15:10:24.000Z [SUCCESS] ✓ Zero HIGH/CRITICAL vulnerabilities found</div>
               <div className="text-[var(--text-secondary)]">2026-09-01T15:10:25.500Z [INFO] Archiving build artifact: dist-v10492.tar.gz (18.4 MB)</div>
               <div className="text-[var(--text-primary)] font-bold">2026-09-01T15:10:28.400Z [SUCCESS] Pipeline execution finished with exit code 0.</div>

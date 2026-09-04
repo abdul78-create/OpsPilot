@@ -140,8 +140,12 @@ export default function RegisterPage() {
         const apiBase = getApiBaseUrl();
         const res = await fetch(`${apiBase}/auth/providers`);
         if (res.ok) {
-          const data = await res.json();
-          setOauthProviders(data);
+          const json = await res.json();
+          const providers = json?.data ?? json;
+          setOauthProviders({
+            google: Boolean(providers?.google),
+            github: Boolean(providers?.github),
+          });
         }
       } catch {
         // ignore offline fallback
@@ -516,15 +520,25 @@ export default function RegisterPage() {
           {/* Error Message */}
           {error && (
             <div
-              className="flex items-start gap-2.5 p-3.5 rounded-xl text-xs border"
+              className="flex items-start justify-between gap-2.5 p-3.5 rounded-xl text-xs border"
               style={{
                 background: 'var(--error-dim)',
                 borderColor: 'var(--error)',
                 color: 'var(--error)',
               }}
             >
-              <AlertCircle size={15} className="shrink-0 mt-0.5" />
-              <span>{error}</span>
+              <div className="flex items-start gap-2.5">
+                <AlertCircle size={15} className="shrink-0 mt-0.5" />
+                <span>{error}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setError('')}
+                className="shrink-0 text-xs hover:opacity-80 px-1 font-bold"
+                title="Dismiss"
+              >
+                ✕
+              </button>
             </div>
           )}
 
