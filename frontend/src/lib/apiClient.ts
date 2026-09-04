@@ -10,9 +10,9 @@ export function getApiBaseUrl(): string {
     if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
       return 'http://localhost:3000/v1';
     }
-    return 'https://opspilot-backend-gd60.onrender.com/v1';
+    return 'https://opspilot-backend-3pgb.onrender.com/v1';
   }
-  return process.env.NEXT_PUBLIC_API_URL || 'https://opspilot-backend-gd60.onrender.com/v1';
+  return process.env.NEXT_PUBLIC_API_URL || 'https://opspilot-backend-3pgb.onrender.com/v1';
 }
 
 export function getOAuthBaseUrl(): string {
@@ -26,7 +26,7 @@ export function getOAuthBaseUrl(): string {
   ) {
     return 'http://localhost:3000/v1';
   }
-  return 'https://opspilot-backend-gd60.onrender.com/v1';
+  return 'https://opspilot-backend-3pgb.onrender.com/v1';
 }
 
 export const API_BASE = getApiBaseUrl();

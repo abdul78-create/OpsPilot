@@ -3,7 +3,7 @@
 **Audit Execution Timestamp**: 2026-09-04T09:10:00Z  
 **Classification**: Production Cloud Runtime Security & Authentication Verification  
 **Auditor**: OpsPilot SRE / Autonomous Agent  
-**Target Environment**: Render.com Production Cloud (`opspilot-frontend-zuxp.onrender.com` & `opspilot-backend-gd60.onrender.com`)  
+**Target Environment**: Render.com Production Cloud (`opspilot-frontend-zuxp.onrender.com` & `opspilot-backend-3pgb.onrender.com`)  
 
 ---
 
@@ -20,7 +20,7 @@
 | Component | Service Name | Service Type | Runtime / Image | Live Production URL | Health Status |
 |---|---|---|---|---|---|
 | **Frontend** | `opspilot-frontend-zuxp` | Render Static Site | Node 20 / Next.js 16 (`out/`) | `https://opspilot-frontend-zuxp.onrender.com` | **HTTP 200 OK** |
-| **Backend** | `opspilot-backend-gd60` | Render Web Service | Docker (Alpine + Node 20) | `https://opspilot-backend-gd60.onrender.com` | **HTTP 200 OK** (`status: "ok"`) |
+| **Backend** | `opspilot-backend-gd60` | Render Web Service | Docker (Alpine + Node 20) | `https://opspilot-backend-3pgb.onrender.com` | **HTTP 200 OK** (`status: "ok"`) |
 | **Database** | `opspilot-db` | Render PostgreSQL | PostgreSQL 16 Managed | Internal Pool / `sslmode=require` | **HEALTHY** (`database: "up"`) |
 | **Redis** | `opspilot-redis` | Render Redis / Upstash | Redis 7.2 (`noeviction`) | Internal `rediss://` TLS | **HEALTHY** (`BullMQ active`) |
 | **Worker** | `opspilot-worker` | Render Background Worker | Docker (`node dist/main`) | Internal background worker | **HEALTHY** (`0 orphaned jobs`) |
@@ -31,14 +31,14 @@
 
 - **Client Configuration**: Configured on Render backend Web Service. Client ID: `775722720173-q7dcq8uf2gkf7qd00hs1bntf8jd51gc1.apps.googleusercontent.com`.
 - **Generated Authorization URL**:
-  `https://accounts.google.com/o/oauth2/v2/auth?response_type=code&redirect_uri=https%3A%2F%2Fopspilot-backend-gd60.onrender.com%2Fv1%2Fauth%2Fgoogle%2Fcallback&scope=email%20profile&client_id=775722720173-q7dcq8uf2gkf7qd00hs1bntf8jd51gc1.apps.googleusercontent.com`
-- **Redirect URI Generated**: `https://opspilot-backend-gd60.onrender.com/v1/auth/google/callback`
+  `https://accounts.google.com/o/oauth2/v2/auth?response_type=code&redirect_uri=https%3A%2F%2Fopspilot-backend-3pgb.onrender.com%2Fv1%2Fauth%2Fgoogle%2Fcallback&scope=email%20profile&client_id=775722720173-q7dcq8uf2gkf7qd00hs1bntf8jd51gc1.apps.googleusercontent.com`
+- **Redirect URI Generated**: `https://opspilot-backend-3pgb.onrender.com/v1/auth/google/callback`
 - **Google OAuth Response**: HTTP 302 → `https://accounts.google.com/v3/signin/identifier?...` (Valid client ID, syntax accepted, Google Sign-in screen displayed).
 - **Authorized JavaScript Origins Required in Google Cloud Console**:
   - `https://opspilot-frontend-zuxp.onrender.com`
-  - `https://opspilot-backend-gd60.onrender.com`
+  - `https://opspilot-backend-3pgb.onrender.com`
 - **Authorized Redirect URIs Required in Google Cloud Console**:
-  - `https://opspilot-backend-gd60.onrender.com/v1/auth/google/callback`
+  - `https://opspilot-backend-3pgb.onrender.com/v1/auth/google/callback`
 - **Browser Result**: Blocked by frontend contract mismatch prior to redirect (renders "off" badge and displays: *"Google OAuth is not configured on this instance. Please sign in with your email and password, or set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in .env."*).
 - **Backend Result**: Fully working HTTP 302 redirect to Google OAuth consent.
 - **Final Result**: **BLOCKED BY FRONTEND UI BUG; MALFORMED CALLBACK DESTINATION ON RETURN**.
@@ -49,12 +49,12 @@
 
 - **Client Configuration**: Configured on Render backend Web Service. Client ID: `Ov23liXq60obxEWibgB0`.
 - **Generated Authorization URL**:
-  `https://github.com/login/oauth/authorize?response_type=code&redirect_uri=https%3A%2F%2Fopspilot-backend-gd60.onrender.com%2Fv1%2Fauth%2Fgithub%2Fcallback&scope=user%3Aemail%2Crepo&client_id=Ov23liXq60obxEWibgB0`
-- **Redirect URI Generated**: `https://opspilot-backend-gd60.onrender.com/v1/auth/github/callback`
+  `https://github.com/login/oauth/authorize?response_type=code&redirect_uri=https%3A%2F%2Fopspilot-backend-3pgb.onrender.com%2Fv1%2Fauth%2Fgithub%2Fcallback&scope=user%3Aemail%2Crepo&client_id=Ov23liXq60obxEWibgB0`
+- **Redirect URI Generated**: `https://opspilot-backend-3pgb.onrender.com/v1/auth/github/callback`
 - **GitHub OAuth Response**: HTTP 302 → `https://github.com/login?client_id=Ov23liXq60obxEWibgB0&return_to=...` (Valid client ID, syntax accepted, GitHub consent authorization displayed).
 - **GitHub Application Settings Required in GitHub Developer Settings**:
   - **Homepage URL**: `https://opspilot-frontend-zuxp.onrender.com`
-  - **Authorization callback URL**: `https://opspilot-backend-gd60.onrender.com/v1/auth/github/callback`
+  - **Authorization callback URL**: `https://opspilot-backend-3pgb.onrender.com/v1/auth/github/callback`
 - **Browser Result**: Blocked by frontend contract mismatch prior to redirect (renders "off" badge and displays: *"GitHub OAuth is not configured on this instance. Please sign in with your email and password, or set GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET in .env."*).
 - **Backend Result**: Fully working HTTP 302 redirect to GitHub OAuth consent.
 - **Final Result**: **BLOCKED BY FRONTEND UI BUG; MALFORMED CALLBACK DESTINATION ON RETURN**.
@@ -63,16 +63,16 @@
 
 ## Frontend → Backend Connection
 
-- **Actual Production API Base URL**: `https://opspilot-backend-gd60.onrender.com/v1`
+- **Actual Production API Base URL**: `https://opspilot-backend-3pgb.onrender.com/v1`
 - **Resolution Strategy in Deployed Bundle** (`/static/chunks/1npjkollw0t9a.js`):
   ```js
   "localhost" === window.location.hostname || "127.0.0.1" === window.location.hostname
     ? "http://localhost:3000/v1"
-    : "https://opspilot-backend-gd60.onrender.com/v1"
+    : "https://opspilot-backend-3pgb.onrender.com/v1"
   ```
 - **Network Verification**:
-  - `GET https://opspilot-backend-gd60.onrender.com/v1/health` → **HTTP 200 OK**
-  - `GET https://opspilot-backend-gd60.onrender.com/v1/auth/providers` → **HTTP 200 OK** (`{"success":true,"data":{"google":true,"github":true}}`)
+  - `GET https://opspilot-backend-3pgb.onrender.com/v1/health` → **HTTP 200 OK**
+  - `GET https://opspilot-backend-3pgb.onrender.com/v1/auth/providers` → **HTTP 200 OK** (`{"success":true,"data":{"google":true,"github":true}}`)
 - **Result**: **CONNECTED & OPERATIONAL**.
 
 ---
@@ -90,7 +90,7 @@
 - **Helmet Security Headers Observation**:
   - `cross-origin-resource-policy: same-origin`
   - `cross-origin-opener-policy: same-origin`
-- **Result**: CORS preflight succeeds for standard Bearer token API requests. However, `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Resource-Policy: same-origin` must be tuned to allow cross-origin OAuth popup/redirect interactions between `opspilot-frontend-zuxp.onrender.com` and `opspilot-backend-gd60.onrender.com`.
+- **Result**: CORS preflight succeeds for standard Bearer token API requests. However, `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Resource-Policy: same-origin` must be tuned to allow cross-origin OAuth popup/redirect interactions between `opspilot-frontend-zuxp.onrender.com` and `opspilot-backend-3pgb.onrender.com`.
 
 ---
 
@@ -109,10 +109,10 @@
 ## Build-Time Environment
 
 - **Inspection Target**: Deployed static JS chunks on `https://opspilot-frontend-zuxp.onrender.com`.
-- **Embedded API URL**: `https://opspilot-backend-gd60.onrender.com/v1` is embedded as production fallback.
+- **Embedded API URL**: `https://opspilot-backend-3pgb.onrender.com/v1` is embedded as production fallback.
 - **Stale Values Audit**:
   - No stale hardcoded external domains found.
-  - Runtime hostname sniffing (`window.location.hostname`) correctly switches between localhost (for local development) and `opspilot-backend-gd60.onrender.com` (for production).
+  - Runtime hostname sniffing (`window.location.hostname`) correctly switches between localhost (for local development) and `opspilot-backend-3pgb.onrender.com` (for production).
 - **Result**: **FRONTEND BUILD-TIME CONFIGURATION POINTS TO CORRECT PRODUCTION BACKEND**.
 
 ---
@@ -121,11 +121,11 @@
 
 | File Path | Code Snippet | Category | Risk / Remediation |
 |---|---|---|---|
-| `frontend/src/lib/apiClient.ts:10-14` | `window.location.hostname === 'localhost' ? 'http://localhost:3000/v1' : 'https://opspilot-backend-gd60.onrender.com/v1'` | **1. Legitimate Dev / Prod Fallback** | SAFE. Correctly selects production backend on Render. |
-| `frontend/src/lib/apiClient.ts:25-29` | `window.location.hostname === 'localhost' ? 'http://localhost:3000/v1' : 'https://opspilot-backend-gd60.onrender.com/v1'` | **1. Legitimate Dev / Prod Fallback** | SAFE. Correctly selects production OAuth base on Render. |
+| `frontend/src/lib/apiClient.ts:10-14` | `window.location.hostname === 'localhost' ? 'http://localhost:3000/v1' : 'https://opspilot-backend-3pgb.onrender.com/v1'` | **1. Legitimate Dev / Prod Fallback** | SAFE. Correctly selects production backend on Render. |
+| `frontend/src/lib/apiClient.ts:25-29` | `window.location.hostname === 'localhost' ? 'http://localhost:3000/v1' : 'https://opspilot-backend-3pgb.onrender.com/v1'` | **1. Legitimate Dev / Prod Fallback** | SAFE. Correctly selects production OAuth base on Render. |
 | `src/v1/modules/auth/utils/auth-url.util.ts:28-30` | `if (host && (host.includes('localhost') ...)) return 'http://localhost:3001'` | **1. Legitimate Dev Fallback** | SAFE for local development. |
 | `src/v1/modules/auth/utils/auth-url.util.ts:11-13` | `!configured.includes('opspilot-frontend-zuxp.onrender.com')` | **4. PRODUCTION CODE — ERROR** | **CRITICAL BUG**. Inverts check, discarding production `FRONTEND_URL` on Render. |
-| `src/v1/modules/auth/utils/auth-url.util.ts:47-49` | `!configured.includes('opspilot-backend-gd60.onrender.com')` | **4. PRODUCTION CODE — ERROR** | **CRITICAL BUG**. Inverts check, discarding production `CALLBACK_URL` on Render. |
+| `src/v1/modules/auth/utils/auth-url.util.ts:47-49` | `!configured.includes('opspilot-backend-3pgb.onrender.com')` | **4. PRODUCTION CODE — ERROR** | **CRITICAL BUG**. Inverts check, discarding production `CALLBACK_URL` on Render. |
 | `src/v1/modules/auth/guards/google-auth.guard.ts:28` | Local `.env` instruction in redirect query param | **3. Documentation / Fallback Error** | Misleading in production when backend is already configured. |
 | `src/v1/modules/auth/guards/github-auth.guard.ts:28` | Local `.env` instruction in redirect query param | **3. Documentation / Fallback Error** | Misleading in production when backend is already configured. |
 | `scripts/verify-live-deployment.mjs` | Live test runner targeting Render | **2. Test Configuration** | SAFE. Validates live production instances. |
@@ -201,11 +201,11 @@
 - **Severity**: **HIGH**
 - **Component**: `src/v1/modules/auth/utils/auth-url.util.ts` (lines 45-51)
 - **Exact Error**:
-  Configured `GOOGLE_CALLBACK_URL` and `GITHUB_CALLBACK_URL` on Render are skipped because of `!configured.includes('opspilot-backend-gd60.onrender.com')`.
+  Configured `GOOGLE_CALLBACK_URL` and `GITHUB_CALLBACK_URL` on Render are skipped because of `!configured.includes('opspilot-backend-3pgb.onrender.com')`.
 - **Root Cause**:
   Inverted logic intended for local testing prevents using explicit Render backend callback environment variables.
 - **Fix Required**:
-  Remove `!configured.includes('opspilot-backend-gd60.onrender.com')` check so explicit callback URLs in environment variables take absolute precedence.
+  Remove `!configured.includes('opspilot-backend-3pgb.onrender.com')` check so explicit callback URLs in environment variables take absolute precedence.
 
 ---
 
@@ -248,7 +248,7 @@
 ## FINAL VERDICT & REMEDIATION PLAN
 
 ### What Works:
-1. Production Render Web Service (`https://opspilot-backend-gd60.onrender.com`) is running, healthy, and connected to PostgreSQL 16.
+1. Production Render Web Service (`https://opspilot-backend-3pgb.onrender.com`) is running, healthy, and connected to PostgreSQL 16.
 2. Google OAuth 2.0 Client Credentials and GitHub OAuth Client Credentials are **correctly configured and active** on the Render backend.
 3. Direct requests to `/v1/auth/google` and `/v1/auth/github` generate valid, compliant OAuth 2.0 authorization requests that are accepted by Google and GitHub servers without `redirect_uri_mismatch` or `invalid_client` errors.
 4. JWT token creation, Argon2id verification, and protected route guards (`JwtAuthGuard`) operate properly on production.
@@ -268,16 +268,16 @@
    - `src/v1/modules/auth/utils/auth-url.util.ts`
 3. **EXACT PRODUCTION CONFIGURATION**:
    - `FRONTEND_URL` on Render Backend = `https://opspilot-frontend-zuxp.onrender.com`
-   - `GOOGLE_CALLBACK_URL` on Render Backend = `https://opspilot-backend-gd60.onrender.com/v1/auth/google/callback`
-   - `GITHUB_CALLBACK_URL` on Render Backend = `https://opspilot-backend-gd60.onrender.com/v1/auth/github/callback`
-   - `NEXT_PUBLIC_API_URL` on Render Frontend = `https://opspilot-backend-gd60.onrender.com/v1`
+   - `GOOGLE_CALLBACK_URL` on Render Backend = `https://opspilot-backend-3pgb.onrender.com/v1/auth/google/callback`
+   - `GITHUB_CALLBACK_URL` on Render Backend = `https://opspilot-backend-3pgb.onrender.com/v1/auth/github/callback`
+   - `NEXT_PUBLIC_API_URL` on Render Frontend = `https://opspilot-backend-3pgb.onrender.com/v1`
 4. **WHETHER RENDER REDEPLOY IS REQUIRED**:
    - **YES**. Frontend static build must be rebuilt and redeployed on Render.
    - **YES**. Backend Docker web service must be rebuilt and redeployed on Render after updating `auth-url.util.ts`.
 5. **WHETHER GOOGLE CONSOLE CHANGE IS REQUIRED**:
-   - **NO**. Verified that Google accepts `https://opspilot-backend-gd60.onrender.com/v1/auth/google/callback` with client ID `775722720173-q7dcq8uf2gkf7qd00hs1bntf8jd51gc1.apps.googleusercontent.com`.
+   - **NO**. Verified that Google accepts `https://opspilot-backend-3pgb.onrender.com/v1/auth/google/callback` with client ID `775722720173-q7dcq8uf2gkf7qd00hs1bntf8jd51gc1.apps.googleusercontent.com`.
 6. **WHETHER GITHUB SETTINGS CHANGE IS REQUIRED**:
-   - **NO**. Verified that GitHub accepts `https://opspilot-backend-gd60.onrender.com/v1/auth/github/callback` with client ID `Ov23liXq60obxEWibgB0`.
+   - **NO**. Verified that GitHub accepts `https://opspilot-backend-3pgb.onrender.com/v1/auth/github/callback` with client ID `Ov23liXq60obxEWibgB0`.
 7. **WHETHER CODE CHANGE IS REQUIRED**:
    - **YES**. Fix response unwrapping in `frontend/src/app/login/page.tsx` & `register/page.tsx`.
    - **YES**. Fix redirect resolution in `src/v1/modules/auth/utils/auth-url.util.ts`.

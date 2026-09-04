@@ -4,7 +4,7 @@
  * "Create a brand-new account -> inspect entire application -> verify real data, loading states, proper empty states, zero invented numbers, strict tenant isolation."
  */
 
-const BACKEND_URL = process.env.BACKEND_URL || 'https://opspilot-backend-gd60.onrender.com';
+const BACKEND_URL = process.env.BACKEND_URL || 'https://opspilot-backend-3pgb.onrender.com';
 const FRONTEND_URL = process.env.FRONTEND_URL || 'https://opspilot-frontend-zuxp.onrender.com';
 
 const checks = [];

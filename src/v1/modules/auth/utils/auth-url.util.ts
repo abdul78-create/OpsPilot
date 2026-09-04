@@ -1,7 +1,7 @@
 import { ConfigService } from '@nestjs/config';
 
 export const TRUSTED_PRODUCTION_FRONTEND = 'https://opspilot-frontend-zuxp.onrender.com';
-export const TRUSTED_PRODUCTION_BACKEND = 'https://opspilot-backend-gd60.onrender.com';
+export const TRUSTED_PRODUCTION_BACKEND = 'https://opspilot-backend-3pgb.onrender.com';
 
 /**
  * Resolves the trusted application frontend redirect URL.

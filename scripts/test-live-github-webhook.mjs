@@ -1,10 +1,10 @@
 /**
  * Live GitHub Webhook & Pipeline Trigger Verification
  * Simulates real GitHub push, tag, branch, and idempotent webhook deliveries
- * against the production Render backend: https://opspilot-backend-gd60.onrender.com/v1/webhooks/github
+ * against the production Render backend: https://opspilot-backend-3pgb.onrender.com/v1/webhooks/github
  */
 
-const BACKEND_URL = process.env.BACKEND_URL || 'https://opspilot-backend-gd60.onrender.com';
+const BACKEND_URL = process.env.BACKEND_URL || 'https://opspilot-backend-3pgb.onrender.com';
 
 const results = [];
 

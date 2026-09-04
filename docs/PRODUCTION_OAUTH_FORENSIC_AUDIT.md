@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-04  
 **Auditor:** OpsPilot Reliability & Security Engineering  
-**Scope:** Live Render Production (`opspilot-frontend-zuxp.onrender.com` & `opspilot-backend-gd60.onrender.com`)  
+**Scope:** Live Render Production (`opspilot-frontend-zuxp.onrender.com` & `opspilot-backend-3pgb.onrender.com`)  
 **Verdict:** `PRODUCTION AUTH PARTIALLY VERIFIED` (Local code fixes & regression tests 100% verified; awaiting customer Render deployment trigger without Git push)
 
 ---
@@ -73,8 +73,8 @@ A dedicated test suite was executed in `src/v1/modules/auth/oauth-flow.spec.ts`.
 ## Production Verification
 
 ### Live Render Infrastructure Checks:
-- **Render Backend Health:** `GET https://opspilot-backend-gd60.onrender.com/v1/health` → **HTTP 200 OK** (`database: "up"`)
-- **Render Providers Endpoint:** `GET https://opspilot-backend-gd60.onrender.com/v1/auth/providers` → **HTTP 200 OK**
+- **Render Backend Health:** `GET https://opspilot-backend-3pgb.onrender.com/v1/health` → **HTTP 200 OK** (`database: "up"`)
+- **Render Providers Endpoint:** `GET https://opspilot-backend-3pgb.onrender.com/v1/auth/providers` → **HTTP 200 OK**
   ```json
   {
     "success": true,
@@ -84,15 +84,15 @@ A dedicated test suite was executed in `src/v1/modules/auth/oauth-flow.spec.ts`.
     "path": "/v1/auth/providers"
   }
   ```
-- **Google OAuth Handshake:** `GET https://opspilot-backend-gd60.onrender.com/v1/auth/google` → **HTTP 302** to Google Accounts (`accounts.google.com/o/oauth2/v2/auth?client_id=775722720173-...`)
-- **GitHub OAuth Handshake:** `GET https://opspilot-backend-gd60.onrender.com/v1/auth/github` → **HTTP 302** to GitHub (`github.com/login/oauth/authorize?client_id=Ov23liXq60obxEWibgB0...`)
+- **Google OAuth Handshake:** `GET https://opspilot-backend-3pgb.onrender.com/v1/auth/google` → **HTTP 302** to Google Accounts (`accounts.google.com/o/oauth2/v2/auth?client_id=775722720173-...`)
+- **GitHub OAuth Handshake:** `GET https://opspilot-backend-3pgb.onrender.com/v1/auth/github` → **HTTP 302** to GitHub (`github.com/login/oauth/authorize?client_id=Ov23liXq60obxEWibgB0...`)
 
 ---
 
 ## Google Login Result
 
 - **Local Verification:** When `/auth/providers` returns `google: true`, the Google button renders enabled with NO `"off"` badge. Clicking triggers redirect to `/v1/auth/google`.
-- **Production Handshake:** Live Render backend successfully generates signed Google authorization URLs with `redirect_uri=https://opspilot-backend-gd60.onrender.com/v1/auth/google/callback`.
+- **Production Handshake:** Live Render backend successfully generates signed Google authorization URLs with `redirect_uri=https://opspilot-backend-3pgb.onrender.com/v1/auth/google/callback`.
 - **Pending Action:** Deployment of the code fixes to Render is required to replace the existing live containers.
 
 ---
@@ -100,7 +100,7 @@ A dedicated test suite was executed in `src/v1/modules/auth/oauth-flow.spec.ts`.
 ## GitHub Login Result
 
 - **Local Verification:** When `/auth/providers` returns `github: true`, the GitHub button renders enabled with NO `"off"` badge. In headless browser testing (`local_oauth_flow_verify`), clicking `Continue with GitHub` successfully initiated navigation to `/v1/auth/github` and received the HTTP 302 redirect.
-- **Production Handshake:** Live Render backend successfully generates signed GitHub authorization URLs with `redirect_uri=https://opspilot-backend-gd60.onrender.com/v1/auth/github/callback`.
+- **Production Handshake:** Live Render backend successfully generates signed GitHub authorization URLs with `redirect_uri=https://opspilot-backend-3pgb.onrender.com/v1/auth/github/callback`.
 - **Pending Action:** Deployment of the code fixes to Render is required to replace the existing live containers.
 
 ---

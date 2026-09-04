@@ -7,7 +7,7 @@
  * - Historical log retrieval & persistence
  */
 
-const BACKEND_URL = process.env.BACKEND_URL || 'https://opspilot-backend-gd60.onrender.com';
+const BACKEND_URL = process.env.BACKEND_URL || 'https://opspilot-backend-3pgb.onrender.com';
 
 const checks = [];
 

@@ -240,7 +240,7 @@ describe('OAuth Flow & Resilience Verification Spec', () => {
       });
       const req = {
         headers: {
-          host: 'opspilot-backend-gd60.onrender.com',
+          host: 'opspilot-backend-3pgb.onrender.com',
           referer: 'https://accounts.google.com/signin/oauth',
         },
       };
@@ -257,7 +257,7 @@ describe('OAuth Flow & Resilience Verification Spec', () => {
       });
       const req = {
         headers: {
-          host: 'opspilot-backend-gd60.onrender.com',
+          host: 'opspilot-backend-3pgb.onrender.com',
           referer: 'https://github.com/login/oauth/authorize',
         },
       };
