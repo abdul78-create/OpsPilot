@@ -16,7 +16,7 @@ export function TemplateMarketplace({ open, onClose, onSelectTemplate }: Templat
     {
       id: 'nextjs-fullstack',
       title: 'Next.js 15 Fullstack CI/CD',
-      description: 'ESLint → Jest Unit Tests → Docker Multi-Stage Build → Trivy SAST → Vercel/K8s Deploy',
+      description: 'ESLint → Jest Unit Tests → Docker Multi-Stage Build → Trivy SAST → Docker/K8s Deploy',
       tag: 'Popular',
       steps: 5,
       estimatedTime: '2m 30s',
