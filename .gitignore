@@ -23,6 +23,7 @@ npm-debug.log*
 .env.*
 !.env.example
 !.env.production.example
+!.env.docker.example
 
 # IDE / Editor
 .vscode/

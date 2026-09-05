@@ -74,6 +74,8 @@ services:
       JWT_EXPIRES_IN:         ${JWT_EXPIRES_IN:-15m}
       REFRESH_TOKEN_SECRET:   ${REFRESH_TOKEN_SECRET:-change_me_refresh_min_32_chars!!}
       ENCRYPTION_KEY:         ${ENCRYPTION_KEY:-0000000000000000000000000000000000000000000000000000000000000000}
+      RUNNER_DRIVER:          process
+      GEMINI_API_KEY:         ${GEMINI_API_KEY:-}
       LOG_LEVEL:              ${LOG_LEVEL:-info}
       SWAGGER_PATH:           api/docs
     ports:
