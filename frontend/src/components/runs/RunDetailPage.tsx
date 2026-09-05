@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname, useParams } from 'next/navigation';
 import { DeveloperShell } from '@/components/layout/DeveloperShell';
 import {
   CheckCircle2, XCircle, Loader2, Circle, XSquare,
@@ -18,6 +18,16 @@ import { XTermPanel } from '@/components/ui/XTermPanel';
 import { TerminalStream } from '@/components/ui/terminal-stream';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function extractRunIdFromPath(pathname?: string | null): string | null {
+  if (!pathname) return null;
+  const match = pathname.match(/\/runs\/([^/?#]+)/);
+  if (match && match[1] && match[1] !== 'shell') {
+    return decodeURIComponent(match[1]);
+  }
+  return null;
+}
+
 
 function timeAgo(d?: string) {
   if (!d) return '—';
@@ -108,7 +118,38 @@ function StepTimeline({
 
 interface RunDetailPageProps { runId: string; }
 
-export function RunDetailPage({ runId }: RunDetailPageProps) {
+export function RunDetailPage({ runId: initialRunId }: RunDetailPageProps) {
+  const pathname = usePathname();
+  const params = useParams();
+  const router = useRouter();
+  const { toast } = useToast();
+
+  const getResolvedRunId = useCallback(() => {
+    // 1. From useParams if present and not 'shell'
+    if (params?.runId && typeof params.runId === 'string' && params.runId !== 'shell') {
+      return params.runId;
+    }
+    // 2. From usePathname()
+    const fromPath = extractRunIdFromPath(pathname);
+    if (fromPath) return fromPath;
+    // 3. From window.location.pathname if client-rendered
+    if (typeof window !== 'undefined') {
+      const fromWindow = extractRunIdFromPath(window.location.pathname);
+      if (fromWindow) return fromWindow;
+    }
+    // 4. Fallback to initialRunId prop
+    return initialRunId;
+  }, [params, pathname, initialRunId]);
+
+  const [runId, setRunId] = useState<string>(getResolvedRunId);
+
+  useEffect(() => {
+    const current = getResolvedRunId();
+    if (current && current !== runId) {
+      setRunId(current);
+    }
+  }, [getResolvedRunId, runId]);
+
   const [run, setRun] = useState<PipelineRun | null>(null);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -117,10 +158,12 @@ export function RunDetailPage({ runId }: RunDetailPageProps) {
   const [analyzing, setAnalyzing] = useState(false);
   const [aiReport, setAiReport] = useState<AiAnalysisReport | null>(null);
   const [aiError, setAiError] = useState<string | null>(null);
-  const { toast } = useToast();
-  const router = useRouter();
 
   const load = useCallback(async () => {
+    if (!runId || runId === 'shell') {
+      setLoading(false);
+      return;
+    }
     try {
       const [runRes, logEntries] = await Promise.all([
         getPipelineRun(runId),
@@ -142,6 +185,7 @@ export function RunDetailPage({ runId }: RunDetailPageProps) {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [runId, toast]);
+
 
   useEffect(() => {
     load();
@@ -207,12 +251,12 @@ export function RunDetailPage({ runId }: RunDetailPageProps) {
     );
   }
 
-  if (!run) {
+  if (!run || runId === 'shell') {
     return (
       <div className="flex flex-col items-center justify-center h-full gap-3" style={{ color: 'var(--text-muted)' }}>
         <AlertCircle size={32} className="opacity-40" />
-        <p className="text-sm">Run not found: <code className="font-mono text-xs">{runId}</code></p>
-        <button onClick={() => router.push('/runs')} className="text-xs hover:opacity-80 transition-opacity" style={{ color: 'var(--accent)' }}>
+        <p className="text-sm">Run not found: <code className="font-mono text-xs">{runId === 'shell' ? 'No run ID specified' : runId}</code></p>
+        <button onClick={() => router.push('/runs/')} className="text-xs hover:opacity-80 transition-opacity" style={{ color: 'var(--accent)' }}>
           ← Back to Runs
         </button>
       </div>
@@ -232,12 +276,13 @@ export function RunDetailPage({ runId }: RunDetailPageProps) {
         style={{ background: 'var(--bg-secondary)', borderColor: 'var(--border)' }}
       >
         <button
-          onClick={() => router.push('/runs')}
+          onClick={() => router.push('/runs/')}
           className="flex items-center gap-1 text-[11px] transition-colors"
           style={{ color: 'var(--text-muted)' }}
         >
           <ChevronLeft size={13} /> Runs
         </button>
+
         <div className="w-px h-4" style={{ background: 'var(--border)' }} />
 
         <code className="text-[11px] font-mono" style={{ color: 'var(--text-secondary)' }}>{runId}</code>

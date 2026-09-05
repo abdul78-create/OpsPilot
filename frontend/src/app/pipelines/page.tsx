@@ -56,7 +56,7 @@ export default function PipelinesPage() {
       const res = await triggerPipeline(p.id, p.branch);
       const runId = res.data.id;
       toast({ kind: 'success', title: 'Pipeline triggered', message: `Run #${runId.slice(0, 8)} queued` });
-      router.push(`/runs`);
+      router.push(`/runs/${runId}/`);
     } catch {
       toast({ kind: 'error', title: 'Trigger failed', message: 'Check your pipeline config' });
     } finally {
@@ -176,7 +176,7 @@ export default function PipelinesPage() {
               paginated.map(p => (
                 <div
                   key={p.id}
-                  onClick={() => router.push(`/runs?pipelineId=${p.id}`)}
+                  onClick={() => router.push(`/runs/?pipelineId=${p.id}`)}
                   className="h-14 px-5 border-b border-[var(--border)] flex items-center gap-4 text-xs cursor-pointer hover:bg-[var(--bg-tertiary)] transition-colors group"
                 >
                   <div className="flex-1 min-w-0">

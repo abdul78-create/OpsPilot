@@ -1,7 +1,6 @@
 // Server Component — no "use client" directive
 // generateStaticParams is required for static export (output: 'export')
 
-import { RunDetailPage } from '@/components/runs/RunDetailPage';
 import { DeveloperShellWrapper } from '@/components/runs/RunDetailPage';
 
 interface RunDetailPageProps {
@@ -9,9 +8,8 @@ interface RunDetailPageProps {
 }
 
 export function generateStaticParams() {
-  const intIds = Array.from({ length: 200 }, (_, i) => ({ runId: String(i + 1) }));
-  const sentinel = [{ runId: 'shell' }];
-  return [...intIds, ...sentinel];
+  // Static export fallback sentinel; real UUIDs are resolved client-side from the browser URL.
+  return [{ runId: 'shell' }];
 }
 
 export default async function RunDetailRoute({ params }: RunDetailPageProps) {

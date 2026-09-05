@@ -1,14 +1,14 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useEffect, useCallback, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { DeveloperShell } from '@/components/layout/DeveloperShell';
 import {
   Activity, Clock, RefreshCw, CheckCircle2, XCircle, Loader2,
   GitCommit, GitBranch, ChevronRight, AlertTriangle, Search,
 } from 'lucide-react';
 
-import { listAllRuns, cancelRun, PipelineRun } from '@/lib/apiClient';
+import { listAllRuns, listRunsForPipeline, cancelRun, PipelineRun } from '@/lib/apiClient';
 import { useToast } from '@/components/ui/Toast';
 
 /* ── Helpers ───────────────────────────────────── */
@@ -53,9 +53,11 @@ function StatusPill({ status }: { status: RunStatus }) {
 const ALL_STATUSES: RunStatus[] = ['SUCCESS', 'FAILED', 'RUNNING', 'QUEUED', 'CANCELLED'];
 const PAGE_SIZE = 15;
 
-/* ── Main Page ─────────────────────────────────── */
-export default function RunsPage() {
+/* ── Content Component (consumes search params) ── */
+function RunsPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const pipelineId = searchParams.get('pipelineId');
   const { toast } = useToast();
   const [runs, setRuns] = useState<PipelineRun[]>([]);
   const [loading, setLoading] = useState(true);
@@ -67,11 +69,25 @@ export default function RunsPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await listAllRuns();
-      if (Array.isArray(res)) setRuns(res);
-    } catch { /* silent */ }
-    finally { setLoading(false); }
-  }, []);
+      if (pipelineId) {
+        const res = await listRunsForPipeline(pipelineId);
+        if (res?.data && Array.isArray(res.data)) {
+          setRuns(res.data);
+        } else if (Array.isArray(res)) {
+          setRuns(res);
+        } else {
+          setRuns([]);
+        }
+      } else {
+        const res = await listAllRuns();
+        if (Array.isArray(res)) setRuns(res);
+      }
+    } catch {
+      toast({ kind: 'error', title: 'Failed to load runs' });
+    } finally {
+      setLoading(false);
+    }
+  }, [pipelineId, toast]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -110,7 +126,9 @@ export default function RunsPage() {
         <div className="h-14 px-4 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border)] flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
             <Activity size={15} className="text-[var(--text-muted)]" />
-            <h1 className="text-sm font-bold text-[var(--text-primary)]">Pipeline Runs</h1>
+            <h1 className="text-sm font-bold text-[var(--text-primary)]">
+              {pipelineId ? 'Pipeline Runs (Filtered)' : 'Pipeline Runs'}
+            </h1>
             <span className="text-[10px] font-mono text-[var(--text-muted)] border border-[var(--border)] px-2 py-0.5 rounded-full">
               {filtered.length} runs
             </span>
@@ -122,7 +140,7 @@ export default function RunsPage() {
         </div>
 
         {/* Filters */}
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex items-center gap-3 shrink-0 flex-wrap">
           <div className="relative flex-1 max-w-sm">
             <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
             <input
@@ -133,6 +151,19 @@ export default function RunsPage() {
               className="w-full pl-9 pr-3 py-1.5 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border)] text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--border-bright)]"
             />
           </div>
+
+          {pipelineId && (
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--accent-dim)] border border-[var(--accent)] text-xs text-[var(--text-primary)]">
+              <span>Pipeline: <code className="font-mono text-[11px] font-semibold">{pipelineId}</code></span>
+              <button
+                onClick={() => router.push('/runs/')}
+                className="ml-1 text-[10px] uppercase font-bold text-[var(--accent)] hover:underline"
+                title="Clear pipeline filter"
+              >
+                Clear
+              </button>
+            </div>
+          )}
 
           <div className="flex items-center gap-1 bg-[var(--bg-secondary)] border border-[var(--border)] rounded-lg p-1">
             <button
@@ -180,13 +211,23 @@ export default function RunsPage() {
             ) : paginated.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-center">
                 <Activity size={32} className="text-[var(--text-muted)] mb-2" />
-                <p className="text-sm font-medium text-[var(--text-secondary)]">No runs match criteria</p>
+                <p className="text-sm font-medium text-[var(--text-secondary)]">
+                  {pipelineId ? 'No runs found for this pipeline' : 'No runs match criteria'}
+                </p>
+                {pipelineId && (
+                  <button
+                    onClick={() => router.push('/runs/')}
+                    className="mt-2 text-xs text-[var(--accent)] hover:underline"
+                  >
+                    View all runs
+                  </button>
+                )}
               </div>
             ) : (
               paginated.map(r => (
                 <div
                   key={r.id}
-                  onClick={() => router.push(`/runs/${r.id}`)}
+                  onClick={() => router.push(`/runs/${r.id}/`)}
                   className="h-12 px-4 flex items-center gap-4 text-xs cursor-pointer hover:bg-[var(--bg-tertiary)] transition-colors group"
                 >
                   <div className="w-24">
@@ -244,5 +285,19 @@ export default function RunsPage() {
         </div>
       </div>
     </DeveloperShell>
+  );
+}
+
+export default function RunsPage() {
+  return (
+    <Suspense fallback={
+      <DeveloperShell>
+        <div className="flex items-center justify-center h-[calc(100vh-5.5rem)] text-xs text-[var(--text-muted)]">
+          <Loader2 size={16} className="animate-spin mr-2" /> Loading runs...
+        </div>
+      </DeveloperShell>
+    }>
+      <RunsPageContent />
+    </Suspense>
   );
 }
