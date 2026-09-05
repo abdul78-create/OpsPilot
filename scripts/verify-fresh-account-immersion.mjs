@@ -5,7 +5,7 @@
  */
 
 const BACKEND_URL = process.env.BACKEND_URL || 'https://opspilot-backend-3pgb.onrender.com';
-const FRONTEND_URL = process.env.FRONTEND_URL || 'https://opspilot-frontend-zuxp.onrender.com';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'https://opspilot-frontend-4oou.onrender.com';
 
 const checks = [];
 

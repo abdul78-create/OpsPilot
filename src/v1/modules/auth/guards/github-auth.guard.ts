@@ -24,7 +24,7 @@ export class GitHubAuthGuard extends AuthGuard('github') {
       const request = context.switchToHttp().getRequest();
       const frontendUrl = getFrontendRedirectUrl(request, this.configService);
       response.redirect(
-        `${frontendUrl}/login?error=${encodeURIComponent(
+        `${frontendUrl}/login/?error=${encodeURIComponent(
           'GitHub OAuth is not configured on this instance. Please configure GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET in .env.',
         )}`,
       );

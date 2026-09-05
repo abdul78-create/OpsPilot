@@ -2,11 +2,11 @@
  * OpsPilot Production Deployment E2E Verification Script
  * Validates the 13 production checks against live Render instances:
  * Backend: https://opspilot-backend-3pgb.onrender.com
- * Frontend: https://opspilot-frontend-zuxp.onrender.com
+ * Frontend: https://opspilot-frontend-4oou.onrender.com
  */
 
 const BACKEND_URL = process.env.BACKEND_URL || 'https://opspilot-backend-3pgb.onrender.com';
-const FRONTEND_URL = process.env.FRONTEND_URL || 'https://opspilot-frontend-zuxp.onrender.com';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'https://opspilot-frontend-4oou.onrender.com';
 
 const results = [];
 

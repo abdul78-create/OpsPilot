@@ -147,7 +147,7 @@ export class AuthController {
   async googleAuthCallback(@Req() req: any, @Res() res: Response): Promise<void> {
     const authResult = await this.authService.validateOAuthUser(req.user);
     const frontendUrl = getFrontendRedirectUrl(req, this.configService);
-    const redirectUrl = `${frontendUrl}/login?token=${encodeURIComponent(
+    const redirectUrl = `${frontendUrl}/login/?token=${encodeURIComponent(
       authResult.tokens.accessToken,
     )}&user=${encodeURIComponent(JSON.stringify(authResult.user))}`;
     res.redirect(redirectUrl);
@@ -171,7 +171,7 @@ export class AuthController {
   async githubAuthCallback(@Req() req: any, @Res() res: Response): Promise<void> {
     const authResult = await this.authService.validateOAuthUser(req.user);
     const frontendUrl = getFrontendRedirectUrl(req, this.configService);
-    const redirectUrl = `${frontendUrl}/login?token=${encodeURIComponent(
+    const redirectUrl = `${frontendUrl}/login/?token=${encodeURIComponent(
       authResult.tokens.accessToken,
     )}&user=${encodeURIComponent(JSON.stringify(authResult.user))}`;
     res.redirect(redirectUrl);

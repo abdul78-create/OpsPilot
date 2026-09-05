@@ -20,6 +20,7 @@ import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { AuthResponseDto } from './dto/auth-response.dto';
 import { MESSAGES } from '@shared/constants/messages.constants';
+import { TRUSTED_PRODUCTION_FRONTEND } from './utils/auth-url.util';
 
 const EMAIL_VERIFICATION_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const PASSWORD_RESET_TTL_MS = 60 * 60 * 1000; // 1 hour
@@ -93,7 +94,7 @@ export class AuthService {
       },
     });
 
-    const frontendUrl = process.env.FRONTEND_URL ?? 'https://opspilot-frontend-zuxp.onrender.com';
+    const frontendUrl = process.env.FRONTEND_URL ?? TRUSTED_PRODUCTION_FRONTEND;
     const verificationUrl = `${frontendUrl}/verify-email?token=${rawToken}`;
 
     await this.notificationService.sendEmailVerification(user.email, verificationUrl);
@@ -245,7 +246,7 @@ export class AuthService {
       },
     });
 
-    const frontendUrl = process.env.FRONTEND_URL ?? 'https://opspilot-frontend-zuxp.onrender.com';
+    const frontendUrl = process.env.FRONTEND_URL ?? TRUSTED_PRODUCTION_FRONTEND;
     const resetUrl = `${frontendUrl}/reset-password?token=${rawToken}`;
 
     await this.notificationService.sendPasswordReset(user.email, resetUrl);

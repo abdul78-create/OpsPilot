@@ -67,25 +67,25 @@ describe('OAuth Flow & Resilience Verification Spec', () => {
       };
     });
 
-    it('GoogleAuthGuard should cleanly intercept unconfigured OAuth and redirect to /login with error', () => {
+    it('GoogleAuthGuard should cleanly intercept unconfigured OAuth and redirect to /login/ with error', () => {
       jest.spyOn(configService, 'get').mockReturnValue(undefined);
       const guard = new GoogleAuthGuard(configService);
 
       const canActivate = guard.canActivate(mockContext as ExecutionContext);
       expect(canActivate).toBe(false);
-      expect(mockRedirect).toHaveBeenCalledWith(expect.stringContaining('/login?error='));
+      expect(mockRedirect).toHaveBeenCalledWith(expect.stringContaining('/login/?error='));
       expect(mockRedirect).toHaveBeenCalledWith(
         expect.stringContaining('Google%20OAuth%20is%20not%20configured'),
       );
     });
 
-    it('GitHubAuthGuard should cleanly intercept unconfigured OAuth and redirect to /login with error', () => {
+    it('GitHubAuthGuard should cleanly intercept unconfigured OAuth and redirect to /login/ with error', () => {
       jest.spyOn(configService, 'get').mockReturnValue(undefined);
       const guard = new GitHubAuthGuard(configService);
 
       const canActivate = guard.canActivate(mockContext as ExecutionContext);
       expect(canActivate).toBe(false);
-      expect(mockRedirect).toHaveBeenCalledWith(expect.stringContaining('/login?error='));
+      expect(mockRedirect).toHaveBeenCalledWith(expect.stringContaining('/login/?error='));
       expect(mockRedirect).toHaveBeenCalledWith(
         expect.stringContaining('GitHub%20OAuth%20is%20not%20configured'),
       );
@@ -235,7 +235,7 @@ describe('OAuth Flow & Resilience Verification Spec', () => {
     it('AUTH-OAUTH-002: Production Google callback uses configured FRONTEND_URL as trusted application redirect', () => {
       const prodConfigService = new ConfigService({});
       jest.spyOn(prodConfigService, 'get').mockImplementation((key: string) => {
-        if (key === 'FRONTEND_URL') return 'https://opspilot-frontend-zuxp.onrender.com';
+        if (key === 'FRONTEND_URL') return 'https://opspilot-frontend-4oou.onrender.com';
         return undefined;
       });
       const req = {
@@ -246,13 +246,13 @@ describe('OAuth Flow & Resilience Verification Spec', () => {
       };
 
       const redirectUrl = getFrontendRedirectUrl(req, prodConfigService);
-      expect(redirectUrl).toBe('https://opspilot-frontend-zuxp.onrender.com');
+      expect(redirectUrl).toBe('https://opspilot-frontend-4oou.onrender.com');
     });
 
     it('AUTH-OAUTH-003: Production GitHub callback uses configured FRONTEND_URL as trusted application redirect', () => {
       const prodConfigService = new ConfigService({});
       jest.spyOn(prodConfigService, 'get').mockImplementation((key: string) => {
-        if (key === 'FRONTEND_URL') return 'https://opspilot-frontend-zuxp.onrender.com';
+        if (key === 'FRONTEND_URL') return 'https://opspilot-frontend-4oou.onrender.com';
         return undefined;
       });
       const req = {
@@ -263,13 +263,13 @@ describe('OAuth Flow & Resilience Verification Spec', () => {
       };
 
       const redirectUrl = getFrontendRedirectUrl(req, prodConfigService);
-      expect(redirectUrl).toBe('https://opspilot-frontend-zuxp.onrender.com');
+      expect(redirectUrl).toBe('https://opspilot-frontend-4oou.onrender.com');
     });
 
     it('AUTH-OAUTH-004: Google/GitHub Referer cannot override configured FRONTEND_URL', () => {
       const prodConfigService = new ConfigService({});
       jest.spyOn(prodConfigService, 'get').mockImplementation((key: string) => {
-        if (key === 'FRONTEND_URL') return 'https://opspilot-frontend-zuxp.onrender.com';
+        if (key === 'FRONTEND_URL') return 'https://opspilot-frontend-4oou.onrender.com';
         return undefined;
       });
       const req = {
@@ -280,14 +280,14 @@ describe('OAuth Flow & Resilience Verification Spec', () => {
       };
 
       const redirectUrl = getFrontendRedirectUrl(req, prodConfigService);
-      expect(redirectUrl).toBe('https://opspilot-frontend-zuxp.onrender.com');
+      expect(redirectUrl).toBe('https://opspilot-frontend-4oou.onrender.com');
       expect(redirectUrl).not.toContain('accounts.google.com');
     });
 
     it('AUTH-OAUTH-005: Arbitrary Referer cannot cause redirect to an external malicious domain (Open Redirect Protection)', () => {
       const prodConfigService = new ConfigService({});
       jest.spyOn(prodConfigService, 'get').mockImplementation((key: string) => {
-        if (key === 'FRONTEND_URL') return 'https://opspilot-frontend-zuxp.onrender.com';
+        if (key === 'FRONTEND_URL') return 'https://opspilot-frontend-4oou.onrender.com';
         return undefined;
       });
       const attackerReq = {
@@ -298,7 +298,7 @@ describe('OAuth Flow & Resilience Verification Spec', () => {
       };
 
       const redirectUrl = getFrontendRedirectUrl(attackerReq, prodConfigService);
-      expect(redirectUrl).toBe('https://opspilot-frontend-zuxp.onrender.com');
+      expect(redirectUrl).toBe('https://opspilot-frontend-4oou.onrender.com');
       expect(redirectUrl).not.toContain('attacker');
     });
 
@@ -336,6 +336,35 @@ describe('OAuth Flow & Resilience Verification Spec', () => {
         process.env.NODE_ENV = oldNodeEnv;
         process.env.FRONTEND_URL = oldFrontendUrl;
       }
+    });
+
+    it('AUTH-OAUTH-007: AuthController callback redirects include canonical trailing slash /login/?token= to prevent Nginx port-10000 301 redirects', async () => {
+      const mockAuthService: any = {
+        validateOAuthUser: jest.fn().mockResolvedValue({
+          user: { id: 'usr-1', email: 'test@opspilot.com' },
+          tokens: { accessToken: 'jwt-access-token-123' },
+        }),
+      };
+      const testConfigService = new ConfigService({});
+      jest.spyOn(testConfigService, 'get').mockImplementation((key: string) => {
+        if (key === 'FRONTEND_URL') return 'https://opspilot-frontend-4oou.onrender.com';
+        return undefined;
+      });
+
+      const controller = new AuthController(mockAuthService, testConfigService);
+      const mockRes: any = { redirect: jest.fn() };
+      const mockReq: any = { user: { id: 'usr-1' } };
+
+      await controller.googleAuthCallback(mockReq, mockRes);
+      expect(mockRes.redirect).toHaveBeenCalledWith(
+        expect.stringMatching(/^https:\/\/opspilot-frontend-4oou\.onrender\.com\/login\/\?token=/),
+      );
+
+      mockRes.redirect.mockClear();
+      await controller.githubAuthCallback(mockReq, mockRes);
+      expect(mockRes.redirect).toHaveBeenCalledWith(
+        expect.stringMatching(/^https:\/\/opspilot-frontend-4oou\.onrender\.com\/login\/\?token=/),
+      );
     });
   });
 });

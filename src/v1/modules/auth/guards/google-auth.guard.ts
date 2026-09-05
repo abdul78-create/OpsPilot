@@ -24,7 +24,7 @@ export class GoogleAuthGuard extends AuthGuard('google') {
       const request = context.switchToHttp().getRequest();
       const frontendUrl = getFrontendRedirectUrl(request, this.configService);
       response.redirect(
-        `${frontendUrl}/login?error=${encodeURIComponent(
+        `${frontendUrl}/login/?error=${encodeURIComponent(
           'Google OAuth is not configured on this instance. Please configure GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in .env.',
         )}`,
       );
