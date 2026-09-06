@@ -6,6 +6,7 @@ import {
   GitBranch, Box, CheckSquare, ShieldCheck, Rocket, Bell,
   Loader2, Sparkles, MessageSquare, Activity, UserCheck, RotateCcw
 } from 'lucide-react';
+import { resolveDeployEnvironment } from './DAGCompiler';
 
 // ─── Execution run state ────────────────────────────────────────────────────
 export type RunState = 'idle' | 'queued' | 'running' | 'success' | 'failed' | 'skipped';
@@ -221,6 +222,9 @@ SecurityNode.displayName = 'SecurityNode';
 export const DeployNode = memo(({ data, selected }: NodeProps) => {
   const d = data as BaseNodeData;
   const runState = (d.runState ?? 'idle') as RunState;
+  const env = resolveDeployEnvironment(d as Record<string, unknown>);
+  const displayTarget = env ? `${env} (${env === 'staging' ? 'staging-us-east-1' : 'prod-us-east-1'})` : String(d.target ?? d.namespace ?? 'unconfigured');
+
   return (
     <div className={`${nodeWrapClass(!!selected, runState)} group`} style={{ background: 'var(--bg-secondary)' }}>
       <NodeCommentPin count={d.commentsCount as number | undefined} />
@@ -232,7 +236,7 @@ export const DeployNode = memo(({ data, selected }: NodeProps) => {
         </div>
         <RunStateBadge state={runState} elapsed={d.elapsed as string | undefined} />
       </div>
-      <p className="text-[11px] font-mono truncate" style={{ color: 'var(--text-muted)' }}>{String(d.target ?? 'production')}</p>
+      <p className="text-[11px] font-mono truncate" style={{ color: 'var(--text-muted)' }}>{displayTarget}</p>
       <Handle type="source" position={Position.Right} className="!w-2.5 !h-2.5 !border-2" style={{ background: 'var(--accent)', borderColor: 'var(--bg-primary)' }} />
       <AIStepButton />
     </div>

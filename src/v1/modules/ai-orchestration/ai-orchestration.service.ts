@@ -1,4 +1,11 @@
-import { Injectable, Logger, NotFoundException, Inject, Optional } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  BadRequestException,
+  Inject,
+  Optional,
+} from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { AiOrchestrationRepository } from './ai-orchestration.repository';
 import { PrismaService } from '../../../core/database/prisma.service';
@@ -480,6 +487,10 @@ export class AiOrchestrationService {
     nodes: any[];
     edges: any[];
   }> {
+    if (!prompt || typeof prompt !== 'string') {
+      throw new BadRequestException('Prompt is required for pipeline generation');
+    }
+
     const p = prompt.toLowerCase();
     const isPython =
       p.includes('python') || p.includes('fastapi') || p.includes('django') || p.includes('flask');
@@ -491,7 +502,25 @@ export class AiOrchestrationService {
       p.includes('railway') ||
       p.includes('k8s') ||
       p.includes('staging') ||
+      p.includes('production') ||
+      p.includes('prod') ||
       p.includes('cloud run');
+
+    let deployEnv: 'staging' | 'production' | null = null;
+    if (hasDeploy) {
+      const isStaging = /\b(staging|stage|preprod|pre-prod|non-?prod)\b/i.test(prompt);
+      const isProduction = /\b(production|prod)\b/i.test(prompt);
+
+      if (isStaging && !isProduction) {
+        deployEnv = 'staging';
+      } else if (isProduction && !isStaging) {
+        deployEnv = 'production';
+      } else {
+        throw new BadRequestException(
+          'Target deployment environment is ambiguous or not specified. Please explicitly specify either "staging" or "production".',
+        );
+      }
+    }
 
     const stackName = isPython ? 'Python' : isGo ? 'Go' : 'Node.js';
     const pipelineName = `${stackName} Delivery Pipeline`;
@@ -546,12 +575,26 @@ export class AiOrchestrationService {
       lastNodeId = 'node_security';
     }
 
-    if (hasDeploy) {
+    if (deployEnv) {
+      const isStaging = deployEnv === 'staging';
+      const cluster = isStaging ? 'staging-us-east-1' : 'prod-us-east-1';
+      const envLabel = isStaging ? 'Staging' : 'Production';
+      const deployCommand = `kubectl apply -f k8s/ --namespace ${deployEnv}`;
+      const manifest = `namespace: ${deployEnv}\ncluster: ${cluster}\nstrategy: RollingUpdate\nmaxSurge: 1\nmaxUnavailable: 0`;
+
       nodes.push({
         id: 'node_deploy',
         type: 'deploy',
         position: { x: hasSecurity ? 970 : 740, y: 150 },
-        data: { label: 'Deploy to Staging', environment: 'Staging' },
+        data: {
+          label: `Deploy to ${envLabel}`,
+          environment: envLabel,
+          target: deployEnv,
+          namespace: deployEnv,
+          cluster,
+          command: deployCommand,
+          manifest,
+        },
       });
       edges.push({ id: hasSecurity ? 'e4' : 'e3', source: lastNodeId, target: 'node_deploy' });
     }
@@ -569,7 +612,11 @@ stages:
   - name: test
     commands:
       - ${isPython ? 'pytest' : isGo ? 'go test ./...' : 'npm test'}
-${hasSecurity ? '  - name: security\n    commands:\n      - trivy fs .\n' : ''}${hasDeploy ? '  - name: deploy\n    environment: staging\n' : ''}`;
+${hasSecurity ? '  - name: security\n    commands:\n      - trivy fs .\n' : ''}${
+      deployEnv
+        ? `  - name: deploy-${deployEnv}\n    environment: ${deployEnv}\n    commands:\n      - kubectl apply -f k8s/ --namespace ${deployEnv}\n`
+        : ''
+    }`;
 
     return {
       name: pipelineName,

@@ -1,4 +1,4 @@
-import { Node, Edge } from '@xyflow/react';
+import type { Node, Edge } from '@xyflow/react';
 
 export interface DAGValidationResult {
   valid: boolean;
@@ -8,11 +8,65 @@ export interface DAGValidationResult {
 }
 
 /**
+ * Safely resolves the target deployment environment from node data.
+ * Returns 'staging' or 'production', or null if ambiguous/unspecified.
+ * CRITICAL SAFETY: Never silently fall back to 'production' for a staging request.
+ */
+export function resolveDeployEnvironment(d: Record<string, unknown>): 'staging' | 'production' | null {
+  if (!d) return null;
+
+  const target = String(d.target ?? '').toLowerCase().trim();
+  const namespace = String(d.namespace ?? '').toLowerCase().trim();
+  const environment = String(d.environment ?? '').toLowerCase().trim();
+  const label = String(d.label ?? '').toLowerCase().trim();
+  const manifest = String(d.manifest ?? '').toLowerCase();
+
+  // Check explicit target / namespace / environment first
+  const explicitCandidates = [target, namespace, environment];
+  for (const cand of explicitCandidates) {
+    if (cand === 'staging' || cand === 'stage' || cand === 'preprod' || cand === 'pre-prod' || cand === 'non-prod') {
+      return 'staging';
+    }
+    if (cand === 'production' || cand === 'prod' || cand === 'live') {
+      return 'production';
+    }
+  }
+
+  // Check label & manifest
+  const isStaging =
+    /\b(staging|stage|preprod|pre-prod|non-?prod)\b/i.test(label) ||
+    /namespace:\s*staging\b/i.test(manifest) ||
+    /cluster:\s*staging-us-east-1\b/i.test(manifest);
+
+  const isProduction =
+    /\b(production|prod)\b/i.test(label) ||
+    /namespace:\s*production\b/i.test(manifest) ||
+    /cluster:\s*prod-us-east-1\b/i.test(manifest);
+
+  if (isStaging && !isProduction) {
+    return 'staging';
+  }
+  if (isProduction && !isStaging) {
+    return 'production';
+  }
+  if (isStaging && isProduction) {
+    // If conflict, check if label or target explicitly specified staging
+    if (/\b(staging|stage|preprod|pre-prod|non-?prod)\b/i.test(label) || /\b(staging|stage|preprod|pre-prod|non-?prod)\b/i.test(target)) {
+      return 'staging';
+    }
+    return null;
+  }
+
+  return null;
+}
+
+/**
  * Validates a Directed Acyclic Graph (DAG):
  * 1. Checks for at least one trigger node.
  * 2. Checks for cycle loops (Kahn's Topological Sort).
  * 3. Identifies orphan nodes.
  * 4. Verifies edge connectivity.
+ * 5. Verifies deploy steps have a valid, unambiguous target environment.
  */
 export function validateDAG(nodes: Node[], edges: Edge[]): DAGValidationResult {
   const errors: string[] = [];
@@ -89,6 +143,18 @@ export function validateDAG(nodes: Node[], edges: Edge[]): DAGValidationResult {
     });
   }
 
+  // 5. Verify deploy steps have a valid, unambiguous target environment
+  const deployNodes = nodes.filter((n) => n.type === 'deploy');
+  deployNodes.forEach((node) => {
+    const d = (node.data || {}) as Record<string, unknown>;
+    const env = resolveDeployEnvironment(d);
+    if (!env) {
+      errors.push(
+        `Deploy step '${String(d.label || node.id)}' has an ambiguous or missing deployment environment. Must explicitly configure 'staging' or 'production'.`,
+      );
+    }
+  });
+
   return {
     valid: errors.length === 0,
     errors,
@@ -140,15 +206,34 @@ export function dagToYaml(
       case 'approval':
         yaml += `  - name: ${slug || 'approval'}\n    jobs:\n      - name: manual-approval\n        image: alpine:latest\n        steps:\n          - name: gate-check\n            run: echo "Approved by ${String(d.approvers || 'ADMIN')}"\n`;
         break;
-      case 'deploy':
-        yaml += `  - name: ${slug || 'deploy'}\n    jobs:\n      - name: k8s-rollout\n        image: bitnami/kubectl:latest\n        steps:\n          - name: deploy-production\n            run: kubectl apply -f k8s/ --namespace ${String(d.target || 'production')}\n`;
+      case 'deploy': {
+        const env = resolveDeployEnvironment(d as Record<string, unknown>);
+        if (!env) {
+          throw new Error(
+            `Cannot compile deploy node '${slug || node.id}': deployment environment must be explicitly 'staging' or 'production'.`,
+          );
+        }
+        const deployCmd = d.command
+          ? String(d.command)
+          : `kubectl apply -f k8s/ --namespace ${env}`;
+        yaml += `  - name: ${slug || 'deploy'}\n    jobs:\n      - name: k8s-rollout\n        image: bitnami/kubectl:latest\n        steps:\n          - name: deploy-${env}\n            run: ${deployCmd}\n`;
         break;
+      }
       case 'health':
         yaml += `  - name: ${slug || 'health-check'}\n    jobs:\n      - name: verify-probe\n        image: curlimages/curl:latest\n        steps:\n          - name: http-health-probe\n            run: curl -f ${String(d.endpoint || 'http://localhost:8080/health')} || exit 1\n`;
         break;
-      case 'rollback':
-        yaml += `  - name: ${slug || 'rollback'}\n    jobs:\n      - name: rollback-recovery\n        image: bitnami/kubectl:latest\n        steps:\n          - name: auto-revert\n            run: kubectl rollout undo deployment --namespace production\n`;
+      case 'rollback': {
+        let env = resolveDeployEnvironment(d as Record<string, unknown>);
+        if (!env) {
+          const deployNode = orderedNodes.find((n) => n.type === 'deploy');
+          if (deployNode) {
+            env = resolveDeployEnvironment((deployNode.data || {}) as Record<string, unknown>);
+          }
+        }
+        const rollbackEnv = env || 'staging';
+        yaml += `  - name: ${slug || 'rollback'}\n    jobs:\n      - name: rollback-recovery\n        image: bitnami/kubectl:latest\n        steps:\n          - name: auto-revert\n            run: kubectl rollout undo deployment --namespace ${rollbackEnv}\n`;
         break;
+      }
       case 'notification':
       default:
         yaml += `  - name: ${slug || 'notify'}\n    jobs:\n      - name: slack-notify\n        image: curlimages/curl:latest\n        steps:\n          - name: post-webhook\n            run: echo "Dispatching deployment notification"\n`;

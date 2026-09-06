@@ -134,9 +134,9 @@ export function AIAutoBuilder({ onGenerate, aiStatus: initialStatus }: AIAutoBui
   };
 
   const examples = [
-    'Deploy my Next.js app to Railway with Trivy security scan',
-    'Go API to Kubernetes with tests and security',
-    'FastAPI app to Cloud Run with PyTest',
+    'Deploy my Next.js app to Railway staging with Trivy security scan',
+    'Go API to Kubernetes production with tests and security',
+    'FastAPI app to Cloud Run staging with PyTest',
     'Node.js microservice to Staging with Jest and Docker build',
   ];
 

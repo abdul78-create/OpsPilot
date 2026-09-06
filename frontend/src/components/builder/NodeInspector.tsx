@@ -7,6 +7,7 @@ import { SlidersHorizontal, Trash2, Sparkles, X, CheckCircle2, AlertTriangle } f
 import { Input } from '../ui/input';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
+import { resolveDeployEnvironment } from './DAGCompiler';
 
 // SSR-safe Monaco — requires browser APIs
 const MonacoEditor = dynamic(() => import('@monaco-editor/react'), { ssr: false });
@@ -201,15 +202,71 @@ export function NodeInspector({ selectedNode, onUpdateNodeData, onDeleteNode, on
           />
         )}
 
-        {type === 'deploy' && (
-          <MonacoField
-            label="Kubernetes Manifest (YAML)"
-            language="yaml"
-            value={`namespace: ${String(data.target ?? 'production')}\ncluster: prod-us-east-1\nstrategy: RollingUpdate\nmaxSurge: 1\nmaxUnavailable: 0`}
-            onChange={(v) => onUpdateNodeData(id, { target: v })}
-            height={110}
-          />
-        )}
+        {type === 'deploy' && (() => {
+          const env = resolveDeployEnvironment(data as Record<string, unknown>);
+          const targetEnv = env || (String(data.target || '').toLowerCase().includes('prod') ? 'production' : 'staging');
+          const defaultManifest = `namespace: ${targetEnv}\ncluster: ${targetEnv === 'staging' ? 'staging-us-east-1' : 'prod-us-east-1'}\nstrategy: RollingUpdate\nmaxSurge: 1\nmaxUnavailable: 0`;
+          const currentManifest = String(data.manifest ?? defaultManifest);
+
+          return (
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-semibold block mb-1" style={{ color: 'var(--text-secondary)' }}>
+                  Target Environment <span className="text-red-400">*</span>
+                </label>
+                <select
+                  aria-label="Target Environment"
+                  className="w-full px-3 py-1.5 text-xs rounded-lg border font-mono transition-colors"
+                  style={{
+                    background: 'var(--bg-tertiary)',
+                    borderColor: 'var(--border)',
+                    color: 'var(--text-primary)',
+                  }}
+                  value={env || ''}
+                  onChange={(e) => {
+                    const newEnv = e.target.value as 'staging' | 'production';
+                    const newCluster = newEnv === 'staging' ? 'staging-us-east-1' : 'prod-us-east-1';
+                    const newManifest = `namespace: ${newEnv}\ncluster: ${newCluster}\nstrategy: RollingUpdate\nmaxSurge: 1\nmaxUnavailable: 0`;
+                    onUpdateNodeData(id, {
+                      target: newEnv,
+                      namespace: newEnv,
+                      environment: newEnv === 'staging' ? 'Staging' : 'Production',
+                      cluster: newCluster,
+                      manifest: newManifest,
+                      command: `kubectl apply -f k8s/ --namespace ${newEnv}`,
+                      label: `Deploy to ${newEnv === 'staging' ? 'Staging' : 'Production'}`,
+                    });
+                  }}
+                >
+                  <option value="" disabled>Select Environment...</option>
+                  <option value="staging">Staging (staging-us-east-1)</option>
+                  <option value="production">Production (prod-us-east-1)</option>
+                </select>
+              </div>
+
+              <MonacoField
+                label="Kubernetes Manifest (YAML)"
+                language="yaml"
+                value={currentManifest}
+                onChange={(v) => {
+                  const nsMatch = v.match(/namespace:\s*([a-zA-Z0-9_-]+)/);
+                  const clusterMatch = v.match(/cluster:\s*([a-zA-Z0-9_-]+)/);
+                  const parsedTarget = nsMatch ? nsMatch[1].trim() : (env ?? 'staging');
+                  const parsedCluster = clusterMatch ? clusterMatch[1].trim() : (parsedTarget === 'staging' ? 'staging-us-east-1' : 'prod-us-east-1');
+                  onUpdateNodeData(id, {
+                    manifest: v,
+                    target: parsedTarget,
+                    namespace: parsedTarget,
+                    cluster: parsedCluster,
+                    environment: parsedTarget,
+                    command: `kubectl apply -f k8s/ --namespace ${parsedTarget}`,
+                  });
+                }}
+                height={110}
+              />
+            </div>
+          );
+        })()}
 
         {type === 'health' && (
           <Input

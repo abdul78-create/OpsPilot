@@ -9,7 +9,13 @@ import { GeminiAiProvider } from '../../../core/ai/providers/gemini-ai.provider'
 import { JwtAuthGuard } from '../../../core/security/guards/jwt-auth.guard';
 import { TenantGuard } from '../../../core/security/guards/tenant.guard';
 import { PermissionsGuard } from '../../../core/security/guards/permissions.guard';
+import { BadRequestException } from '@nestjs/common';
 import { TokenService } from '../../../core/security/token.service';
+import {
+  resolveDeployEnvironment,
+  validateDAG,
+  dagToYaml,
+} from '../../../../frontend/src/components/builder/DAGCompiler';
 
 describe('Visual DAG Builder AI Features Production Wiring Spec', () => {
   let controller: AiOrchestrationController;
@@ -66,7 +72,7 @@ describe('Visual DAG Builder AI Features Production Wiring Spec', () => {
 
   describe('1. Backend API Endpoint Wiring (POST /v1/ai/generate-pipeline)', () => {
     it('should generate real pipeline DAG with name, summary, yamlConfig, nodes, edges', async () => {
-      const prompt = 'Deploy Python FastAPI to Railway with Trivy security scan';
+      const prompt = 'Deploy Python FastAPI to Railway staging with Trivy security scan';
       const response = await controller.generatePipeline({ prompt });
 
       expect(response.message).toBe('Pipeline specification generated successfully');
@@ -78,6 +84,10 @@ describe('Visual DAG Builder AI Features Production Wiring Spec', () => {
       expect(typeof yamlConfig).toBe('string');
       expect(yamlConfig).toContain('python:3.11-slim');
       expect(yamlConfig).toContain('trivy fs .');
+      expect(yamlConfig).toContain('deploy-staging');
+      expect(yamlConfig).not.toContain('namespace: production');
+      expect(yamlConfig).not.toContain('prod-us-east-1');
+      expect(yamlConfig).not.toContain('--namespace production');
 
       // Verify node format is compatible with ReactFlow
       expect(Array.isArray(nodes)).toBe(true);
@@ -110,6 +120,119 @@ describe('Visual DAG Builder AI Features Production Wiring Spec', () => {
       expect(response.data.yamlConfig).toContain('go test ./...');
       expect(response.data.nodes.map((n) => n.type)).toEqual(['source', 'build', 'test']);
       expect(response.data.edges.length).toBe(2);
+    });
+  });
+
+  describe('1B. Deployment Environment Safety & DAG Compiler Verification', () => {
+    it('staging request → staging configuration (NO production defaults)', async () => {
+      const prompt =
+        'Build and test my Node.js application, run Jest tests, perform a Trivy security scan, build a Docker image, and deploy it to staging.';
+      const response = await controller.generatePipeline({ prompt });
+
+      expect(response.message).toBe('Pipeline specification generated successfully');
+      const { yamlConfig, nodes, edges } = response.data;
+
+      const deployNode = nodes.find((n: { type: string }) => n.type === 'deploy');
+      expect(deployNode).toBeDefined();
+      expect(deployNode.data.label).toBe('Deploy to Staging');
+      expect(deployNode.data.target).toBe('staging');
+      expect(deployNode.data.namespace).toBe('staging');
+      expect(deployNode.data.cluster).toBe('staging-us-east-1');
+      expect(deployNode.data.command).toBe('kubectl apply -f k8s/ --namespace staging');
+      expect(deployNode.data.manifest).toContain('namespace: staging');
+      expect(deployNode.data.manifest).toContain('cluster: staging-us-east-1');
+
+      // Negative assertions: MUST NOT contain any production references
+      expect(deployNode.data.manifest).not.toContain('namespace: production');
+      expect(deployNode.data.manifest).not.toContain('prod-us-east-1');
+      expect(deployNode.data.command).not.toContain('--namespace production');
+
+      // Backend yamlConfig checks
+      expect(yamlConfig).toContain('name: deploy-staging');
+      expect(yamlConfig).toContain('environment: staging');
+      expect(yamlConfig).toContain('kubectl apply -f k8s/ --namespace staging');
+      expect(yamlConfig).not.toContain('namespace: production');
+      expect(yamlConfig).not.toContain('prod-us-east-1');
+      expect(yamlConfig).not.toContain('--namespace production');
+      expect(yamlConfig).not.toContain('deploy-production');
+
+      // Frontend DAGCompiler verification: dagToYaml
+      const compiledYaml = dagToYaml(nodes, edges, 'Production Staging Test', 'main');
+      expect(compiledYaml).toContain('- name: deploy-staging');
+      expect(compiledYaml).toContain('run: kubectl apply -f k8s/ --namespace staging');
+      expect(compiledYaml).not.toContain('namespace: production');
+      expect(compiledYaml).not.toContain('prod-us-east-1');
+      expect(compiledYaml).not.toContain('--namespace production');
+      expect(compiledYaml).not.toContain('deploy-production');
+    });
+
+    it('production request → production configuration', async () => {
+      const prompt =
+        'Build and test my Node.js application, run Jest tests, perform a Trivy security scan, build a Docker image, and deploy it to production.';
+      const response = await controller.generatePipeline({ prompt });
+
+      expect(response.message).toBe('Pipeline specification generated successfully');
+      const { yamlConfig, nodes, edges } = response.data;
+
+      const deployNode = nodes.find((n: { type: string }) => n.type === 'deploy');
+      expect(deployNode).toBeDefined();
+      expect(deployNode.data.label).toBe('Deploy to Production');
+      expect(deployNode.data.target).toBe('production');
+      expect(deployNode.data.namespace).toBe('production');
+      expect(deployNode.data.cluster).toBe('prod-us-east-1');
+      expect(deployNode.data.command).toBe('kubectl apply -f k8s/ --namespace production');
+
+      expect(yamlConfig).toContain('name: deploy-production');
+      expect(yamlConfig).toContain('environment: production');
+      expect(yamlConfig).toContain('kubectl apply -f k8s/ --namespace production');
+
+      // Frontend DAGCompiler verification: dagToYaml
+      const compiledYaml = dagToYaml(nodes, edges, 'Production Deploy Test', 'main');
+      expect(compiledYaml).toContain('- name: deploy-production');
+      expect(compiledYaml).toContain('run: kubectl apply -f k8s/ --namespace production');
+    });
+
+    it('ambiguous environment → safe rejection / no unsafe default', async () => {
+      // Unspecified deploy target
+      await expect(
+        controller.generatePipeline({ prompt: 'Deploy my Go microservice to k8s' }),
+      ).rejects.toThrow(BadRequestException);
+
+      // Conflicting deploy targets
+      await expect(
+        controller.generatePipeline({ prompt: 'Deploy my app to staging and production' }),
+      ).rejects.toThrow(BadRequestException);
+
+      // Empty prompt
+      await expect(controller.generatePipeline({ prompt: '' })).rejects.toThrow(
+        BadRequestException,
+      );
+
+      // Frontend resolveDeployEnvironment safety: returns null rather than production default
+      expect(resolveDeployEnvironment({})).toBeNull();
+      expect(resolveDeployEnvironment({ label: 'Cluster Deploy' })).toBeNull();
+      expect(resolveDeployEnvironment({ target: 'unknown' })).toBeNull();
+      expect(resolveDeployEnvironment({ target: 'staging' })).toBe('staging');
+      expect(resolveDeployEnvironment({ target: 'production' })).toBe('production');
+
+      // Frontend validateDAG safety: marks DAG invalid when deploy node has ambiguous environment
+      const ambiguousNodes = [
+        { id: '1', type: 'source', position: { x: 0, y: 0 }, data: { label: 'Source' } },
+        { id: '2', type: 'deploy', position: { x: 200, y: 0 }, data: { label: 'Cluster Deploy' } },
+      ];
+      const edges = [{ id: 'e1', source: '1', target: '2' }];
+      const valResult = validateDAG(ambiguousNodes as any, edges as any);
+      expect(valResult.valid).toBe(false);
+      expect(
+        valResult.errors.some((e: string) =>
+          e.includes('ambiguous or missing deployment environment'),
+        ),
+      ).toBe(true);
+
+      // Frontend dagToYaml safety: throws instead of silently defaulting to production
+      expect(() => dagToYaml(ambiguousNodes as any, edges as any)).toThrow(
+        /deployment environment must be explicitly 'staging' or 'production'/,
+      );
     });
   });
 
