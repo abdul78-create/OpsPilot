@@ -384,15 +384,9 @@ export class DeploymentsService {
           res.on('data', (c) => (b += c));
           res.on('end', () => resolve({ statusCode: res.statusCode || 0, body: b }));
         });
-        req.on('error', (_err) => {
-          // Fallback to localhost if container host is not resolved in local dev
-          http
-            .get('http://localhost:8080/health', (res2) => {
-              let b2 = '';
-              res2.on('data', (c2) => (b2 += c2));
-              res2.on('end', () => resolve({ statusCode: res2.statusCode || 0, body: b2 }));
-            })
-            .on('error', reject);
+        req.on('error', (err) => {
+          // Target is unreachable — do not silently fall back to localhost
+          reject(new Error(`Health probe target unreachable: ${targetUrl} — ${err.message}`));
         });
         req.setTimeout(3000, () => {
           req.destroy();

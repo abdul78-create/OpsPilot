@@ -290,11 +290,13 @@ server.listen(8080, '0.0.0.0', () => {
         throw new Error(errorMsg);
       }
 
-      // Perform Automated HTTP Health Verification over network using native HTTP client
+      // Perform Automated HTTP Health Verification over Docker bridge network
+      // The container is accessible via its Docker network alias, NOT localhost
+      const containerHealthUrl = `http://opspilot_app_target:8080/health`;
       await this.log(
         runId,
         LogLevel.INFO,
-        `▸ Performing HTTP Health Verification against target container on port 8080...`,
+        `▸ Performing HTTP Health Verification against Docker container at ${containerHealthUrl}...`,
       );
 
       let healthResponseText = '';
@@ -302,12 +304,11 @@ server.listen(8080, '0.0.0.0', () => {
 
       for (let attempt = 1; attempt <= 10; attempt++) {
         try {
-          const res = await this.httpGet('http://localhost:8080/health').catch(() =>
-            this.httpGet('http://opspilot_app_target:8080/health'),
-          );
+          const res = await this.httpGet(containerHealthUrl);
           healthStatusCode = res.statusCode;
           healthResponseText = res.body;
           if (healthStatusCode === 200) break;
+          await new Promise((r) => setTimeout(r, 1000));
         } catch (e) {
           await new Promise((r) => setTimeout(r, 1000));
         }
