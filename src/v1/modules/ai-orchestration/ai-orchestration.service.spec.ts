@@ -255,7 +255,7 @@ describe('AiOrchestrationService', () => {
 
   describe('generatePipeline()', () => {
     it('should generate valid pipeline DAG structure for Python stack with security and deployment', async () => {
-      const prompt = 'Deploy FastAPI app to Railway with Trivy security scan';
+      const prompt = 'Deploy FastAPI app to Railway staging with Trivy security scan';
       const result = await service.generatePipeline(prompt);
 
       expect(result.name).toBe('Python Delivery Pipeline');

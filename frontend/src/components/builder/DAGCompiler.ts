@@ -1,4 +1,17 @@
-import type { Node, Edge } from '@xyflow/react';
+export interface DAGNode {
+  id: string;
+  type?: string;
+  position?: { x: number; y: number };
+  data?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+export interface DAGEdge {
+  id?: string;
+  source: string;
+  target: string;
+  [key: string]: unknown;
+}
 
 export interface DAGValidationResult {
   valid: boolean;
@@ -68,7 +81,7 @@ export function resolveDeployEnvironment(d: Record<string, unknown>): 'staging' 
  * 4. Verifies edge connectivity.
  * 5. Verifies deploy steps have a valid, unambiguous target environment.
  */
-export function validateDAG(nodes: Node[], edges: Edge[]): DAGValidationResult {
+export function validateDAG(nodes: DAGNode[], edges: DAGEdge[]): DAGValidationResult {
   const errors: string[] = [];
   const warnings: string[] = [];
   const executionOrder: string[] = [];
@@ -167,17 +180,17 @@ export function validateDAG(nodes: Node[], edges: Edge[]): DAGValidationResult {
  * Converts a ReactFlow visual DAG into OpsPilot standard YAML specification.
  */
 export function dagToYaml(
-  nodes: Node[],
-  edges: Edge[],
+  nodes: DAGNode[],
+  edges: DAGEdge[],
   pipelineName: string = 'OpsPilot Visual Pipeline',
   branch: string = 'main',
 ): string {
   const { executionOrder } = validateDAG(nodes, edges);
-  const nodeMap = new Map<string, Node>(nodes.map((n) => [n.id, n]));
+  const nodeMap = new Map<string, DAGNode>(nodes.map((n) => [n.id, n]));
 
   const orderedNodes = (executionOrder.length > 0 ? executionOrder : nodes.map((n) => n.id))
     .map((id) => nodeMap.get(id))
-    .filter((n): n is Node => !!n);
+    .filter((n): n is DAGNode => !!n);
 
   let yaml = `version: '1.0'\nname: ${pipelineName}\ntrigger:\n  branch: ${branch}\nstages:\n`;
 
