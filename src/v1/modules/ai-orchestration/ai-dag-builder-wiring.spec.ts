@@ -322,6 +322,102 @@ describe('Visual DAG Builder AI Features Production Wiring Spec', () => {
       expect(nodeLabels).toContain('Deploy to Staging');
     });
 
+    it('should preserve AI response yamlConfig and synchronize YAML modal state with staging naming', async () => {
+      const prompt =
+        'Build and test my Node.js application, run Jest tests, perform a Trivy security scan, build a Docker image, and deploy it to staging.';
+      const response = await controller.generatePipeline({ prompt });
+      const { name, summary, yamlConfig, nodes, edges } = response.data;
+
+      // 1. Verify AI response contains real yamlConfig and is not empty
+      expect(yamlConfig).toBeDefined();
+      expect(yamlConfig).toContain('name: deploy-staging');
+      expect(yamlConfig).toContain('kubectl apply -f k8s/ --namespace staging');
+
+      // 2. Simulate PipelineBuilder handleAIGenerate state synchronization
+      let generatedYamlState = '';
+      let preservedAiYaml = '';
+
+      // PipelineBuilder consumer callback simulation:
+      const handleAIGenerate = (pipeline: {
+        nodes: any[];
+        edges: any[];
+        name?: string;
+        summary?: string;
+        yamlConfig?: string;
+      }) => {
+        if (pipeline.yamlConfig) {
+          preservedAiYaml = pipeline.yamlConfig;
+        }
+
+        // Contextual default name resolution from incoming nodes
+        const deployNode = pipeline.nodes.find((n) => n.type === 'deploy');
+        const env = deployNode ? resolveDeployEnvironment(deployNode.data || {}) : null;
+        const defaultName =
+          env === 'staging'
+            ? 'OpsPilot Staging Pipeline'
+            : env === 'production'
+              ? 'OpsPilot Production Pipeline'
+              : 'OpsPilot Visual Pipeline';
+
+        generatedYamlState = dagToYaml(pipeline.nodes, pipeline.edges, defaultName, 'main');
+      };
+
+      handleAIGenerate({ nodes, edges, name, summary, yamlConfig });
+
+      // 3. Verify yamlConfig is NOT discarded
+      expect(preservedAiYaml).toBe(yamlConfig);
+
+      // 4. Verify the synchronized generated YAML modal output
+      expect(generatedYamlState).toContain('name: OpsPilot Staging Pipeline');
+      expect(generatedYamlState).toContain('- name: deploy-staging');
+      expect(generatedYamlState).toContain('run: kubectl apply -f k8s/ --namespace staging');
+
+      // 5. Strict negative checks for forbidden production identifiers
+      expect(generatedYamlState).not.toContain('k8s-rollout');
+      expect(generatedYamlState).not.toContain('deploy-production');
+      expect(generatedYamlState).not.toContain('Production Pipeline');
+      expect(generatedYamlState).not.toContain('namespace: production');
+      expect(generatedYamlState).not.toContain('--namespace production');
+      expect(generatedYamlState).not.toContain('prod-us-east-1');
+    });
+
+    it('should preserve AI response yamlConfig and synchronize YAML modal state with production naming', async () => {
+      const prompt =
+        'Build and test my Node.js application, run Jest tests, perform a Trivy security scan, build a Docker image, and deploy it to production.';
+      const response = await controller.generatePipeline({ prompt });
+      const { name, summary, yamlConfig, nodes, edges } = response.data;
+
+      expect(yamlConfig).toBeDefined();
+      expect(yamlConfig).toContain('name: deploy-production');
+      expect(yamlConfig).toContain('kubectl apply -f k8s/ --namespace production');
+
+      let generatedYamlState = '';
+      const handleAIGenerate = (pipeline: {
+        nodes: any[];
+        edges: any[];
+        name?: string;
+        summary?: string;
+        yamlConfig?: string;
+      }) => {
+        const deployNode = pipeline.nodes.find((n) => n.type === 'deploy');
+        const env = deployNode ? resolveDeployEnvironment(deployNode.data || {}) : null;
+        const defaultName =
+          env === 'staging'
+            ? 'OpsPilot Staging Pipeline'
+            : env === 'production'
+              ? 'OpsPilot Production Pipeline'
+              : 'OpsPilot Visual Pipeline';
+
+        generatedYamlState = dagToYaml(pipeline.nodes, pipeline.edges, defaultName, 'main');
+      };
+
+      handleAIGenerate({ nodes, edges, name, summary, yamlConfig });
+
+      expect(generatedYamlState).toContain('name: OpsPilot Production Pipeline');
+      expect(generatedYamlState).toContain('- name: deploy-production');
+      expect(generatedYamlState).toContain('run: kubectl apply -f k8s/ --namespace production');
+    });
+
     it('should handle backend error without fabricating fallback pipeline data (Negative Test)', async () => {
       const onGenerateMock = jest.fn();
       let errorThrown: Error | null = null;

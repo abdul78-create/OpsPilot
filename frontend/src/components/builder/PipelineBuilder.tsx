@@ -26,7 +26,7 @@ import { TemplateMarketplace } from './TemplateMarketplace';
 import { PipelineGitHistory } from './PipelineGitHistory';
 import { PublicShareModal } from './PublicShareModal';
 import { AICopilotOverlay } from './AICopilotOverlay';
-import { AIAutoBuilder } from './AIAutoBuilder';
+import { AIAutoBuilder, GeneratedPipeline } from './AIAutoBuilder';
 import { validateDAG, dagToYaml, resolveDeployEnvironment, DAGValidationResult } from './DAGCompiler';
 import { useUndoRedo } from '../../hooks/useUndoRedo';
 import { Button } from '../ui/button';
@@ -61,6 +61,17 @@ const initialNodes: Node[] = [
 ];
 
 const initialEdges: Edge[] = [];
+
+// ─── Helper: compute contextual pipeline default name from DAG nodes ─────────
+export function resolvePipelineDefaultName(targetNodes: Node[]): string {
+  const deployNode = targetNodes.find((n) => n.type === 'deploy');
+  if (deployNode) {
+    const env = resolveDeployEnvironment((deployNode.data || {}) as Record<string, unknown>);
+    if (env === 'staging') return 'OpsPilot Staging Pipeline';
+    if (env === 'production') return 'OpsPilot Production Pipeline';
+  }
+  return 'OpsPilot Visual Pipeline';
+}
 
 // ─── Inner canvas (needs ReactFlowProvider context) ───────────────────────────
 function BuilderCanvas() {
@@ -173,20 +184,9 @@ function BuilderCanvas() {
     }, accum + 400));
   };
 
-  // ── Helper: compute contextual pipeline default name ────────────────────────
-  const getPipelineDefaultName = () => {
-    const deployNode = nodes.find((n) => n.type === 'deploy');
-    if (deployNode) {
-      const env = resolveDeployEnvironment((deployNode.data || {}) as Record<string, unknown>);
-      if (env === 'staging') return 'OpsPilot Staging Pipeline';
-      if (env === 'production') return 'OpsPilot Production Pipeline';
-    }
-    return 'OpsPilot Visual Pipeline';
-  };
-
   // ── View & Export YAML ──────────────────────────────────────────────────────
   const handleOpenYaml = () => {
-    const defaultName = getPipelineDefaultName();
+    const defaultName = resolvePipelineDefaultName(nodes);
     const yaml = dagToYaml(nodes, edges, defaultName, 'main');
     setGeneratedYaml(yaml);
     setYamlModalOpen(true);
@@ -201,7 +201,7 @@ function BuilderCanvas() {
     }
 
     setIsSaving(true);
-    const defaultName = getPipelineDefaultName();
+    const defaultName = resolvePipelineDefaultName(nodes);
     const yaml = dagToYaml(nodes, edges, defaultName, 'main');
 
     try {
@@ -273,7 +273,7 @@ function BuilderCanvas() {
 
       if (!targetPipelineId && projectId) {
         // Save current definition first to create the pipeline
-        const defaultName = getPipelineDefaultName();
+        const defaultName = resolvePipelineDefaultName(nodes);
         const yaml = dagToYaml(nodes, edges, defaultName, 'main');
         const created = await createPipelineDefinition(projectId, {
           name: `${defaultName} ${Date.now().toString().slice(-4)}`,
@@ -351,10 +351,16 @@ function BuilderCanvas() {
   }, [nodes, edges, pushSnapshot, setNodes, setEdges]);
 
   // ── AI Auto Builder ─────────────────────────────────────────────────────────
-  const handleAIGenerate = useCallback(({ nodes: newNodes, edges: newEdges }: { nodes: Node[]; edges: Edge[] }) => {
+  const handleAIGenerate = useCallback((pipeline: GeneratedPipeline) => {
     pushSnapshot(nodes, edges);
-    setNodes(newNodes);
-    setEdges(newEdges);
+    setNodes(pipeline.nodes);
+    setEdges(pipeline.edges);
+
+    // Synchronize generated YAML state immediately using DAGCompiler and contextual default name
+    const defaultName = resolvePipelineDefaultName(pipeline.nodes);
+    const compiledYaml = dagToYaml(pipeline.nodes, pipeline.edges, defaultName, 'main');
+    setGeneratedYaml(compiledYaml);
+
     setTimeout(() => fitView({ duration: 600, padding: 0.2 }), 100);
   }, [nodes, edges, pushSnapshot, setNodes, setEdges, fitView]);
 
