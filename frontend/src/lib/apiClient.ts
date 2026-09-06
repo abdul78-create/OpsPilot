@@ -454,6 +454,89 @@ export async function createProject(
   });
 }
 
+// ─── Environments ─────────────────────────────────────────────────────────────
+
+export interface EnvironmentResponse {
+  id: string;
+  projectId: string;
+  name: string;
+  slug: string;
+  type: string;
+  requiresApproval: boolean;
+  minApprovers: number;
+  deploymentTargetType?: string | null;
+  clusterName?: string | null;
+  clusterRegion?: string | null;
+  k8sNamespace?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export async function listEnvironments(projectId?: string) {
+  const targetProjectId = projectId || getActiveProjectId();
+  if (!targetProjectId) {
+    return { data: [] as EnvironmentResponse[] };
+  }
+  return apiFetch<{ data: EnvironmentResponse[] }>(`/projects/${targetProjectId}/environments`);
+}
+
+export async function updateEnvironment(
+  projectId: string,
+  environmentIdOrSlug: string,
+  payload: {
+    name?: string;
+    slug?: string;
+    type?: string;
+    deploymentTargetType?: string | null;
+    clusterName?: string | null;
+    clusterRegion?: string | null;
+    k8sNamespace?: string | null;
+    requiresApproval?: boolean;
+    minApprovers?: number;
+    deploymentWindow?: string | null;
+    autoRollbackEnabled?: boolean;
+  },
+) {
+  return apiFetch<{ data: EnvironmentResponse; message: string }>(
+    `/projects/${projectId}/environments/${environmentIdOrSlug}`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    },
+  );
+}
+
+export async function createEnvironment(
+  projectId: string,
+  payload: {
+    name: string;
+    slug?: string;
+    type?: string;
+    deploymentTargetType?: string | null;
+    clusterName?: string | null;
+    clusterRegion?: string | null;
+    k8sNamespace?: string | null;
+    requiresApproval?: boolean;
+    minApprovers?: number;
+    deploymentWindow?: string | null;
+    autoRollbackEnabled?: boolean;
+  },
+) {
+  return apiFetch<{ data: EnvironmentResponse; message: string }>(
+    `/projects/${projectId}/environments`,
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    },
+  );
+}
+
+export async function deleteEnvironment(projectId: string, environmentIdOrSlug: string) {
+  return apiFetch<void>(`/projects/${projectId}/environments/${environmentIdOrSlug}`, {
+    method: 'DELETE',
+  });
+}
+
 // ─── Pipelines ────────────────────────────────────────────────────────────────
 
 export async function listPipelines(projectId?: string) {
@@ -696,10 +779,14 @@ export async function queryAi(body: {
   });
 }
 
-export async function generateAiPipeline(prompt: string) {
+export async function generateAiPipeline(prompt: string, projectId?: string) {
+  const targetProjectId = projectId || getActiveProjectId();
+  if (!targetProjectId) {
+    throw new Error('Project ID is required. Please select or create a project first.');
+  }
   return apiFetch<{ message: string; data: GeneratedPipelineResult }>('/ai/generate-pipeline', {
     method: 'POST',
-    body: JSON.stringify({ prompt }),
+    body: JSON.stringify({ prompt, projectId: targetProjectId }),
   });
 }
 

@@ -54,6 +54,14 @@ enum EnvironmentType {
   EPHEMERAL
 }
 
+enum DeploymentTargetType {
+  KUBERNETES
+  DOCKER
+  SERVERLESS
+  VIRTUAL_MACHINE
+  STATIC
+}
+
 enum VariableType {
   STRING
   NUMBER
@@ -313,6 +321,10 @@ model Environment {
   allowedRoles        OrgRole[]             @default([OWNER, ADMIN])
   deploymentWindow    String?
   autoRollbackEnabled Boolean               @default(true)
+  deploymentTargetType DeploymentTargetType?
+  clusterName         String?
+  clusterRegion       String?
+  k8sNamespace        String?
   createdAt           DateTime              @default(now())
   updatedAt           DateTime              @updatedAt
   deletedAt           DateTime?

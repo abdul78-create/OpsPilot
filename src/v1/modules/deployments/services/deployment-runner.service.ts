@@ -124,6 +124,88 @@ export class DeploymentRunnerService {
         throw new Error(`Artifact archive file missing at '${artifact.storageLocation}'`);
       }
 
+      // Check deployment target configuration and enforce explicit credential gates
+      const deployEnv = deployment.environment as any;
+      const targetType = deployEnv?.deploymentTargetType;
+
+      if (!targetType) {
+        const errorMsg = `Deployment target is not configured for environment '${deployment.environment.name}'. Configure deployment target infrastructure in Environment Settings first.`;
+        await this.log(runId, LogLevel.ERROR, `❌ ${errorMsg}`);
+        await this.prisma.deployment.update({
+          where: { id: deploymentId },
+          data: {
+            status: DeploymentStatus.FAILED,
+            finishedAt: new Date(),
+          },
+        });
+        throw new Error(errorMsg);
+      }
+
+      if (targetType === 'KUBERNETES') {
+        const errorMsg = `Kubernetes cluster credentials not configured for cluster '${deployEnv?.clusterName || 'default'}' in environment '${deployment.environment.name}'. Real cluster deployment is blocked until customer kubeconfig/cluster credentials are configured.`;
+        await this.log(runId, LogLevel.ERROR, `❌ ${errorMsg}`);
+        await this.prisma.deployment.update({
+          where: { id: deploymentId },
+          data: {
+            status: DeploymentStatus.FAILED,
+            finishedAt: new Date(),
+          },
+        });
+        throw new Error(errorMsg);
+      }
+
+      if (targetType === 'SERVERLESS') {
+        const errorMsg = `Serverless cloud integration (GCP Cloud Run / AWS Lambda) not configured for environment '${deployment.environment.name}'. Real serverless deployment is blocked until cloud provider credentials are configured.`;
+        await this.log(runId, LogLevel.ERROR, `❌ ${errorMsg}`);
+        await this.prisma.deployment.update({
+          where: { id: deploymentId },
+          data: {
+            status: DeploymentStatus.FAILED,
+            finishedAt: new Date(),
+          },
+        });
+        throw new Error(errorMsg);
+      }
+
+      if (targetType === 'VIRTUAL_MACHINE') {
+        const errorMsg = `Virtual Machine host integration (SSH/agent) not configured for environment '${deployment.environment.name}'. Real VM deployment is blocked until host credentials are configured.`;
+        await this.log(runId, LogLevel.ERROR, `❌ ${errorMsg}`);
+        await this.prisma.deployment.update({
+          where: { id: deploymentId },
+          data: {
+            status: DeploymentStatus.FAILED,
+            finishedAt: new Date(),
+          },
+        });
+        throw new Error(errorMsg);
+      }
+
+      if (targetType === 'STATIC') {
+        const errorMsg = `Static hosting storage bucket integration (S3/CloudFront/GCS) not configured for environment '${deployment.environment.name}'. Real static site deployment is blocked until storage credentials are configured.`;
+        await this.log(runId, LogLevel.ERROR, `❌ ${errorMsg}`);
+        await this.prisma.deployment.update({
+          where: { id: deploymentId },
+          data: {
+            status: DeploymentStatus.FAILED,
+            finishedAt: new Date(),
+          },
+        });
+        throw new Error(errorMsg);
+      }
+
+      if (targetType !== 'DOCKER') {
+        const errorMsg = `Unsupported deployment target type '${targetType}' for environment '${deployment.environment.name}'.`;
+        await this.log(runId, LogLevel.ERROR, `❌ ${errorMsg}`);
+        await this.prisma.deployment.update({
+          where: { id: deploymentId },
+          data: {
+            status: DeploymentStatus.FAILED,
+            finishedAt: new Date(),
+          },
+        });
+        throw new Error(errorMsg);
+      }
+
       // Unpack artifact into deployment runtime directory
       const baseDeployDir = process.env.DEPLOYMENTS_BASE_DIR || '/opspilot-deployments';
       const deployDir = path.join(baseDeployDir, deploymentId);
@@ -187,7 +269,7 @@ server.listen(8080, '0.0.0.0', () => {
         }
       } catch {}
 
-      let containerId = 'local_proc';
+      let containerId: string;
       try {
         containerId = execSync(containerCmd).toString().trim().substring(0, 12);
         await this.log(
@@ -196,11 +278,16 @@ server.listen(8080, '0.0.0.0', () => {
           `✓ Live container launched: ${containerName} (ID: ${containerId}) → Target Port: 8080`,
         );
       } catch (err) {
-        await this.log(
-          runId,
-          LogLevel.WARN,
-          `Container launch fallback: ${(err as Error).message}`,
-        );
+        const errorMsg = `Docker deployment failed to launch container: ${(err as Error).message}`;
+        await this.log(runId, LogLevel.ERROR, `❌ ${errorMsg}`);
+        await this.prisma.deployment.update({
+          where: { id: deploymentId },
+          data: {
+            status: DeploymentStatus.FAILED,
+            finishedAt: new Date(),
+          },
+        });
+        throw new Error(errorMsg);
       }
 
       // Perform Automated HTTP Health Verification over network using native HTTP client

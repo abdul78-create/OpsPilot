@@ -1,0 +1,7 @@
+export enum DeploymentTargetType {
+  KUBERNETES = 'KUBERNETES',
+  DOCKER = 'DOCKER',
+  SERVERLESS = 'SERVERLESS',
+  VIRTUAL_MACHINE = 'VIRTUAL_MACHINE',
+  STATIC = 'STATIC',
+}

@@ -1,4 +1,14 @@
-import { Controller, Get, Post, Param, Query, Body, UseGuards, HttpStatus } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Param,
+  Query,
+  Body,
+  UseGuards,
+  HttpStatus,
+  Req,
+} from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
@@ -9,10 +19,13 @@ import {
 } from '@nestjs/swagger';
 import { AiOrchestrationService } from './ai-orchestration.service';
 import { AiReportResponseDto } from './dto/ai-report-response.dto';
+import { GeneratePipelineDto } from './dto/generate-pipeline.dto';
 import { JwtAuthGuard } from '../../../core/security/guards/jwt-auth.guard';
 import { TenantGuard } from '../../../core/security/guards/tenant.guard';
 import { PermissionsGuard } from '../../../core/security/guards/permissions.guard';
 import { Permissions } from '../../../core/security/decorators/permissions.decorator';
+import { CurrentUser } from '../../../core/security/decorators/current-user.decorator';
+import { JwtPayload } from '../../../core/security/token.service';
 import {
   PipelinePermissions,
   OrganizationPermissions,
@@ -113,9 +126,14 @@ export class AiOrchestrationController {
 
   @Post('ai/generate-pipeline')
   @Permissions(PipelinePermissions.TRIGGER)
-  @ApiOperation({ summary: 'Generate structured pipeline DAG from prompt' })
-  async generatePipeline(@Body() body: { prompt: string }) {
-    const result = await this.aiService.generatePipeline(body.prompt);
+  @ApiOperation({ summary: 'Generate structured pipeline DAG from prompt for customer project' })
+  async generatePipeline(
+    @Body() body: GeneratePipelineDto,
+    @CurrentUser() user?: JwtPayload,
+    @Req() req?: any,
+  ) {
+    const callerOrgId = req?.organization?.id || req?.headers?.['x-organization-id'] || user?.oid;
+    const result = await this.aiService.generatePipeline(body.prompt, body.projectId, callerOrgId);
     return {
       message: 'Pipeline specification generated successfully',
       data: result,

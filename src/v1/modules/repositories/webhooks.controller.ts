@@ -283,7 +283,7 @@ export class WebhooksController {
         installationId: installId,
         appSlug: 'opspilot-ci-cd',
         targetType: 'Organization',
-        repositoriesAccessible: ['https://github.com/abdul78-create/StockFlow'],
+        repositoriesAccessible: [],
         installedAt: new Date().toISOString(),
       },
     };

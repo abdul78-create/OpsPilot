@@ -11,6 +11,7 @@ import { TenantGuard } from '../../../core/security/guards/tenant.guard';
 import { PermissionsGuard } from '../../../core/security/guards/permissions.guard';
 import { BadRequestException } from '@nestjs/common';
 import { TokenService } from '../../../core/security/token.service';
+import { EnvironmentType } from '@prisma/client';
 import {
   resolveDeployEnvironment,
   validateDAG,
@@ -30,6 +31,35 @@ describe('Visual DAG Builder AI Features Production Wiring Spec', () => {
   const mockPrisma = {
     pipelineRun: { findFirst: jest.fn(), findUnique: jest.fn() },
     deployment: { findFirst: jest.fn(), count: jest.fn() },
+    project: { findFirst: jest.fn() },
+    environment: { findFirst: jest.fn() },
+  };
+
+  const defaultMockProject = {
+    id: 'prj_test_123',
+    organizationId: 'org_test_123',
+    name: 'Test Project',
+    slug: 'test-project',
+  };
+
+  const defaultMockStagingEnv = {
+    id: 'env_staging_123',
+    projectId: 'prj_test_123',
+    name: 'Staging',
+    slug: 'staging',
+    type: EnvironmentType.STAGING,
+    clusterName: 'staging-k8s-cluster',
+    k8sNamespace: 'staging',
+  };
+
+  const defaultMockProdEnv = {
+    id: 'env_prod_123',
+    projectId: 'prj_test_123',
+    name: 'Production',
+    slug: 'production',
+    type: EnvironmentType.PRODUCTION,
+    clusterName: 'prod-k8s-cluster',
+    k8sNamespace: 'production',
   };
 
   const mockAiProvider = {
@@ -68,12 +98,18 @@ describe('Visual DAG Builder AI Features Production Wiring Spec', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockPrisma.project.findFirst.mockResolvedValue(defaultMockProject);
+    mockPrisma.environment.findFirst.mockImplementation(async ({ where }: any) => {
+      if (where.type === EnvironmentType.STAGING) return defaultMockStagingEnv;
+      if (where.type === EnvironmentType.PRODUCTION) return defaultMockProdEnv;
+      return null;
+    });
   });
 
   describe('1. Backend API Endpoint Wiring (POST /v1/ai/generate-pipeline)', () => {
     it('should generate real pipeline DAG with name, summary, yamlConfig, nodes, edges', async () => {
       const prompt = 'Deploy Python FastAPI to Railway staging with Trivy security scan';
-      const response = await controller.generatePipeline({ prompt });
+      const response = await controller.generatePipeline({ prompt, projectId: 'prj_test_123' });
 
       expect(response.message).toBe('Pipeline specification generated successfully');
       expect(response.data).toBeDefined();
@@ -113,7 +149,7 @@ describe('Visual DAG Builder AI Features Production Wiring Spec', () => {
 
     it('should generate Go pipeline DAG with appropriate build image and test commands', async () => {
       const prompt = 'Go microservice with automated tests';
-      const response = await controller.generatePipeline({ prompt });
+      const response = await controller.generatePipeline({ prompt, projectId: 'prj_test_123' });
 
       expect(response.data.name).toBe('Go Delivery Pipeline');
       expect(response.data.yamlConfig).toContain('golang:1.22-alpine');
@@ -127,7 +163,7 @@ describe('Visual DAG Builder AI Features Production Wiring Spec', () => {
     it('staging request → staging configuration (NO production defaults)', async () => {
       const prompt =
         'Build and test my Node.js application, run Jest tests, perform a Trivy security scan, build a Docker image, and deploy it to staging.';
-      const response = await controller.generatePipeline({ prompt });
+      const response = await controller.generatePipeline({ prompt, projectId: 'prj_test_123' });
 
       expect(response.message).toBe('Pipeline specification generated successfully');
       const { yamlConfig, nodes, edges } = response.data;
@@ -137,10 +173,12 @@ describe('Visual DAG Builder AI Features Production Wiring Spec', () => {
       expect(deployNode.data.label).toBe('Deploy to Staging');
       expect(deployNode.data.target).toBe('staging');
       expect(deployNode.data.namespace).toBe('staging');
-      expect(deployNode.data.cluster).toBe('staging-us-east-1');
+      expect(deployNode.data.cluster).toBe('staging-k8s-cluster');
       expect(deployNode.data.command).toBe('kubectl apply -f k8s/ --namespace staging');
       expect(deployNode.data.manifest).toContain('namespace: staging');
-      expect(deployNode.data.manifest).toContain('cluster: staging-us-east-1');
+      expect(deployNode.data.manifest).toContain('cluster: staging-k8s-cluster');
+      expect(deployNode.data.manifest).not.toContain('staging-us-east-1');
+      expect(deployNode.data.cluster).not.toBe('staging-us-east-1');
 
       // Negative assertions: MUST NOT contain any production references
       expect(deployNode.data.manifest).not.toContain('namespace: production');
@@ -173,7 +211,7 @@ describe('Visual DAG Builder AI Features Production Wiring Spec', () => {
     it('production request → production configuration', async () => {
       const prompt =
         'Build and test my Node.js application, run Jest tests, perform a Trivy security scan, build a Docker image, and deploy it to production.';
-      const response = await controller.generatePipeline({ prompt });
+      const response = await controller.generatePipeline({ prompt, projectId: 'prj_test_123' });
 
       expect(response.message).toBe('Pipeline specification generated successfully');
       const { yamlConfig, nodes, edges } = response.data;
@@ -183,8 +221,11 @@ describe('Visual DAG Builder AI Features Production Wiring Spec', () => {
       expect(deployNode.data.label).toBe('Deploy to Production');
       expect(deployNode.data.target).toBe('production');
       expect(deployNode.data.namespace).toBe('production');
-      expect(deployNode.data.cluster).toBe('prod-us-east-1');
+      expect(deployNode.data.cluster).toBe('prod-k8s-cluster');
+      expect(deployNode.data.cluster).not.toBe('prod-us-east-1');
       expect(deployNode.data.command).toBe('kubectl apply -f k8s/ --namespace production');
+      expect(deployNode.data.manifest).toContain('cluster: prod-k8s-cluster');
+      expect(deployNode.data.manifest).not.toContain('prod-us-east-1');
 
       expect(yamlConfig).toContain('name: deploy-production');
       expect(yamlConfig).toContain('environment: production');
@@ -246,18 +287,24 @@ describe('Visual DAG Builder AI Features Production Wiring Spec', () => {
     it('ambiguous environment → safe rejection / no unsafe default', async () => {
       // Unspecified deploy target
       await expect(
-        controller.generatePipeline({ prompt: 'Deploy my Go microservice to k8s' }),
+        controller.generatePipeline({
+          prompt: 'Deploy my Go microservice to k8s',
+          projectId: 'prj_test_123',
+        }),
       ).rejects.toThrow(BadRequestException);
 
       // Conflicting deploy targets
       await expect(
-        controller.generatePipeline({ prompt: 'Deploy my app to staging and production' }),
+        controller.generatePipeline({
+          prompt: 'Deploy my app to staging and production',
+          projectId: 'prj_test_123',
+        }),
       ).rejects.toThrow(BadRequestException);
 
       // Empty prompt
-      await expect(controller.generatePipeline({ prompt: '' })).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(
+        controller.generatePipeline({ prompt: '', projectId: 'prj_test_123' }),
+      ).rejects.toThrow(BadRequestException);
 
       // Frontend resolveDeployEnvironment safety: returns null rather than production default
       expect(resolveDeployEnvironment({})).toBeNull();
@@ -285,12 +332,71 @@ describe('Visual DAG Builder AI Features Production Wiring Spec', () => {
         /deployment environment must be explicitly 'staging' or 'production'/,
       );
     });
+
+    it('customer project has NO staging environment → explicit rejection', async () => {
+      mockPrisma.environment.findFirst.mockResolvedValue(null);
+
+      await expect(
+        controller.generatePipeline({
+          prompt: 'Deploy my application to staging',
+          projectId: 'prj_test_123',
+        }),
+      ).rejects.toThrow(
+        'Staging environment is not configured for this project. Configure a staging environment in Project Settings first.',
+      );
+    });
+
+    it('customer staging environment exists but cluster/namespace unconfigured → explicit rejection', async () => {
+      mockPrisma.environment.findFirst.mockResolvedValue({
+        id: 'env_staging_unconfigured',
+        projectId: 'prj_test_123',
+        name: 'Staging',
+        slug: 'staging',
+        type: EnvironmentType.STAGING,
+        clusterName: null,
+        k8sNamespace: null,
+      });
+
+      await expect(
+        controller.generatePipeline({
+          prompt: 'Deploy my application to staging',
+          projectId: 'prj_test_123',
+        }),
+      ).rejects.toThrow(
+        "Deployment target is not configured for environment 'staging'. Configure Kubernetes namespace and cluster in Environment Settings first.",
+      );
+    });
+
+    it('tenant isolation: caller cannot generate pipeline for another organization project', async () => {
+      mockPrisma.project.findFirst.mockResolvedValue({
+        id: 'prj_other_tenant',
+        organizationId: 'org_other_tenant',
+        name: 'Other Tenant Project',
+        slug: 'other-project',
+      });
+
+      await expect(
+        controller.generatePipeline(
+          { prompt: 'Build and test app', projectId: 'prj_other_tenant' },
+          { oid: 'org_calling_user' } as any,
+          { organization: { id: 'org_calling_user' } },
+        ),
+      ).rejects.toThrow(
+        "Access denied: Project 'prj_other_tenant' does not belong to your organization",
+      );
+    });
+
+    it('missing projectId → rejects with BadRequestException', async () => {
+      await expect(
+        controller.generatePipeline({ prompt: 'Build app', projectId: '' } as any),
+      ).rejects.toThrow(BadRequestException);
+    });
   });
 
   describe('2. Frontend onGenerate() Flow Integration', () => {
     it('should pass the actual returned nodes and edges through onGenerate without fabricating mock data', async () => {
       const prompt = 'Deploy FastAPI app with security scan and deploy to Staging';
-      const response = await controller.generatePipeline({ prompt });
+      const response = await controller.generatePipeline({ prompt, projectId: 'prj_test_123' });
 
       const onGenerateMock = jest.fn();
 
@@ -325,7 +431,7 @@ describe('Visual DAG Builder AI Features Production Wiring Spec', () => {
     it('should preserve AI response yamlConfig and synchronize YAML modal state with staging naming', async () => {
       const prompt =
         'Build and test my Node.js application, run Jest tests, perform a Trivy security scan, build a Docker image, and deploy it to staging.';
-      const response = await controller.generatePipeline({ prompt });
+      const response = await controller.generatePipeline({ prompt, projectId: 'prj_test_123' });
       const { name, summary, yamlConfig, nodes, edges } = response.data;
 
       // 1. Verify AI response contains real yamlConfig and is not empty
@@ -384,7 +490,7 @@ describe('Visual DAG Builder AI Features Production Wiring Spec', () => {
     it('should preserve AI response yamlConfig and synchronize YAML modal state with production naming', async () => {
       const prompt =
         'Build and test my Node.js application, run Jest tests, perform a Trivy security scan, build a Docker image, and deploy it to production.';
-      const response = await controller.generatePipeline({ prompt });
+      const response = await controller.generatePipeline({ prompt, projectId: 'prj_test_123' });
       const { name, summary, yamlConfig, nodes, edges } = response.data;
 
       expect(yamlConfig).toBeDefined();
@@ -428,7 +534,7 @@ describe('Visual DAG Builder AI Features Production Wiring Spec', () => {
         .mockRejectedValueOnce(new Error('AI backend service unavailable'));
 
       try {
-        await controller.generatePipeline({ prompt: 'Invalid' });
+        await controller.generatePipeline({ prompt: 'Invalid', projectId: 'prj_test_123' });
       } catch (err) {
         errorThrown = err;
       }

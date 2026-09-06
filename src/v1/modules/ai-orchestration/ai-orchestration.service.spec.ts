@@ -4,7 +4,7 @@ import { AiOrchestrationRepository } from './ai-orchestration.repository';
 import { GeminiAiProvider } from '../../../core/ai/providers/gemini-ai.provider';
 import { ServiceUnavailableException } from '@nestjs/common';
 import { PrismaService } from '../../../core/database/prisma.service';
-import { AiAnalysisType, AiRiskLevel, JobStatus } from '@prisma/client';
+import { AiAnalysisType, AiRiskLevel, JobStatus, EnvironmentType } from '@prisma/client';
 
 describe('AiOrchestrationService', () => {
   let service: AiOrchestrationService;
@@ -22,6 +22,12 @@ describe('AiOrchestrationService', () => {
     deployment: {
       findFirst: jest.fn(),
       count: jest.fn(),
+    },
+    project: {
+      findFirst: jest.fn(),
+    },
+    environment: {
+      findFirst: jest.fn(),
     },
   };
 
@@ -254,32 +260,158 @@ describe('AiOrchestrationService', () => {
   });
 
   describe('generatePipeline()', () => {
-    it('should generate valid pipeline DAG structure for Python stack with security and deployment', async () => {
-      const prompt = 'Deploy FastAPI app to Railway staging with Trivy security scan';
-      const result = await service.generatePipeline(prompt);
+    const mockTenantAProject = {
+      id: 'prj_tenant_a',
+      organizationId: 'org_tenant_a',
+      name: 'Tenant A Service',
+      slug: 'tenant-a-service',
+    };
+
+    const mockTenantBProject = {
+      id: 'prj_tenant_b',
+      organizationId: 'org_tenant_b',
+      name: 'Tenant B Service',
+      slug: 'tenant-b-service',
+    };
+
+    const mockTenantAStagingEnv = {
+      id: 'env_staging_a',
+      projectId: 'prj_tenant_a',
+      name: 'Tenant A Staging',
+      slug: 'staging',
+      type: EnvironmentType.STAGING,
+      clusterName: 'k8s-cluster-tenant-a-east',
+      k8sNamespace: 'acme-staging-ns',
+    };
+
+    const mockTenantBStagingEnv = {
+      id: 'env_staging_b',
+      projectId: 'prj_tenant_b',
+      name: 'Tenant B Staging',
+      slug: 'staging',
+      type: EnvironmentType.STAGING,
+      clusterName: 'gke-cluster-tenant-b-west',
+      k8sNamespace: 'tenant-b-staging-ns',
+    };
+
+    const mockTenantAProdEnv = {
+      id: 'env_prod_a',
+      projectId: 'prj_tenant_a',
+      name: 'Tenant A Production',
+      slug: 'production',
+      type: EnvironmentType.PRODUCTION,
+      clusterName: 'k8s-cluster-tenant-a-prod',
+      k8sNamespace: 'acme-prod-ns',
+    };
+
+    it('A. Tenant A + configured staging → uses Tenant A staging target', async () => {
+      mockPrisma.project.findFirst.mockResolvedValue(mockTenantAProject);
+      mockPrisma.environment.findFirst.mockResolvedValue(mockTenantAStagingEnv);
+
+      const prompt = 'Deploy FastAPI app to staging with Trivy security scan';
+      const result = await service.generatePipeline(prompt, 'prj_tenant_a', 'org_tenant_a');
 
       expect(result.name).toBe('Python Delivery Pipeline');
-      expect(result.summary).toContain('Python CI/CD pipeline DAG');
-      expect(result.yamlConfig).toContain('python:3.11-slim');
-      expect(result.yamlConfig).toContain('pytest');
-      expect(result.yamlConfig).toContain('trivy');
-      expect(result.yamlConfig).toContain('staging');
+      expect(result.yamlConfig).toContain('acme-staging-ns');
+      expect(result.yamlConfig).not.toContain('staging-us-east-1');
+      expect(result.yamlConfig).not.toContain('prod-us-east-1');
 
-      // Verify node graph structure
-      const nodeTypes = result.nodes.map((n) => n.type);
-      expect(nodeTypes).toEqual(['source', 'build', 'test', 'security', 'deploy']);
-
-      // Verify edges connect stages sequentially
-      expect(result.edges.length).toBe(4);
-      expect(result.edges[0]).toEqual({ id: 'e1', source: 'node_source', target: 'node_build' });
-      expect(result.edges[1]).toEqual({ id: 'e2', source: 'node_build', target: 'node_test' });
-      expect(result.edges[2]).toEqual({ id: 'e3', source: 'node_test', target: 'node_security' });
-      expect(result.edges[3]).toEqual({ id: 'e4', source: 'node_security', target: 'node_deploy' });
+      const deployNode = result.nodes.find((n) => n.type === 'deploy');
+      expect(deployNode).toBeDefined();
+      expect(deployNode.data.cluster).toBe('k8s-cluster-tenant-a-east');
+      expect(deployNode.data.namespace).toBe('acme-staging-ns');
+      expect(deployNode.data.command).toBe('kubectl apply -f k8s/ --namespace acme-staging-ns');
     });
 
-    it('should generate valid pipeline DAG for Go stack without security scan', async () => {
+    it('B. Tenant B + configured staging → uses Tenant B staging target', async () => {
+      mockPrisma.project.findFirst.mockResolvedValue(mockTenantBProject);
+      mockPrisma.environment.findFirst.mockResolvedValue(mockTenantBStagingEnv);
+
+      const prompt = 'Deploy Python to staging';
+      const result = await service.generatePipeline(prompt, 'prj_tenant_b', 'org_tenant_b');
+
+      expect(result.yamlConfig).toContain('tenant-b-staging-ns');
+      expect(result.yamlConfig).not.toContain('staging-us-east-1');
+
+      const deployNode = result.nodes.find((n) => n.type === 'deploy');
+      expect(deployNode.data.cluster).toBe('gke-cluster-tenant-b-west');
+      expect(deployNode.data.namespace).toBe('tenant-b-staging-ns');
+      expect(deployNode.data.command).toBe('kubectl apply -f k8s/ --namespace tenant-b-staging-ns');
+    });
+
+    it('C. Tenant B cannot use Tenant A projectId (authorization isolation error)', async () => {
+      mockPrisma.project.findFirst.mockResolvedValue(mockTenantAProject);
+
+      await expect(
+        service.generatePipeline('Deploy to staging', 'prj_tenant_a', 'org_tenant_b'),
+      ).rejects.toThrow(
+        "Access denied: Project 'prj_tenant_a' does not belong to your organization",
+      );
+    });
+
+    it('D. No staging environment → explicit rejection', async () => {
+      mockPrisma.project.findFirst.mockResolvedValue(mockTenantAProject);
+      mockPrisma.environment.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.generatePipeline('Deploy to staging', 'prj_tenant_a', 'org_tenant_a'),
+      ).rejects.toThrow(
+        'Staging environment is not configured for this project. Configure a staging environment in Project Settings first.',
+      );
+    });
+
+    it('E. Staging environment exists but target missing → explicit configuration error', async () => {
+      mockPrisma.project.findFirst.mockResolvedValue(mockTenantAProject);
+      mockPrisma.environment.findFirst.mockResolvedValue({
+        id: 'env_staging_unconfigured',
+        projectId: 'prj_tenant_a',
+        name: 'Staging',
+        slug: 'staging',
+        type: EnvironmentType.STAGING,
+        clusterName: null,
+        k8sNamespace: null,
+      });
+
+      await expect(
+        service.generatePipeline('Deploy to staging', 'prj_tenant_a', 'org_tenant_a'),
+      ).rejects.toThrow(
+        "Deployment target is not configured for environment 'staging'. Configure Kubernetes namespace and cluster in Environment Settings first.",
+      );
+    });
+
+    it('F. Production uses customer production target', async () => {
+      mockPrisma.project.findFirst.mockResolvedValue(mockTenantAProject);
+      mockPrisma.environment.findFirst.mockResolvedValue(mockTenantAProdEnv);
+
+      const prompt = 'Deploy FastAPI app to production';
+      const result = await service.generatePipeline(prompt, 'prj_tenant_a', 'org_tenant_a');
+
+      expect(result.yamlConfig).toContain('acme-prod-ns');
+      expect(result.yamlConfig).not.toContain('prod-us-east-1');
+
+      const deployNode = result.nodes.find((n) => n.type === 'deploy');
+      expect(deployNode.data.cluster).toBe('k8s-cluster-tenant-a-prod');
+      expect(deployNode.data.namespace).toBe('acme-prod-ns');
+    });
+
+    it('G & H. Neither staging-us-east-1 nor prod-us-east-1 are fabricated', async () => {
+      mockPrisma.project.findFirst.mockResolvedValue(mockTenantAProject);
+      mockPrisma.environment.findFirst.mockResolvedValue(mockTenantAStagingEnv);
+
+      const result = await service.generatePipeline(
+        'Deploy to staging',
+        'prj_tenant_a',
+        'org_tenant_a',
+      );
+      expect(result.yamlConfig).not.toContain('staging-us-east-1');
+      expect(result.yamlConfig).not.toContain('prod-us-east-1');
+    });
+
+    it('J. Existing non-deployment AI generation still works', async () => {
+      mockPrisma.project.findFirst.mockResolvedValue(mockTenantAProject);
+
       const prompt = 'Build and test Go API microservice';
-      const result = await service.generatePipeline(prompt);
+      const result = await service.generatePipeline(prompt, 'prj_tenant_a', 'org_tenant_a');
 
       expect(result.name).toBe('Go Delivery Pipeline');
       expect(result.yamlConfig).toContain('golang:1.22-alpine');
@@ -288,15 +420,14 @@ describe('AiOrchestrationService', () => {
       expect(result.edges.length).toBe(2);
     });
 
-    it('should generate default Node.js pipeline for generic prompt', async () => {
-      const prompt = 'Web application pipeline';
-      const result = await service.generatePipeline(prompt);
+    it('L. Ambiguous deployment request remains rejected', async () => {
+      mockPrisma.project.findFirst.mockResolvedValue(mockTenantAProject);
 
-      expect(result.name).toBe('Node.js Delivery Pipeline');
-      expect(result.yamlConfig).toContain('node:20-alpine');
-      expect(result.yamlConfig).toContain('npm test');
-      expect(result.nodes.map((n) => n.type)).toEqual(['source', 'build', 'test']);
-      expect(result.edges.length).toBe(2);
+      await expect(
+        service.generatePipeline('Deploy my Go app', 'prj_tenant_a', 'org_tenant_a'),
+      ).rejects.toThrow(
+        'Target deployment environment is ambiguous or not specified. Please explicitly specify either "staging" or "production".',
+      );
     });
   });
 

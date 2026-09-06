@@ -149,7 +149,7 @@ export class RunsService {
     // Dispatch to BullMQ worker queue for async execution
     await this.pipelineRunQueue.add(PIPELINE_RUN_JOB_NAME, {
       pipelineRunId: result.id,
-      repoUrl: repoUrl ?? 'https://github.com/expressjs/express',
+      repoUrl: repoUrl ?? '',
     });
 
     // Enrich result with resolved repository URL for API response

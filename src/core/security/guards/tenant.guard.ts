@@ -4,6 +4,7 @@ import {
   ExecutionContext,
   ForbiddenException,
   BadRequestException,
+  NotFoundException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
@@ -47,13 +48,80 @@ export class TenantGuard implements CanActivate {
       request.params?.orgId ||
       request.params?.organizationId;
 
-    if (!orgIdOrSlug && request.params?.projectId) {
+    // 1. Project-scoped resolution
+    const targetProjectId =
+      request.params?.projectId || request.body?.projectId || request.query?.projectId;
+    if (targetProjectId && this.prisma.project?.findFirst) {
       const project = await this.prisma.project.findFirst({
-        where: { id: request.params.projectId, deletedAt: null },
+        where: { id: String(targetProjectId), deletedAt: null },
       });
-      if (project) {
-        orgIdOrSlug = project.organizationId;
+      if (!project) {
+        throw new NotFoundException(`Project '${targetProjectId}' not found`);
       }
+      // Strictly bind orgIdOrSlug to the project's organization
+      orgIdOrSlug = project.organizationId;
+    }
+
+    // 2. Environment-scoped resolution
+    const targetEnvId =
+      request.params?.environmentId || request.body?.environmentId || request.query?.environmentId;
+    if (targetEnvId && this.prisma.environment?.findFirst) {
+      const env = await this.prisma.environment.findFirst({
+        where: { id: String(targetEnvId), deletedAt: null },
+        include: { project: true },
+      });
+      if (!env) {
+        throw new NotFoundException(`Environment '${targetEnvId}' not found`);
+      }
+      orgIdOrSlug = env.project.organizationId;
+    }
+
+    // 3. Pipeline-scoped resolution
+    const targetPipelineId =
+      request.params?.pipelineId || request.body?.pipelineId || request.query?.pipelineId;
+    if (targetPipelineId && this.prisma.pipelineDefinition?.findFirst) {
+      const pipeline = await this.prisma.pipelineDefinition.findFirst({
+        where: { id: String(targetPipelineId), deletedAt: null },
+        include: { project: true },
+      });
+      if (!pipeline) {
+        throw new NotFoundException(`Pipeline '${targetPipelineId}' not found`);
+      }
+      orgIdOrSlug = pipeline.project.organizationId;
+    }
+
+    // 4. Run-scoped resolution
+    const targetRunId =
+      request.params?.runId ||
+      request.body?.pipelineRunId ||
+      request.query?.runId ||
+      (request.route?.path?.includes('runs/:id') ? request.params?.id : null);
+    if (targetRunId && this.prisma.pipelineRun?.findFirst) {
+      const run = await this.prisma.pipelineRun.findFirst({
+        where: { id: String(targetRunId), deletedAt: null },
+        include: { pipelineDefinition: { include: { project: true } } },
+      });
+      if (!run) {
+        throw new NotFoundException(`Pipeline Run '${targetRunId}' not found`);
+      }
+      orgIdOrSlug = run.pipelineDefinition.project.organizationId;
+    }
+
+    // 5. Deployment-scoped resolution
+    const targetDeploymentId =
+      request.params?.deploymentId ||
+      request.body?.deploymentId ||
+      request.query?.deploymentId ||
+      (request.route?.path?.includes('deployments/:id') ? request.params?.id : null);
+    if (targetDeploymentId && this.prisma.deployment?.findFirst) {
+      const deployment = await this.prisma.deployment.findFirst({
+        where: { id: String(targetDeploymentId) },
+        include: { environment: { include: { project: true } } },
+      });
+      if (!deployment) {
+        throw new NotFoundException(`Deployment '${targetDeploymentId}' not found`);
+      }
+      orgIdOrSlug = deployment.environment.project.organizationId;
     }
 
     if (!orgIdOrSlug) {

@@ -16,9 +16,9 @@ export default function OnboardingPage() {
   const [error, setError] = useState('');
 
   // Form State
-  const [orgName, setOrgName] = useState("Abdul's Organization");
+  const [orgName, setOrgName] = useState('Acme Corporation');
   const [projectName, setProjectName] = useState('Production Microservices');
-  const [repoUrl, setRepoUrl] = useState('https://github.com/expressjs/express');
+  const [repoUrl, setRepoUrl] = useState('');
   const [branch, setBranch] = useState('main');
   const [detectedStack, setDetectedStack] = useState('Node.js / Express');
 

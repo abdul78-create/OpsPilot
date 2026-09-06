@@ -59,7 +59,11 @@ export class EnvironmentsService {
       allowedRoles: dto.allowedRoles,
       deploymentWindow: dto.deploymentWindow,
       autoRollbackEnabled: dto.autoRollbackEnabled ?? true,
-    });
+      deploymentTargetType: dto.deploymentTargetType,
+      clusterName: dto.clusterName,
+      clusterRegion: dto.clusterRegion,
+      k8sNamespace: dto.k8sNamespace,
+    } as any);
 
     await this.eventBus.publish({
       eventId: `evt_${Date.now()}`,

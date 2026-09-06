@@ -8,6 +8,7 @@ import {
   generateAiPipeline,
   fetchAiStatus,
   AiStatusResponse,
+  getActiveProjectId,
 } from '@/lib/apiClient';
 
 export interface GeneratedPipeline {
@@ -21,10 +22,11 @@ export interface GeneratedPipeline {
 interface AIAutoBuilderProps {
   onGenerate: (pipeline: GeneratedPipeline) => void;
   aiStatus?: AiStatusResponse | null;
+  projectId?: string;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
-export function AIAutoBuilder({ onGenerate, aiStatus: initialStatus }: AIAutoBuilderProps) {
+export function AIAutoBuilder({ onGenerate, aiStatus: initialStatus, projectId }: AIAutoBuilderProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [prompt, setPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
@@ -65,9 +67,19 @@ export function AIAutoBuilder({ onGenerate, aiStatus: initialStatus }: AIAutoBui
     if (!targetPrompt) return;
     if (isGenerating) return;
 
+    const targetProjectId = projectId || getActiveProjectId();
+    if (!targetProjectId) {
+      toast({
+        kind: 'warning',
+        title: 'Project Required',
+        message: 'Please select or create a project before generating a pipeline with AI.',
+      });
+      return;
+    }
+
     setIsGenerating(true);
     try {
-      const res = await generateAiPipeline(targetPrompt);
+      const res = await generateAiPipeline(targetPrompt, targetProjectId);
       if (!res || !res.data) {
         throw new Error('No pipeline specification returned from AI service');
       }

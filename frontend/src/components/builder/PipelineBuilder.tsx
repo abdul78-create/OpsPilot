@@ -93,6 +93,30 @@ function BuilderCanvas() {
   const [yamlModalOpen, setYamlModalOpen]     = useState(false);
   const [validationModalOpen, setValidationModalOpen] = useState(false);
   const [generatedYaml, setGeneratedYaml]     = useState('');
+  const [currentProjectId, setCurrentProjectId] = useState<string | null>(() => getActiveProjectId());
+
+  useEffect(() => {
+    let isMounted = true;
+    async function resolveProject() {
+      let pid = getActiveProjectId();
+      if (!pid) {
+        try {
+          const res = await listProjects();
+          if (res.data && res.data.length > 0) {
+            pid = res.data[0].id;
+            setActiveProjectId(pid);
+          }
+        } catch {}
+      }
+      if (isMounted && pid) {
+        setCurrentProjectId(pid);
+      }
+    }
+    resolveProject();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const { fitView } = useReactFlow();
 
@@ -470,7 +494,7 @@ function BuilderCanvas() {
             </ReactFlow>
 
             {/* AI Auto Builder floating bottom input */}
-            <AIAutoBuilder onGenerate={handleAIGenerate} />
+            <AIAutoBuilder onGenerate={handleAIGenerate} projectId={currentProjectId || undefined} />
           </div>
 
           {/* RIGHT INSPECTOR */}
@@ -480,6 +504,7 @@ function BuilderCanvas() {
               onUpdateNodeData={handleUpdateNodeData}
               onDeleteNode={handleDeleteNode}
               onClose={() => setInspectorOpen(false)}
+              projectId={currentProjectId || undefined}
             />
           )}
         </div>

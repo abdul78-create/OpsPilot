@@ -30,6 +30,9 @@ describe('OpsPilot 15-Point Reliability, Chaos & Security Hardening Matrix', () 
     organization: { findFirst: jest.fn() },
     member: { findFirst: jest.fn() },
     project: { findFirst: jest.fn() },
+    environment: { findFirst: jest.fn() },
+    pipelineDefinition: { findFirst: jest.fn() },
+    deployment: { findFirst: jest.fn() },
     pipelineRun: { findMany: jest.fn(), update: jest.fn(), findFirst: jest.fn() },
     pipelineJob: { update: jest.fn() },
     $queryRaw: jest.fn(),
@@ -168,6 +171,62 @@ describe('OpsPilot 15-Point Reliability, Chaos & Security Hardening Matrix', () 
         name: 'Bravo Org',
       });
       mockPrisma.member.findFirst.mockResolvedValueOnce(null); // User 1 is NOT a member of Org Bravo
+
+      const context: any = {
+        getHandler: () => ({}),
+        getClass: () => ({}),
+        switchToHttp: () => ({ getRequest: () => mockReq }),
+      };
+
+      await expect(tenantGuard.canActivate(context)).rejects.toThrow(ForbiddenException);
+    });
+
+    it('should STRICTLY REJECT cross-tenant environment access even if user spoofs their own x-organization-id (Header Spoofing Rejection)', async () => {
+      const mockReq: any = {
+        headers: { 'x-organization-id': 'org-alpha' },
+        user: { sub: 'usr-1', isSuperAdmin: false },
+        params: { environmentId: 'env-bravo' },
+      };
+
+      // TenantGuard resolves env-bravo -> belongs to org-bravo
+      mockPrisma.environment.findFirst.mockResolvedValueOnce({
+        id: 'env-bravo',
+        name: 'Bravo Staging',
+        project: { organizationId: 'org-bravo' },
+      });
+      mockPrisma.organization.findFirst.mockResolvedValueOnce({
+        id: 'org-bravo',
+        name: 'Bravo Org',
+      });
+      mockPrisma.member.findFirst.mockResolvedValueOnce(null); // User 1 is NOT in org-bravo
+
+      const context: any = {
+        getHandler: () => ({}),
+        getClass: () => ({}),
+        switchToHttp: () => ({ getRequest: () => mockReq }),
+      };
+
+      await expect(tenantGuard.canActivate(context)).rejects.toThrow(ForbiddenException);
+    });
+
+    it('should STRICTLY REJECT cross-tenant deployment access with forged org header (Deployment Isolation)', async () => {
+      const mockReq: any = {
+        headers: { 'x-organization-id': 'org-alpha' },
+        user: { sub: 'usr-1', isSuperAdmin: false },
+        params: { id: 'deploy-bravo' },
+        route: { path: '/deployments/:id' },
+      };
+
+      // TenantGuard resolves deploy-bravo -> belongs to org-bravo
+      mockPrisma.deployment.findFirst.mockResolvedValueOnce({
+        id: 'deploy-bravo',
+        environment: { project: { organizationId: 'org-bravo' } },
+      });
+      mockPrisma.organization.findFirst.mockResolvedValueOnce({
+        id: 'org-bravo',
+        name: 'Bravo Org',
+      });
+      mockPrisma.member.findFirst.mockResolvedValueOnce(null); // User 1 is NOT in org-bravo
 
       const context: any = {
         getHandler: () => ({}),

@@ -20,9 +20,16 @@ import { NotificationsSettings } from './components/NotificationsSettings';
 import { AiSettings } from './components/AiSettings';
 import { BillingSettings } from './components/BillingSettings';
 import { PreferencesSettings } from './components/PreferencesSettings';
+import { EnvironmentsSettings } from './components/EnvironmentsSettings';
 
 export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState<SettingsTab>('account');
+  const [activeTab, setActiveTab] = useState<SettingsTab>(() => {
+    if (typeof window !== 'undefined') {
+      const tab = new URLSearchParams(window.location.search).get('tab') as SettingsTab;
+      if (tab) return tab;
+    }
+    return 'account';
+  });
   const { user, organization, aiStatus, updateUser, updateOrganization } = useApp();
 
   return (
@@ -60,6 +67,10 @@ export default function SettingsPage() {
               <TeamSettings
                 organizationId={organization?.id || ''}
               />
+            )}
+
+            {activeTab === 'environments' && (
+              <EnvironmentsSettings />
             )}
 
             {activeTab === 'integrations' && (

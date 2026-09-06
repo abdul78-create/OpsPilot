@@ -48,13 +48,13 @@ export function resolveDeployEnvironment(d: Record<string, unknown>): 'staging' 
   // Check label & manifest
   const isStaging =
     /\b(staging|stage|preprod|pre-prod|non-?prod)\b/i.test(label) ||
-    /namespace:\s*staging\b/i.test(manifest) ||
-    /cluster:\s*staging-us-east-1\b/i.test(manifest);
+    /namespace:\s*([a-zA-Z0-9_-]*stag[a-zA-Z0-9_-]*)\b/i.test(manifest) ||
+    /environment:\s*staging\b/i.test(manifest);
 
   const isProduction =
     /\b(production|prod)\b/i.test(label) ||
-    /namespace:\s*production\b/i.test(manifest) ||
-    /cluster:\s*prod-us-east-1\b/i.test(manifest);
+    /namespace:\s*([a-zA-Z0-9_-]*prod[a-zA-Z0-9_-]*)\b/i.test(manifest) ||
+    /environment:\s*production\b/i.test(manifest);
 
   if (isStaging && !isProduction) {
     return 'staging';
@@ -245,19 +245,20 @@ export function dagToYaml(
         if (env === 'staging' && (deployStageSlug.includes('prod') || deployStageSlug.includes('production'))) {
           deployStageSlug = 'deploy-staging';
         }
-        let deployCmd = d.command
-          ? String(d.command)
-          : `kubectl apply -f k8s/ --namespace ${env}`;
-        if (env === 'staging') {
-          deployCmd = deployCmd
-            .replace(/--namespace\s+production\b/g, '--namespace staging')
-            .replace(/namespace:\s*production\b/g, 'namespace: staging');
+        const namespace = String(d.namespace ?? '').trim();
+        if (!d.command && !namespace) {
+          throw new Error(
+            `Cannot compile deploy node '${slug || node.id}': deployment target configuration is missing (no command or namespace).`,
+          );
         }
+        const deployCmd = d.command
+          ? String(d.command)
+          : `kubectl apply -f k8s/ --namespace ${namespace}`;
         yaml += `  - name: ${deployStageSlug}\n    jobs:\n      - name: deploy-${env}\n        image: bitnami/kubectl:latest\n        steps:\n          - name: deploy-${env}\n            run: ${deployCmd}\n`;
         break;
       }
       case 'health':
-        yaml += `  - name: ${slug || 'health-check'}\n    jobs:\n      - name: verify-probe\n        image: curlimages/curl:latest\n        steps:\n          - name: http-health-probe\n            run: curl -f ${String(d.endpoint || 'http://localhost:8080/health')} || exit 1\n`;
+        yaml += `  - name: ${slug || 'health-check'}\n    jobs:\n      - name: verify-probe\n        image: curlimages/curl:latest\n        steps:\n          - name: http-health-probe\n            run: curl -f ${String(d.endpoint || 'http://app-service:8080/health')} || exit 1\n`;
         break;
       case 'rollback': {
         let env = resolveDeployEnvironment(d as Record<string, unknown>);

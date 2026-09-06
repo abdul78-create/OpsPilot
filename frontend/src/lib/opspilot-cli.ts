@@ -65,7 +65,7 @@ export function executeCLICommand(cmdString: string): CLIResponse {
       return {
         success: true,
         output: [
-          '▸ Initiating production deployment to cluster: prod-us-east-1...',
+          '▸ Initiating production deployment to configured cluster...',
           '▸ kubectl apply -f k8s/deployment.yaml',
           '  deployment.apps/backend-api updated',
           '  Waiting for rollout to finish: 3 of 3 updated replicas are available...',

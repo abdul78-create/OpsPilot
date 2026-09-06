@@ -146,7 +146,11 @@ export class DeploymentsService {
       imageTag: d.releaseVersion,
       deployedAt: d.startedAt ? d.startedAt.toISOString() : d.createdAt.toISOString(),
       health: d.status === 'SUCCESS' ? 'HEALTHY' : d.status === 'FAILED' ? 'UNHEALTHY' : 'PENDING',
-      url: d.status === 'SUCCESS' ? 'http://localhost:8080' : undefined,
+      url:
+        d.status === 'SUCCESS'
+          ? process.env.DEPLOYMENT_PUBLIC_URL ||
+            (d.environment?.clusterName ? `https://${d.environment.clusterName}` : undefined)
+          : undefined,
     }));
   }
 
@@ -360,14 +364,20 @@ export class DeploymentsService {
     latencyMs: number;
   }> {
     const deployment = await this.findById(deploymentId);
+    const environment = await this.prisma.environment.findFirst({
+      where: { id: deployment.environmentId },
+    });
     const start = Date.now();
     let statusCode = 0;
     let healthStatus = 'UNHEALTHY';
+    const targetUrl =
+      process.env.DEPLOYMENT_HEALTH_URL ||
+      ((environment as any)?.clusterName
+        ? `https://${(environment as any).clusterName}/health`
+        : 'http://opspilot_app_target:8080/health');
 
     try {
       const http = await import('http');
-      const targetUrl =
-        process.env.DEPLOYMENT_HEALTH_URL || 'http://opspilot_app_target:8080/health';
       const result = await new Promise<{ statusCode: number; body: string }>((resolve, reject) => {
         const req = http.get(targetUrl, (res) => {
           let b = '';
@@ -375,7 +385,7 @@ export class DeploymentsService {
           res.on('end', () => resolve({ statusCode: res.statusCode || 0, body: b }));
         });
         req.on('error', (_err) => {
-          // Fallback to localhost if container host is not resolved
+          // Fallback to localhost if container host is not resolved in local dev
           http
             .get('http://localhost:8080/health', (res2) => {
               let b2 = '';
@@ -405,7 +415,7 @@ export class DeploymentsService {
       environmentId: deployment.environmentId,
       status: deployment.status,
       healthStatus,
-      url: 'http://localhost:8080/health',
+      url: targetUrl,
       statusCode,
       latencyMs,
     };

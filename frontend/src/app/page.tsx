@@ -21,7 +21,7 @@ const WORKFLOW_STEPS = [
     desc: 'Connect your public or private GitHub repository in seconds. OpsPilot sets up cryptographically verified HMAC-SHA256 webhook delivery, automatically tracking commits and branch updates.',
     features: ['GitHub App & OAuth integration', 'HMAC-SHA256 signature verification', 'Branch & commit discovery', 'Zero YAML prerequisite'],
     codeSnippet: `$ opspilot repo connect --provider github \\
-  --repo abdul78-create/OpsPilot --branch main
+  --repo acme-corp/payment-service --branch main
 ✓ Webhook registered: wh_84920481 (active)
 ✓ HMAC secret generated and stored in Vault
 ✓ Repository synced: 1 branch, latest commit 8b4ef21`,
@@ -86,7 +86,7 @@ const WORKFLOW_STEPS = [
     tagline: 'Environment Rollouts & Prometheus Metrics',
     desc: 'Promote verified builds to Staging or Production environments. Monitor delivery velocity, runner queue depth, duration percentiles, and error rates via native Prometheus telemetry.',
     features: ['Multi-environment promotion', 'Automated health-check probes', 'One-click instant rollback', 'Prometheus telemetry & SLO monitoring'],
-    codeSnippet: `[Deployer] Target environment: Production (prod-us-east-1)
+    codeSnippet: `[Deployer] Target environment: Production (production-k8s)
 [Deployer] Applying release version v1.4.2...
 [Deployer] Probing health: GET /v1/health -> HTTP 200 OK (14ms)
 [Deployer] Deployment SUCCESS · Active version updated
@@ -606,7 +606,7 @@ export default function LandingPage() {
                     <Activity size={13} style={{ color: 'var(--success)' }} />
                   </div>
                   <div className="font-bold text-xs text-[var(--text-primary)]">Production Gate</div>
-                  <div className="text-[10px] font-mono text-[var(--text-muted)]">prod-us-east-1</div>
+                  <div className="text-[10px] font-mono text-[var(--text-muted)]">production-k8s</div>
                 </div>
               </div>
             </div>

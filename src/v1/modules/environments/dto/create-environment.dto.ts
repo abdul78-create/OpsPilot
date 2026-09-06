@@ -11,6 +11,7 @@ import {
   MinLength,
 } from 'class-validator';
 import { EnvironmentType, OrgRole } from '@prisma/client';
+import { DeploymentTargetType } from '../enums/deployment-target-type.enum';
 
 export class CreateEnvironmentDto {
   @ApiProperty({ example: 'Production US-East', description: 'Environment display name' })
@@ -58,4 +59,24 @@ export class CreateEnvironmentDto {
   @IsBoolean()
   @IsOptional()
   autoRollbackEnabled?: boolean;
+
+  @ApiPropertyOptional({ enum: DeploymentTargetType, example: DeploymentTargetType.KUBERNETES })
+  @IsEnum(DeploymentTargetType)
+  @IsOptional()
+  deploymentTargetType?: DeploymentTargetType;
+
+  @ApiPropertyOptional({ example: 'acme-prod-k8s', description: 'Target Kubernetes cluster name' })
+  @IsString()
+  @IsOptional()
+  clusterName?: string;
+
+  @ApiPropertyOptional({ example: 'us-central1', description: 'Cluster region' })
+  @IsString()
+  @IsOptional()
+  clusterRegion?: string;
+
+  @ApiPropertyOptional({ example: 'acme-production', description: 'Target Kubernetes namespace' })
+  @IsString()
+  @IsOptional()
+  k8sNamespace?: string;
 }

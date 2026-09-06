@@ -3,6 +3,7 @@ import {
   Logger,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
   Inject,
   Optional,
 } from '@nestjs/common';
@@ -18,6 +19,7 @@ import {
   AiRiskLevel,
   JobStatus,
   DeploymentStatus,
+  EnvironmentType,
   Prisma,
 } from '@prisma/client';
 
@@ -480,7 +482,11 @@ export class AiOrchestrationService {
     };
   }
 
-  async generatePipeline(prompt: string): Promise<{
+  async generatePipeline(
+    prompt: string,
+    projectId: string,
+    callerOrgId?: string,
+  ): Promise<{
     name: string;
     summary: string;
     yamlConfig: string;
@@ -489,6 +495,25 @@ export class AiOrchestrationService {
   }> {
     if (!prompt || typeof prompt !== 'string') {
       throw new BadRequestException('Prompt is required for pipeline generation');
+    }
+
+    if (!projectId || typeof projectId !== 'string') {
+      throw new BadRequestException('Project ID is required for pipeline generation');
+    }
+
+    // 1. Authorize project and enforce strict tenant isolation
+    const project = await this.prisma.project.findFirst({
+      where: { id: projectId, deletedAt: null },
+    });
+
+    if (!project) {
+      throw new NotFoundException(`Project '${projectId}' not found`);
+    }
+
+    if (callerOrgId && project.organizationId !== callerOrgId) {
+      throw new ForbiddenException(
+        `Access denied: Project '${projectId}' does not belong to your organization`,
+      );
     }
 
     const p = prompt.toLowerCase();
@@ -507,6 +532,8 @@ export class AiOrchestrationService {
       p.includes('cloud run');
 
     let deployEnv: 'staging' | 'production' | null = null;
+    let resolvedEnvRecord: any = null;
+
     if (hasDeploy) {
       const isStaging = /\b(staging|stage|preprod|pre-prod|non-?prod)\b/i.test(prompt);
       const isProduction = /\b(production|prod)\b/i.test(prompt);
@@ -520,6 +547,36 @@ export class AiOrchestrationService {
           'Target deployment environment is ambiguous or not specified. Please explicitly specify either "staging" or "production".',
         );
       }
+
+      const targetEnvType =
+        deployEnv === 'staging' ? EnvironmentType.STAGING : EnvironmentType.PRODUCTION;
+      const targetLabel = deployEnv === 'staging' ? 'Staging' : 'Production';
+
+      // Look up customer's actual environment record in database
+      const envRecord = await this.prisma.environment.findFirst({
+        where: {
+          projectId: project.id,
+          type: targetEnvType,
+          deletedAt: null,
+        },
+      });
+
+      if (!envRecord) {
+        throw new BadRequestException(
+          `${targetLabel} environment is not configured for this project. Configure a ${deployEnv} environment in Project Settings first.`,
+        );
+      }
+
+      const k8sNamespace = (envRecord as any).k8sNamespace?.trim();
+      const clusterName = (envRecord as any).clusterName?.trim();
+
+      if (!k8sNamespace || !clusterName) {
+        throw new BadRequestException(
+          `Deployment target is not configured for environment '${envRecord.slug}'. Configure Kubernetes namespace and cluster in Environment Settings first.`,
+        );
+      }
+
+      resolvedEnvRecord = envRecord;
     }
 
     const stackName = isPython ? 'Python' : isGo ? 'Go' : 'Node.js';
@@ -575,22 +632,23 @@ export class AiOrchestrationService {
       lastNodeId = 'node_security';
     }
 
-    if (deployEnv) {
-      const isStaging = deployEnv === 'staging';
-      const cluster = isStaging ? 'staging-us-east-1' : 'prod-us-east-1';
-      const envLabel = isStaging ? 'Staging' : 'Production';
-      const deployCommand = `kubectl apply -f k8s/ --namespace ${deployEnv}`;
-      const manifest = `namespace: ${deployEnv}\ncluster: ${cluster}\nstrategy: RollingUpdate\nmaxSurge: 1\nmaxUnavailable: 0`;
+    if (deployEnv && resolvedEnvRecord) {
+      const cluster = resolvedEnvRecord.clusterName;
+      const namespace = resolvedEnvRecord.k8sNamespace;
+      const envSlug = resolvedEnvRecord.slug;
+      const envName = resolvedEnvRecord.name;
+      const deployCommand = `kubectl apply -f k8s/ --namespace ${namespace}`;
+      const manifest = `namespace: ${namespace}\ncluster: ${cluster}\nstrategy: RollingUpdate\nmaxSurge: 1\nmaxUnavailable: 0`;
 
       nodes.push({
         id: 'node_deploy',
         type: 'deploy',
         position: { x: hasSecurity ? 970 : 740, y: 150 },
         data: {
-          label: `Deploy to ${envLabel}`,
-          environment: envLabel,
-          target: deployEnv,
-          namespace: deployEnv,
+          label: `Deploy to ${envName}`,
+          environment: envName,
+          target: envSlug,
+          namespace,
           cluster,
           command: deployCommand,
           manifest,
@@ -613,8 +671,8 @@ stages:
     commands:
       - ${isPython ? 'pytest' : isGo ? 'go test ./...' : 'npm test'}
 ${hasSecurity ? '  - name: security\n    commands:\n      - trivy fs .\n' : ''}${
-      deployEnv
-        ? `  - name: deploy-${deployEnv}\n    environment: ${deployEnv}\n    commands:\n      - kubectl apply -f k8s/ --namespace ${deployEnv}\n`
+      deployEnv && resolvedEnvRecord
+        ? `  - name: deploy-${resolvedEnvRecord.slug}\n    environment: ${resolvedEnvRecord.slug}\n    commands:\n      - kubectl apply -f k8s/ --namespace ${resolvedEnvRecord.k8sNamespace}\n`
         : ''
     }`;
 

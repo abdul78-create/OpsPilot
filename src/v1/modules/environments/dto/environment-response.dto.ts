@@ -1,6 +1,12 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { EnvironmentType, OrgRole } from '@prisma/client';
+import { DeploymentTargetType } from '../enums/deployment-target-type.enum';
 
+export { DeploymentTargetType };
+
+/**
+ * Data Transfer Object representing an Environment entity response.
+ */
 export class EnvironmentResponseDto {
   @ApiProperty({ example: 'env_123456789' })
   id!: string;
@@ -31,6 +37,18 @@ export class EnvironmentResponseDto {
 
   @ApiProperty({ example: true })
   autoRollbackEnabled!: boolean;
+
+  @ApiPropertyOptional({ enum: DeploymentTargetType, example: DeploymentTargetType.KUBERNETES })
+  deploymentTargetType?: DeploymentTargetType | null;
+
+  @ApiPropertyOptional({ example: 'acme-prod-k8s' })
+  clusterName?: string | null;
+
+  @ApiPropertyOptional({ example: 'us-central1' })
+  clusterRegion?: string | null;
+
+  @ApiPropertyOptional({ example: 'acme-production' })
+  k8sNamespace?: string | null;
 
   @ApiProperty()
   createdAt!: Date;

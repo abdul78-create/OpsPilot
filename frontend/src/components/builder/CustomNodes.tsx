@@ -223,7 +223,11 @@ export const DeployNode = memo(({ data, selected }: NodeProps) => {
   const d = data as BaseNodeData;
   const runState = (d.runState ?? 'idle') as RunState;
   const env = resolveDeployEnvironment(d as Record<string, unknown>);
-  const displayTarget = env ? `${env} (${env === 'staging' ? 'staging-us-east-1' : 'prod-us-east-1'})` : String(d.target ?? d.namespace ?? 'unconfigured');
+  const clusterStr = d.cluster ? String(d.cluster) : null;
+  const nsStr = d.namespace ? String(d.namespace) : null;
+  const targetLabel = env ? (env.charAt(0).toUpperCase() + env.slice(1)) : String(d.target ?? 'Deploy');
+  const targetDetail = clusterStr && nsStr ? `${clusterStr} / ${nsStr}` : (clusterStr || nsStr || 'Deployment target not configured');
+  const displayTarget = `${targetLabel} (${targetDetail})`;
 
   return (
     <div className={`${nodeWrapClass(!!selected, runState)} group`} style={{ background: 'var(--bg-secondary)' }}>

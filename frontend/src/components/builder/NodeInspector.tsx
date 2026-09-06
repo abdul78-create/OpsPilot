@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { Node } from '@xyflow/react';
 import { SlidersHorizontal, Trash2, Sparkles, X, CheckCircle2, AlertTriangle } from 'lucide-react';
@@ -8,6 +8,7 @@ import { Input } from '../ui/input';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { resolveDeployEnvironment } from './DAGCompiler';
+import { listEnvironments, EnvironmentResponse, getActiveProjectId } from '@/lib/apiClient';
 
 // SSR-safe Monaco — requires browser APIs
 const MonacoEditor = dynamic(() => import('@monaco-editor/react'), { ssr: false });
@@ -17,6 +18,7 @@ interface NodeInspectorProps {
   onUpdateNodeData: (id: string, data: Record<string, unknown>) => void;
   onDeleteNode: (id: string) => void;
   onClose: () => void;
+  projectId?: string;
 }
 
 const monacoTheme = 'vs-dark';
@@ -63,7 +65,29 @@ function MonacoField({
   );
 }
 
-export function NodeInspector({ selectedNode, onUpdateNodeData, onDeleteNode, onClose }: NodeInspectorProps) {
+export function NodeInspector({ selectedNode, onUpdateNodeData, onDeleteNode, onClose, projectId }: NodeInspectorProps) {
+  const [environments, setEnvironments] = useState<EnvironmentResponse[]>([]);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function loadEnvironments() {
+      const pid = projectId || getActiveProjectId();
+      if (!pid) return;
+      try {
+        const res = await listEnvironments(pid);
+        if (isMounted && res?.data) {
+          setEnvironments(res.data);
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+    loadEnvironments();
+    return () => {
+      isMounted = false;
+    };
+  }, [projectId]);
+
   if (!selectedNode) {
     return (
       <aside
@@ -204,8 +228,20 @@ export function NodeInspector({ selectedNode, onUpdateNodeData, onDeleteNode, on
 
         {type === 'deploy' && (() => {
           const env = resolveDeployEnvironment(data as Record<string, unknown>);
-          const targetEnv = env || (String(data.target || '').toLowerCase().includes('prod') ? 'production' : 'staging');
-          const defaultManifest = `namespace: ${targetEnv}\ncluster: ${targetEnv === 'staging' ? 'staging-us-east-1' : 'prod-us-east-1'}\nstrategy: RollingUpdate\nmaxSurge: 1\nmaxUnavailable: 0`;
+          const envSlug = String(data.target ?? env ?? '').toLowerCase().trim();
+          const selectedEnv = environments.find(
+            (e) => e.slug.toLowerCase() === envSlug || e.type.toLowerCase() === envSlug,
+          );
+          const isTargetConfigured = !!(
+            (selectedEnv?.clusterName && selectedEnv?.k8sNamespace) ||
+            (data.cluster && data.namespace)
+          );
+          const currentCluster = String(data.cluster ?? selectedEnv?.clusterName ?? '');
+          const currentNs = String(data.namespace ?? selectedEnv?.k8sNamespace ?? '');
+          const defaultManifest =
+            currentNs && currentCluster
+              ? `namespace: ${currentNs}\ncluster: ${currentCluster}\nstrategy: RollingUpdate\nmaxSurge: 1\nmaxUnavailable: 0`
+              : '# Deployment target not configured in Environment Settings';
           const currentManifest = String(data.manifest ?? defaultManifest);
 
           return (
@@ -222,26 +258,70 @@ export function NodeInspector({ selectedNode, onUpdateNodeData, onDeleteNode, on
                     borderColor: 'var(--border)',
                     color: 'var(--text-primary)',
                   }}
-                  value={env || ''}
+                  value={envSlug}
                   onChange={(e) => {
-                    const newEnv = e.target.value as 'staging' | 'production';
-                    const newCluster = newEnv === 'staging' ? 'staging-us-east-1' : 'prod-us-east-1';
-                    const newManifest = `namespace: ${newEnv}\ncluster: ${newCluster}\nstrategy: RollingUpdate\nmaxSurge: 1\nmaxUnavailable: 0`;
+                    const chosenSlug = e.target.value;
+                    const matched = environments.find((ev) => ev.slug === chosenSlug);
+                    const cluster = matched?.clusterName || '';
+                    const namespace = matched?.k8sNamespace || '';
+                    const manifest =
+                      cluster && namespace
+                        ? `namespace: ${namespace}\ncluster: ${cluster}\nstrategy: RollingUpdate\nmaxSurge: 1\nmaxUnavailable: 0`
+                        : '# Deployment target not configured in Environment Settings';
+                    const command = namespace ? `kubectl apply -f k8s/ --namespace ${namespace}` : '';
                     onUpdateNodeData(id, {
-                      target: newEnv,
-                      namespace: newEnv,
-                      environment: newEnv === 'staging' ? 'Staging' : 'Production',
-                      cluster: newCluster,
-                      manifest: newManifest,
-                      command: `kubectl apply -f k8s/ --namespace ${newEnv}`,
-                      label: `Deploy to ${newEnv === 'staging' ? 'Staging' : 'Production'}`,
+                      target: chosenSlug,
+                      namespace,
+                      cluster,
+                      environment: matched?.name || chosenSlug,
+                      manifest,
+                      command,
+                      label: `Deploy to ${matched?.name || chosenSlug}`,
                     });
                   }}
                 >
                   <option value="" disabled>Select Environment...</option>
-                  <option value="staging">Staging (staging-us-east-1)</option>
-                  <option value="production">Production (prod-us-east-1)</option>
+                  {environments.length > 0 ? (
+                    environments.map((e) => {
+                      const hasTarget = !!(e.clusterName && e.k8sNamespace);
+                      const detail = hasTarget
+                        ? `${e.clusterName} / ${e.k8sNamespace}`
+                        : 'Deployment target not configured';
+                      return (
+                        <option key={e.id} value={e.slug}>
+                          {e.name} ({detail})
+                        </option>
+                      );
+                    })
+                  ) : (
+                    <>
+                      {env && (
+                        <option value={env}>
+                          {env.charAt(0).toUpperCase() + env.slice(1)} (
+                          {currentCluster && currentNs
+                            ? `${currentCluster} / ${currentNs}`
+                            : 'Deployment target not configured'}
+                          )
+                        </option>
+                      )}
+                    </>
+                  )}
                 </select>
+                {!isTargetConfigured && envSlug && (
+                  <div className="mt-1.5 p-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-400 space-y-1">
+                    <p className="flex items-center gap-1 font-medium">
+                      <AlertTriangle size={12} /> Deployment target not configured
+                    </p>
+                    <a
+                      href="/settings?tab=environments"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-block text-[10px] text-indigo-400 hover:underline font-semibold"
+                    >
+                      Configure Cluster & Namespace in Settings →
+                    </a>
+                  </div>
+                )}
               </div>
 
               <MonacoField
@@ -251,15 +331,13 @@ export function NodeInspector({ selectedNode, onUpdateNodeData, onDeleteNode, on
                 onChange={(v) => {
                   const nsMatch = v.match(/namespace:\s*([a-zA-Z0-9_-]+)/);
                   const clusterMatch = v.match(/cluster:\s*([a-zA-Z0-9_-]+)/);
-                  const parsedTarget = nsMatch ? nsMatch[1].trim() : (env ?? 'staging');
-                  const parsedCluster = clusterMatch ? clusterMatch[1].trim() : (parsedTarget === 'staging' ? 'staging-us-east-1' : 'prod-us-east-1');
+                  const parsedNs = nsMatch ? nsMatch[1].trim() : currentNs;
+                  const parsedCluster = clusterMatch ? clusterMatch[1].trim() : currentCluster;
                   onUpdateNodeData(id, {
                     manifest: v,
-                    target: parsedTarget,
-                    namespace: parsedTarget,
+                    namespace: parsedNs,
                     cluster: parsedCluster,
-                    environment: parsedTarget,
-                    command: `kubectl apply -f k8s/ --namespace ${parsedTarget}`,
+                    command: parsedNs ? `kubectl apply -f k8s/ --namespace ${parsedNs}` : data.command,
                   });
                 }}
                 height={110}
@@ -271,7 +349,7 @@ export function NodeInspector({ selectedNode, onUpdateNodeData, onDeleteNode, on
         {type === 'health' && (
           <Input
             label="Health Probe Endpoint"
-            defaultValue={String(data.endpoint ?? 'GET http://localhost:8080/health')}
+            defaultValue={String(data.endpoint ?? 'GET /health')}
             onChange={(e) => onUpdateNodeData(id, { endpoint: e.target.value })}
           />
         )}

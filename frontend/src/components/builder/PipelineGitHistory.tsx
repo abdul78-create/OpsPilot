@@ -16,12 +16,12 @@ export function PipelineGitHistory({ open, onClose, onRestoreVersion }: Pipeline
   const history = [
     {
       version: 'v31',
-      author: 'Abdul',
+      author: 'Release Engineer',
       time: '10m ago',
       commitMsg: 'Add Trivy SAST Security Scan before K8s deployment step',
       changes: [
         { type: 'add', text: 'Added Trivy Security Scan node' },
-        { type: 'edit', text: 'Updated K8s deploy target to prod-us-east-1' },
+        { type: 'edit', text: 'Updated K8s deploy target configuration' },
       ],
       isCurrent: true,
     },

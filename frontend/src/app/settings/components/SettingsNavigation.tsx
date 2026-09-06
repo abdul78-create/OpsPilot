@@ -3,13 +3,14 @@
 import React from 'react';
 import {
   User, Building2, Users, Layers, Shield,
-  Bell, Sparkles, CreditCard, Sliders, ChevronDown
+  Bell, Sparkles, CreditCard, Sliders, ChevronDown, Server
 } from 'lucide-react';
 
 export type SettingsTab =
   | 'account'
   | 'organization'
   | 'team'
+  | 'environments'
   | 'integrations'
   | 'security'
   | 'notifications'
@@ -38,6 +39,7 @@ const NAV_GROUPS: { group: string; items: NavItem[] }[] = [
     items: [
       { id: 'organization', label: 'Organization', icon: Building2 },
       { id: 'team', label: 'Team & Access', icon: Users },
+      { id: 'environments', label: 'Environments', icon: Server },
     ],
   },
   {

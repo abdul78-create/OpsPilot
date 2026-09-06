@@ -146,16 +146,32 @@ describe('Pipeline Run Execution Integration Test Suite', () => {
       );
     });
 
-    it('Negative: should throw NotFoundException if PipelineDefinition has no versions', async () => {
+    it('Negative: should not fabricate an expressjs repo URL when no repository connection exists', async () => {
       mockPrisma.pipelineDefinition.findFirst.mockResolvedValue({
         id: 'pipe_123',
-        name: 'Empty Pipeline',
+        name: 'Unconnected Pipeline',
+        projectId: 'proj_no_repo',
         isActive: true,
-        versions: [],
+        triggerBranch: 'main',
+        versions: [{ id: 'ver_123', versionNumber: 1 }],
       });
+      mockPrisma.repositoryConnection.findFirst.mockResolvedValue(null);
 
-      await expect(runsService.triggerRun('pipe_123', 'user_123', {})).rejects.toThrow(
-        NotFoundException,
+      const result = await runsService.triggerRun('pipe_123', 'user_123', {});
+
+      expect(result.id).toBe('run_exec_100');
+      expect(mockQueue.add).toHaveBeenCalledWith(
+        'execute-pipeline-run',
+        expect.objectContaining({
+          pipelineRunId: 'run_exec_100',
+          repoUrl: '',
+        }),
+      );
+      expect(mockQueue.add).not.toHaveBeenCalledWith(
+        'execute-pipeline-run',
+        expect.objectContaining({
+          repoUrl: 'https://github.com/expressjs/express',
+        }),
       );
     });
   });
