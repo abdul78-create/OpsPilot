@@ -157,13 +157,17 @@ describe('Visual DAG Builder AI Features Production Wiring Spec', () => {
       expect(yamlConfig).not.toContain('deploy-production');
 
       // Frontend DAGCompiler verification: dagToYaml
-      const compiledYaml = dagToYaml(nodes, edges, 'Production Staging Test', 'main');
+      const compiledYaml = dagToYaml(nodes, edges, 'OpsPilot Production Pipeline', 'main');
+      expect(compiledYaml).toContain('name: OpsPilot Staging Pipeline');
       expect(compiledYaml).toContain('- name: deploy-staging');
       expect(compiledYaml).toContain('run: kubectl apply -f k8s/ --namespace staging');
-      expect(compiledYaml).not.toContain('namespace: production');
-      expect(compiledYaml).not.toContain('prod-us-east-1');
-      expect(compiledYaml).not.toContain('--namespace production');
+
+      // Requirement 4: All 5 forbidden production deployment identifiers must be absent
+      expect(compiledYaml).not.toContain('Production Pipeline');
       expect(compiledYaml).not.toContain('deploy-production');
+      expect(compiledYaml).not.toContain('namespace: production');
+      expect(compiledYaml).not.toContain('--namespace production');
+      expect(compiledYaml).not.toContain('prod-us-east-1');
     });
 
     it('production request → production configuration', async () => {
@@ -187,9 +191,56 @@ describe('Visual DAG Builder AI Features Production Wiring Spec', () => {
       expect(yamlConfig).toContain('kubectl apply -f k8s/ --namespace production');
 
       // Frontend DAGCompiler verification: dagToYaml
-      const compiledYaml = dagToYaml(nodes, edges, 'Production Deploy Test', 'main');
+      const compiledYaml = dagToYaml(nodes, edges, 'OpsPilot Visual Pipeline', 'main');
+      expect(compiledYaml).toContain('name: OpsPilot Production Pipeline');
       expect(compiledYaml).toContain('- name: deploy-production');
       expect(compiledYaml).toContain('run: kubectl apply -f k8s/ --namespace production');
+    });
+
+    it('dagToYaml staging pipeline name and job naming assertions', () => {
+      const stagingNodes = [
+        { id: '1', type: 'source', data: { label: 'Git Source', repo: 'my-repo' } },
+        { id: '2', type: 'build', data: { label: 'Docker Build' } },
+        {
+          id: '3',
+          type: 'deploy',
+          data: {
+            label: 'Deploy to Staging',
+            target: 'staging',
+            command: 'kubectl apply -f k8s/ --namespace staging',
+          },
+        },
+      ];
+      const edges = [
+        { id: 'e1', source: '1', target: '2' },
+        { id: 'e2', source: '2', target: '3' },
+      ];
+
+      // Even if caller passes a pipelineName containing "Production", staging must resolve to "OpsPilot Staging Pipeline"
+      const yaml = dagToYaml(
+        stagingNodes as any,
+        edges as any,
+        'OpsPilot Production Pipeline',
+        'main',
+      );
+
+      // Requirement 1: Pipeline name must NOT contain "Production". Use "OpsPilot Staging Pipeline".
+      expect(yaml).toContain('name: OpsPilot Staging Pipeline');
+      expect(yaml).not.toContain('name: OpsPilot Production Pipeline');
+
+      // Requirement 2: Deployment job name must be "deploy-staging", never "deploy-production".
+      expect(yaml).toContain('- name: deploy-staging');
+      expect(yaml).not.toContain('- name: deploy-production');
+
+      // Requirement 3: Keep the actual command exactly targeted to staging
+      expect(yaml).toContain('kubectl apply -f k8s/ --namespace staging');
+
+      // Requirement 4: Ensure generated staging YAML contains no production deployment identifiers
+      expect(yaml).not.toContain('Production Pipeline');
+      expect(yaml).not.toContain('deploy-production');
+      expect(yaml).not.toContain('namespace: production');
+      expect(yaml).not.toContain('--namespace production');
+      expect(yaml).not.toContain('prod-us-east-1');
     });
 
     it('ambiguous environment → safe rejection / no unsafe default', async () => {

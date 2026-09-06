@@ -192,7 +192,22 @@ export function dagToYaml(
     .map((id) => nodeMap.get(id))
     .filter((n): n is DAGNode => !!n);
 
-  let yaml = `version: '1.0'\nname: ${pipelineName}\ntrigger:\n  branch: ${branch}\nstages:\n`;
+  // Check if any deploy stage targets staging or production
+  const deployNode = orderedNodes.find((n) => n.type === 'deploy');
+  const resolvedDeployEnv = deployNode
+    ? resolveDeployEnvironment((deployNode.data || {}) as Record<string, unknown>)
+    : null;
+
+  let finalPipelineName = pipelineName;
+  if (resolvedDeployEnv === 'staging') {
+    finalPipelineName = 'OpsPilot Staging Pipeline';
+  } else if (resolvedDeployEnv === 'production') {
+    if (finalPipelineName === 'OpsPilot Visual Pipeline' || !finalPipelineName.includes('Production')) {
+      finalPipelineName = 'OpsPilot Production Pipeline';
+    }
+  }
+
+  let yaml = `version: '1.0'\nname: ${finalPipelineName}\ntrigger:\n  branch: ${branch}\nstages:\n`;
 
   orderedNodes.forEach((node) => {
     const d = node.data || {};
@@ -226,10 +241,19 @@ export function dagToYaml(
             `Cannot compile deploy node '${slug || node.id}': deployment environment must be explicitly 'staging' or 'production'.`,
           );
         }
-        const deployCmd = d.command
+        let deployStageSlug = slug || `deploy-${env}`;
+        if (env === 'staging' && (deployStageSlug.includes('prod') || deployStageSlug.includes('production'))) {
+          deployStageSlug = 'deploy-staging';
+        }
+        let deployCmd = d.command
           ? String(d.command)
           : `kubectl apply -f k8s/ --namespace ${env}`;
-        yaml += `  - name: ${slug || 'deploy'}\n    jobs:\n      - name: k8s-rollout\n        image: bitnami/kubectl:latest\n        steps:\n          - name: deploy-${env}\n            run: ${deployCmd}\n`;
+        if (env === 'staging') {
+          deployCmd = deployCmd
+            .replace(/--namespace\s+production\b/g, '--namespace staging')
+            .replace(/namespace:\s*production\b/g, 'namespace: staging');
+        }
+        yaml += `  - name: ${deployStageSlug}\n    jobs:\n      - name: deploy-${env}\n        image: bitnami/kubectl:latest\n        steps:\n          - name: deploy-${env}\n            run: ${deployCmd}\n`;
         break;
       }
       case 'health':

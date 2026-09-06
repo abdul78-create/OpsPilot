@@ -27,7 +27,7 @@ import { PipelineGitHistory } from './PipelineGitHistory';
 import { PublicShareModal } from './PublicShareModal';
 import { AICopilotOverlay } from './AICopilotOverlay';
 import { AIAutoBuilder } from './AIAutoBuilder';
-import { validateDAG, dagToYaml, DAGValidationResult } from './DAGCompiler';
+import { validateDAG, dagToYaml, resolveDeployEnvironment, DAGValidationResult } from './DAGCompiler';
 import { useUndoRedo } from '../../hooks/useUndoRedo';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
@@ -173,9 +173,21 @@ function BuilderCanvas() {
     }, accum + 400));
   };
 
+  // ── Helper: compute contextual pipeline default name ────────────────────────
+  const getPipelineDefaultName = () => {
+    const deployNode = nodes.find((n) => n.type === 'deploy');
+    if (deployNode) {
+      const env = resolveDeployEnvironment((deployNode.data || {}) as Record<string, unknown>);
+      if (env === 'staging') return 'OpsPilot Staging Pipeline';
+      if (env === 'production') return 'OpsPilot Production Pipeline';
+    }
+    return 'OpsPilot Visual Pipeline';
+  };
+
   // ── View & Export YAML ──────────────────────────────────────────────────────
   const handleOpenYaml = () => {
-    const yaml = dagToYaml(nodes, edges, 'OpsPilot Production Pipeline', 'main');
+    const defaultName = getPipelineDefaultName();
+    const yaml = dagToYaml(nodes, edges, defaultName, 'main');
     setGeneratedYaml(yaml);
     setYamlModalOpen(true);
   };
@@ -189,7 +201,8 @@ function BuilderCanvas() {
     }
 
     setIsSaving(true);
-    const yaml = dagToYaml(nodes, edges, 'OpsPilot Visual Pipeline', 'main');
+    const defaultName = getPipelineDefaultName();
+    const yaml = dagToYaml(nodes, edges, defaultName, 'main');
 
     try {
       let projectId = getActiveProjectId();
@@ -211,7 +224,7 @@ function BuilderCanvas() {
       }
 
       const res = await createPipelineDefinition(projectId, {
-        name: `Visual Pipeline ${Date.now().toString().slice(-4)}`,
+        name: `${defaultName} ${Date.now().toString().slice(-4)}`,
         yamlConfig: yaml,
         triggerBranch: 'main',
         description: 'Compiled from Visual DAG Builder',
@@ -260,9 +273,10 @@ function BuilderCanvas() {
 
       if (!targetPipelineId && projectId) {
         // Save current definition first to create the pipeline
-        const yaml = dagToYaml(nodes, edges, 'OpsPilot Visual Pipeline', 'main');
+        const defaultName = getPipelineDefaultName();
+        const yaml = dagToYaml(nodes, edges, defaultName, 'main');
         const created = await createPipelineDefinition(projectId, {
-          name: `Visual Pipeline ${Date.now().toString().slice(-4)}`,
+          name: `${defaultName} ${Date.now().toString().slice(-4)}`,
           yamlConfig: yaml,
           triggerBranch: 'main',
           description: 'Auto-saved before run',
