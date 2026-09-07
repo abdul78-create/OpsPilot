@@ -1,4 +1,4 @@
-﻿-- Add EnvironmentConnectionStatus enum
+-- Add EnvironmentConnectionStatus enum
 CREATE TYPE "EnvironmentConnectionStatus" AS ENUM (
   'NOT_CONFIGURED',
   'CONFIGURED',
