@@ -567,6 +567,19 @@ export class AiOrchestrationService {
         );
       }
 
+      // Block on connectionStatus — AI must not generate YAML for disconnected targets
+      const connectionStatus = (envRecord as any).connectionStatus as string | undefined;
+      if (connectionStatus === 'NOT_CONFIGURED') {
+        throw new BadRequestException(
+          `${targetLabel} deployment target is not configured for this project. Connect a deployment target in Environment Settings first.`,
+        );
+      }
+      if (connectionStatus === 'CONNECTION_FAILED') {
+        throw new BadRequestException(
+          `${targetLabel} deployment target is configured but the last connection test failed. Verify your configuration in Environment Settings before generating a pipeline.`,
+        );
+      }
+
       const k8sNamespace = (envRecord as any).k8sNamespace?.trim();
       const clusterName = (envRecord as any).clusterName?.trim();
 

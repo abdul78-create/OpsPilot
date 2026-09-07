@@ -62,6 +62,15 @@ enum DeploymentTargetType {
   STATIC
 }
 
+enum EnvironmentConnectionStatus {
+  NOT_CONFIGURED
+  CONFIGURED
+  CONNECTION_TESTING
+  CONNECTED
+  CONNECTION_FAILED
+  UNSUPPORTED
+}
+
 enum VariableType {
   STRING
   NUMBER
@@ -321,13 +330,17 @@ model Environment {
   allowedRoles        OrgRole[]             @default([OWNER, ADMIN])
   deploymentWindow    String?
   autoRollbackEnabled Boolean               @default(true)
-  deploymentTargetType DeploymentTargetType?
-  clusterName         String?
-  clusterRegion       String?
-  k8sNamespace        String?
-  createdAt           DateTime              @default(now())
-  updatedAt           DateTime              @updatedAt
-  deletedAt           DateTime?
+  deploymentTargetType     DeploymentTargetType?
+  clusterName              String?
+  clusterRegion            String?
+  k8sNamespace             String?
+  connectionStatus         EnvironmentConnectionStatus @default(NOT_CONFIGURED)
+  credentialsConfigured    Boolean                     @default(false)
+  lastConnectionTestedAt   DateTime?
+  lastConnectionError      String?                     // Safe message only — never contains credential values
+  createdAt                DateTime                    @default(now())
+  updatedAt                DateTime                    @updatedAt
+  deletedAt                DateTime?
 
   project             Project               @relation(fields: [projectId], references: [id], onDelete: Cascade)
   variables           EnvironmentVariable[]

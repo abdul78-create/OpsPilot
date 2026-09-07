@@ -1,4 +1,4 @@
-import {
+﻿import {
   Controller,
   Get,
   Post,
@@ -94,6 +94,44 @@ export class EnvironmentsController {
     return {
       message: 'Environment details and protection rules updated',
       data: env,
+    };
+  }
+
+  /**
+   * Test the deployment target connection for an environment.
+   *
+   * SECURITY:
+   * - Full tenant chain: JWT -> org -> project -> environment ownership enforced by guards
+   * - All target configuration read from DB (not from request body)
+   * - Response NEVER contains credential values, tokens, or kubeconfig
+   * - connectionStatus and lastConnectionError (safe message only) are returned
+   */
+  @Post(':id/test-connection')
+  @HttpCode(HttpStatus.OK)
+  @Permissions('env:update')
+  @ApiOperation({
+    summary: 'Test deployment target connection for an Environment',
+    description:
+      'Verifies that the configured deployment target can be reached. ' +
+      'All configuration is read from the database — no credentials are returned in the response. ' +
+      'Updates connectionStatus on the environment record.',
+  })
+  @ApiParam({ name: 'projectId', description: 'Project UUID' })
+  @ApiParam({ name: 'id', description: 'Environment UUID or Slug' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Connection test executed. Check connectionStatus in the response.',
+  })
+  @ApiResponse({ status: HttpStatus.NOT_FOUND, description: 'Environment not found' })
+  async testConnection(@Param('projectId') projectId: string, @Param('id') idOrSlug: string) {
+    const result = await this.envsService.testConnection(projectId, idOrSlug);
+    return {
+      message: result.message,
+      data: {
+        connectionStatus: result.connectionStatus,
+        testedAt: result.testedAt,
+        // message is safe for display — never contains credential values
+      },
     };
   }
 

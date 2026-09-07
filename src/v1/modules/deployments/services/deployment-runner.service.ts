@@ -141,6 +141,18 @@ export class DeploymentRunnerService {
         throw new Error(errorMsg);
       }
 
+      // connectionStatus gate: require at least CONFIGURED before deploying
+      const connectionStatus = deployEnv?.connectionStatus as string | undefined;
+      if (connectionStatus === 'NOT_CONFIGURED') {
+        const errorMsg = `Deployment target is not connected for environment '${deployment.environment.name}'. Run a connection test in Environment Settings and resolve any errors before deploying.`;
+        await this.log(runId, LogLevel.ERROR, `❌ ${errorMsg}`);
+        await this.prisma.deployment.update({
+          where: { id: deploymentId },
+          data: { status: DeploymentStatus.FAILED, finishedAt: new Date() },
+        });
+        throw new Error(errorMsg);
+      }
+
       if (targetType === 'KUBERNETES') {
         const errorMsg = `Kubernetes cluster credentials not configured for cluster '${deployEnv?.clusterName || 'default'}' in environment '${deployment.environment.name}'. Real cluster deployment is blocked until customer kubeconfig/cluster credentials are configured.`;
         await this.log(runId, LogLevel.ERROR, `❌ ${errorMsg}`);

@@ -456,6 +456,14 @@ export async function createProject(
 
 // ─── Environments ─────────────────────────────────────────────────────────────
 
+export type EnvironmentConnectionStatus =
+  | 'NOT_CONFIGURED'
+  | 'CONFIGURED'
+  | 'CONNECTION_TESTING'
+  | 'CONNECTED'
+  | 'CONNECTION_FAILED'
+  | 'UNSUPPORTED';
+
 export interface EnvironmentResponse {
   id: string;
   projectId: string;
@@ -468,6 +476,12 @@ export interface EnvironmentResponse {
   clusterName?: string | null;
   clusterRegion?: string | null;
   k8sNamespace?: string | null;
+  /** Connection tracking — safe metadata only, never contains credential values */
+  connectionStatus: EnvironmentConnectionStatus;
+  credentialsConfigured: boolean;
+  lastConnectionTestedAt?: string | null;
+  /** Safe human-readable message only — never contains tokens, passwords, or kubeconfig */
+  lastConnectionError?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -535,6 +549,25 @@ export async function deleteEnvironment(projectId: string, environmentIdOrSlug: 
   return apiFetch<void>(`/projects/${projectId}/environments/${environmentIdOrSlug}`, {
     method: 'DELETE',
   });
+}
+
+/**
+ * Test the deployment target connection for an environment.
+ *
+ * SECURITY: No credential values are returned. The backend reads all
+ * configuration from the database using the authenticated user's tenant context.
+ */
+export async function testEnvironmentConnection(
+  projectId: string,
+  environmentIdOrSlug: string,
+): Promise<{
+  message: string;
+  data: { connectionStatus: EnvironmentConnectionStatus; testedAt: string };
+}> {
+  return apiFetch(
+    `/projects/${projectId}/environments/${environmentIdOrSlug}/test-connection`,
+    { method: 'POST' },
+  );
 }
 
 // ─── Pipelines ────────────────────────────────────────────────────────────────
