@@ -524,17 +524,35 @@ export class AiOrchestrationService {
       p.includes('security') || p.includes('sast') || p.includes('trivy') || p.includes('scan');
 
     // Deployment is required ONLY when the user explicitly asks for deployment.
-    // CI-only prompts (e.g. "Build and test this repository", "Run tests and security scan") must NOT require an environment.
-    const hasDeploy = /\b(deploy|deployment|deploying|ship\s+to|release\s+to|deliver\s+to)\b/i.test(
-      prompt,
+    // CI-only prompts (e.g. "Build and test this repository", "Run tests and security scan", "CI-only. Do not deploy") must NOT require an environment.
+    const hasAffirmativeDeployTarget =
+      /\b(deploy\s+to|deployment\s+to|ship\s+to|release\s+to|deliver\s+to)\b/i.test(prompt);
+
+    const isExplicitCiOnly =
+      !hasAffirmativeDeployTarget &&
+      /\b(ci[\s-]only|only\s+ci|build[\s-]only|test[\s-]only|no\s+deploy(?:ment)?|do\s+not\s+deploy(?:ment)?|don't\s+deploy(?:ment)?|dont\s+deploy(?:ment)?|without\s+deploy(?:ment)?|skip\s+deploy(?:ment)?)\b/i.test(
+        prompt,
+      );
+
+    const cleanedPromptForDeploy = prompt.replace(
+      /\b(do\s+not|don't|dont|never|without|no|skip)\s+(?:require\s+|want\s+to\s+)?(deploy\w*|ship|release|deliver|staging|production|prod)\b[^.!?\n]*/gi,
+      '',
     );
+
+    const hasDeploy =
+      !isExplicitCiOnly &&
+      /\b(deploy|deployment|deploying|ship\s+to|release\s+to|deliver\s+to)\b/i.test(
+        cleanedPromptForDeploy,
+      );
 
     let deployEnv: 'staging' | 'production' | null = null;
     let resolvedEnvRecord: any = null;
 
     if (hasDeploy) {
-      const isStaging = /\b(staging|stage|preprod|pre-prod|non-?prod)\b/i.test(prompt);
-      const isProduction = /\b(production|prod)\b/i.test(prompt);
+      const isStaging = /\b(staging|stage|preprod|pre-prod|non-?prod)\b/i.test(
+        cleanedPromptForDeploy,
+      );
+      const isProduction = /\b(production|prod)\b/i.test(cleanedPromptForDeploy);
 
       if (isStaging && !isProduction) {
         deployEnv = 'staging';

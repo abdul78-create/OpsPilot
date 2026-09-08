@@ -547,6 +547,57 @@ describe('AiOrchestrationService', () => {
         expect(result.yamlConfig).not.toContain('production');
         expect(result.yamlConfig).not.toContain('deploy-');
       });
+
+      it('H. Explicit negative prompt ("This is a CI-only request. Do NOT deploy anything. Do not require staging or production") succeeds without querying environments', async () => {
+        mockPrisma.project.findFirst.mockResolvedValue(mockTenantAProject);
+        mockPrisma.environment.findFirst.mockResolvedValue(null);
+
+        const prompt =
+          'This is a CI-only request. Do NOT deploy anything. Do not require staging or production for this request.';
+        const result = await service.generatePipeline(prompt, 'prj_tenant_a', 'org_tenant_a');
+
+        expect(mockPrisma.environment.findFirst).not.toHaveBeenCalled();
+        expect(result.nodes.some((n) => n.type === 'deploy')).toBe(false);
+        expect(result.yamlConfig).not.toContain('deploy-');
+        expect(result.yamlConfig).not.toContain('staging');
+        expect(result.yamlConfig).not.toContain('production');
+      });
+
+      it('I. "Deploy to staging, do not deploy to production" resolves to staging without ambiguity', async () => {
+        mockPrisma.project.findFirst.mockResolvedValue(mockTenantAProject);
+        mockPrisma.environment.findFirst.mockResolvedValue({
+          ...mockTenantAStagingEnv,
+          connectionStatus: 'CONFIGURED',
+        });
+
+        const prompt = 'Deploy to staging, do not deploy to production';
+        const result = await service.generatePipeline(prompt, 'prj_tenant_a', 'org_tenant_a');
+
+        expect(mockPrisma.environment.findFirst).toHaveBeenCalledWith({
+          where: { projectId: 'prj_tenant_a', type: EnvironmentType.STAGING, deletedAt: null },
+        });
+        expect(result.nodes.some((n) => n.type === 'deploy')).toBe(true);
+        expect(result.yamlConfig).toContain('deploy-staging');
+        expect(result.yamlConfig).not.toContain('deploy-production');
+      });
+
+      it('J. "Deploy to production, do not deploy to staging" resolves to production without ambiguity', async () => {
+        mockPrisma.project.findFirst.mockResolvedValue(mockTenantAProject);
+        mockPrisma.environment.findFirst.mockResolvedValue({
+          ...mockTenantAProdEnv,
+          connectionStatus: 'CONFIGURED',
+        });
+
+        const prompt = 'Deploy to production, do not deploy to staging';
+        const result = await service.generatePipeline(prompt, 'prj_tenant_a', 'org_tenant_a');
+
+        expect(mockPrisma.environment.findFirst).toHaveBeenCalledWith({
+          where: { projectId: 'prj_tenant_a', type: EnvironmentType.PRODUCTION, deletedAt: null },
+        });
+        expect(result.nodes.some((n) => n.type === 'deploy')).toBe(true);
+        expect(result.yamlConfig).toContain('deploy-production');
+        expect(result.yamlConfig).not.toContain('deploy-staging');
+      });
     });
   });
 
