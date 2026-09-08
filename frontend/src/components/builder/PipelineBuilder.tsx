@@ -35,6 +35,7 @@ import { Dialog } from '../ui/dialog';
 import { useToast } from '../ui/Toast';
 import {
   createPipelineDefinition,
+  updatePipelineDefinition,
   triggerPipeline,
   listProjects,
   getActiveProjectId,
@@ -295,10 +296,17 @@ function BuilderCanvas() {
       const pipes = pipesRes.data ?? [];
       let targetPipelineId: string | null = pipes.length > 0 ? pipes[0].id : null;
 
-      if (!targetPipelineId && projectId) {
+      const defaultName = resolvePipelineDefaultName(nodes);
+      const yaml = dagToYaml(nodes, edges, defaultName, 'main');
+
+      if (targetPipelineId && projectId) {
+        // Persist current canvas YAML as the latest immutable version before triggering
+        await updatePipelineDefinition(projectId, targetPipelineId, {
+          yamlConfig: yaml,
+          changeSummary: 'Updated from Visual Builder canvas before run',
+        });
+      } else if (!targetPipelineId && projectId) {
         // Save current definition first to create the pipeline
-        const defaultName = resolvePipelineDefaultName(nodes);
-        const yaml = dagToYaml(nodes, edges, defaultName, 'main');
         const created = await createPipelineDefinition(projectId, {
           name: `${defaultName} ${Date.now().toString().slice(-4)}`,
           yamlConfig: yaml,

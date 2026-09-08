@@ -24,6 +24,8 @@ import {
 } from '@prisma/client';
 
 import { GeminiAiProvider } from '../../../core/ai/providers/gemini-ai.provider';
+import { RepositoryScannerService } from '../repositories/services/repository-scanner.service';
+import { StackDefinition } from '../repositories/interfaces/stack-definition.interface';
 
 export const AI_PROVIDER_TOKEN = 'IAiProvider';
 
@@ -36,6 +38,7 @@ export class AiOrchestrationService {
     private readonly prisma: PrismaService,
     @Inject(GeminiAiProvider) private readonly aiProvider: IAiProvider,
     @Optional() private readonly githubAppService?: GitHubAppService,
+    @Optional() private readonly repoScanner?: RepositoryScannerService,
   ) {}
 
   async analyzeRunFailure(pipelineRunId: string): Promise<AiAnalysisReport> {
@@ -517,10 +520,7 @@ export class AiOrchestrationService {
     }
 
     const p = prompt.toLowerCase();
-    const isPython =
-      p.includes('python') || p.includes('fastapi') || p.includes('django') || p.includes('flask');
-    const isGo = p.includes('go') || p.includes('golang');
-    const hasSecurity =
+    const hasSecurityPrompt =
       p.includes('security') || p.includes('sast') || p.includes('trivy') || p.includes('scan');
     const hasDeploy =
       p.includes('deploy') ||
@@ -592,7 +592,85 @@ export class AiOrchestrationService {
       resolvedEnvRecord = envRecord;
     }
 
-    const stackName = isPython ? 'Python' : isGo ? 'Go' : 'Node.js';
+    // Inspect authenticated user's actual connected repository
+    const repoConn = this.prisma.repositoryConnection
+      ? await this.prisma.repositoryConnection.findFirst({
+          where: { projectId: project.id, deletedAt: null },
+          orderBy: { createdAt: 'desc' },
+        })
+      : null;
+
+    let detectedStack: StackDefinition | null = null;
+    if (repoConn && this.repoScanner) {
+      try {
+        detectedStack = await this.repoScanner.scanRepository(repoConn.repositoryUrl, '');
+      } catch (scanErr) {
+        this.logger.warn(
+          `Repository scan failed for ${repoConn.repositoryUrl}: ${(scanErr as Error).message}`,
+        );
+      }
+    }
+
+    const isPython =
+      detectedStack?.language === 'python' ||
+      (!detectedStack &&
+        (p.includes('python') ||
+          p.includes('fastapi') ||
+          p.includes('django') ||
+          p.includes('flask')));
+    const isGo =
+      detectedStack?.language === 'go' ||
+      (!detectedStack && (p.includes('go') || p.includes('golang')));
+
+    const stackName = detectedStack
+      ? detectedStack.language === 'python'
+        ? 'Python'
+        : detectedStack.language === 'go'
+          ? 'Go'
+          : detectedStack.language === 'java'
+            ? 'Java'
+            : 'Node.js'
+      : isPython
+        ? 'Python'
+        : isGo
+          ? 'Go'
+          : 'Node.js';
+
+    const runtimeImage = detectedStack?.runtimeVersion
+      ? detectedStack.runtimeVersion
+      : isPython
+        ? 'python:3.11-slim'
+        : isGo
+          ? 'golang:1.22-alpine'
+          : 'node:20-alpine';
+
+    const buildCommand = detectedStack?.buildCommand
+      ? detectedStack.buildCommand
+      : isPython
+        ? 'pip install -r requirements.txt'
+        : isGo
+          ? 'go build -v ./...'
+          : 'npm ci --legacy-peer-deps --ignore-scripts && npm run build';
+
+    const testCommand = detectedStack?.testCommand
+      ? detectedStack.testCommand
+      : isPython
+        ? 'pytest'
+        : isGo
+          ? 'go test ./...'
+          : 'npm test';
+
+    const hasTests = detectedStack
+      ? Boolean(detectedStack.testCommand && detectedStack.capabilities.tests)
+      : true;
+
+    const hasSecurity =
+      hasSecurityPrompt ||
+      Boolean(detectedStack?.capabilities.docker || detectedStack?.detectedFiles?.length);
+
+    const repoUrl = repoConn?.repositoryUrl || 'repository';
+    const branch = repoConn?.defaultBranch || 'main';
+
     const pipelineName = `${stackName} Delivery Pipeline`;
 
     const nodes: any[] = [
@@ -600,7 +678,7 @@ export class AiOrchestrationService {
         id: 'node_source',
         type: 'source',
         position: { x: 50, y: 150 },
-        data: { label: 'Git Source', branch: 'main' },
+        data: { label: 'Git Source', repo: repoUrl, branch },
       },
       {
         id: 'node_build',
@@ -608,40 +686,39 @@ export class AiOrchestrationService {
         position: { x: 280, y: 150 },
         data: {
           label: `${stackName} Build`,
-          image: isPython ? 'python:3.11-slim' : isGo ? 'golang:1.22-alpine' : 'node:20-alpine',
-          command: isPython
-            ? 'pip install -r requirements.txt'
-            : isGo
-              ? 'go build -v ./...'
-              : 'npm ci && npm run build',
+          image: runtimeImage,
+          command: buildCommand,
         },
       },
-      {
+    ];
+
+    const edges: any[] = [{ id: 'e1', source: 'node_source', target: 'node_build' }];
+
+    let lastNodeId = 'node_build';
+    let edgeIndex = 2;
+
+    if (hasTests) {
+      nodes.push({
         id: 'node_test',
         type: 'test',
         position: { x: 510, y: 150 },
         data: {
           label: 'Automated Tests',
-          command: isPython ? 'pytest' : isGo ? 'go test ./...' : 'npm test',
+          command: testCommand,
         },
-      },
-    ];
-
-    const edges: any[] = [
-      { id: 'e1', source: 'node_source', target: 'node_build' },
-      { id: 'e2', source: 'node_build', target: 'node_test' },
-    ];
-
-    let lastNodeId = 'node_test';
+      });
+      edges.push({ id: `e${edgeIndex++}`, source: lastNodeId, target: 'node_test' });
+      lastNodeId = 'node_test';
+    }
 
     if (hasSecurity) {
       nodes.push({
         id: 'node_security',
         type: 'security',
-        position: { x: 740, y: 150 },
+        position: { x: hasTests ? 740 : 510, y: 150 },
         data: { label: 'SAST Security Scan', tool: 'trivy' },
       });
-      edges.push({ id: 'e3', source: lastNodeId, target: 'node_security' });
+      edges.push({ id: `e${edgeIndex++}`, source: lastNodeId, target: 'node_security' });
       lastNodeId = 'node_security';
     }
 
@@ -656,7 +733,7 @@ export class AiOrchestrationService {
       nodes.push({
         id: 'node_deploy',
         type: 'deploy',
-        position: { x: hasSecurity ? 970 : 740, y: 150 },
+        position: { x: nodes.length * 230 + 50, y: 150 },
         data: {
           label: `Deploy to ${envName}`,
           environment: envName,
@@ -667,25 +744,61 @@ export class AiOrchestrationService {
           manifest,
         },
       });
-      edges.push({ id: hasSecurity ? 'e4' : 'e3', source: lastNodeId, target: 'node_deploy' });
+      edges.push({ id: `e${edgeIndex++}`, source: lastNodeId, target: 'node_deploy' });
     }
 
-    const yamlConfig = `version: "1"
-name: "${pipelineName}"
+    const yamlConfig = `version: '1.0'
+name: ${pipelineName}
 trigger:
-  event: push
-  branch: "main"
+  branch: ${branch}
 stages:
-  - name: build
-    image: ${isPython ? 'python:3.11-slim' : isGo ? 'golang:1.22-alpine' : 'node:20-alpine'}
-    commands:
-      - ${isPython ? 'pip install -r requirements.txt' : isGo ? 'go build -v ./...' : 'npm ci && npm run build'}
-  - name: test
-    commands:
-      - ${isPython ? 'pytest' : isGo ? 'go test ./...' : 'npm test'}
-${hasSecurity ? '  - name: security\n    commands:\n      - trivy fs .\n' : ''}${
+  - name: git-source
+    jobs:
+      - name: checkout-source
+        image: alpine/git:latest
+        steps:
+          - name: git-checkout
+            run: git clone ${repoUrl} .
+  - name: ${stackName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-build
+    jobs:
+      - name: docker-build
+        image: ${runtimeImage}
+        steps:
+          - name: build-artifact
+            run: ${buildCommand}
+${
+  hasTests
+    ? `  - name: automated-tests
+    jobs:
+      - name: test-suite
+        image: ${runtimeImage}
+        steps:
+          - name: run-tests
+            run: ${testCommand}
+`
+    : ''
+}${
+      hasSecurity
+        ? `  - name: sast-security-scan
+    jobs:
+      - name: security-audit
+        image: aquasec/trivy:latest
+        steps:
+          - name: trivy-scan
+            run: trivy fs . --severity HIGH,CRITICAL
+`
+        : ''
+    }${
       deployEnv && resolvedEnvRecord
-        ? `  - name: deploy-${resolvedEnvRecord.slug}\n    environment: ${resolvedEnvRecord.slug}\n    commands:\n      - kubectl apply -f k8s/ --namespace ${resolvedEnvRecord.k8sNamespace}\n`
+        ? `  - name: deploy-${resolvedEnvRecord.slug}
+    environment: ${resolvedEnvRecord.slug}
+    jobs:
+      - name: k8s-deploy
+        image: bitnami/kubectl:latest
+        steps:
+          - name: apply-manifests
+            run: kubectl apply -f k8s/ --namespace ${resolvedEnvRecord.k8sNamespace}
+`
         : ''
     }`;
 

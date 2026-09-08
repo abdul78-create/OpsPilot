@@ -161,6 +161,7 @@ export class WebhookPipelineRouterService {
             latestVersion.id,
             connection.project.organizationId,
             event,
+            latestVersion.yamlConfig,
           );
 
           // ── Step 5: Enqueue to BullMQ worker ───────────────────────────
@@ -237,6 +238,7 @@ export class WebhookPipelineRouterService {
     pipelineVersionId: string,
     organizationId: string,
     event: WebhookPushEvent,
+    yamlConfig?: string,
   ): Promise<PipelineRun> {
     return this.prisma.$transaction(async (tx) => {
       const run = await tx.pipelineRun.create({
@@ -252,14 +254,68 @@ export class WebhookPipelineRouterService {
         },
       });
 
-      // Create standard build/test/deploy jobs per run
-      const defaultStages = [
-        { name: 'Checkout & Build', stage: 'build' },
-        { name: 'Unit & Integration Tests', stage: 'test' },
-        { name: 'Deploy Artifacts', stage: 'deploy' },
-      ];
+      let jobDefinitions: { name: string; stage: string }[] = [];
+      if (yamlConfig) {
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-var-requires
+          const yaml = require('js-yaml');
+          const parsed = yaml.load(yamlConfig) as Record<string, any>;
+          if (parsed && typeof parsed === 'object') {
+            if (Array.isArray(parsed['stages']) && parsed['stages'].length > 0) {
+              for (const stageItem of parsed['stages']) {
+                if (typeof stageItem === 'string') {
+                  jobDefinitions.push({ name: stageItem, stage: stageItem });
+                } else if (stageItem && typeof stageItem === 'object') {
+                  const stageName = String(stageItem.name || stageItem.stage || 'stage');
+                  if (Array.isArray(stageItem.jobs) && stageItem.jobs.length > 0) {
+                    for (const j of stageItem.jobs) {
+                      jobDefinitions.push({
+                        name: String(j?.name || stageName),
+                        stage: stageName,
+                      });
+                    }
+                  } else {
+                    jobDefinitions.push({
+                      name: String(stageItem.name || stageName),
+                      stage: stageName,
+                    });
+                  }
+                }
+              }
+            } else if (parsed['jobs']) {
+              if (Array.isArray(parsed['jobs'])) {
+                for (const j of parsed['jobs']) {
+                  jobDefinitions.push({
+                    name: String(j?.name || 'job'),
+                    stage: String(j?.stage || j?.name || 'build'),
+                  });
+                }
+              } else if (typeof parsed['jobs'] === 'object') {
+                const keys = Object.keys(parsed['jobs']);
+                for (const key of keys) {
+                  const j = parsed['jobs'][key];
+                  jobDefinitions.push({
+                    name: String(j?.name || key),
+                    stage: String(j?.stage || key),
+                  });
+                }
+              }
+            }
+          }
+        } catch {
+          // fall through
+        }
+      }
 
-      for (const stage of defaultStages) {
+      if (jobDefinitions.length === 0) {
+        jobDefinitions = [
+          { name: 'Build Source & Assets', stage: 'build' },
+          { name: 'Run Unit & Integration Tests', stage: 'test' },
+          { name: 'Deploy Artifacts', stage: 'deploy' },
+        ];
+      }
+
+      for (const stage of jobDefinitions) {
         await tx.pipelineJob.create({
           data: {
             pipelineRunId: run.id,

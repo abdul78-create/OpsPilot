@@ -101,12 +101,70 @@ export class PipelineYamlParserService {
     // ── Step 3: Parse trigger ─────────────────────────────────────────────────
     const trigger = this.parseTrigger(doc['trigger'], errors);
 
-    // ── Step 4: Parse and validate jobs ───────────────────────────────────────
-    const rawJobs = doc['jobs'];
+    // ── Step 4: Parse and validate jobs (supports both jobs map and stages array) ──
+    let rawJobs = doc['jobs'];
+
+    if ((!rawJobs || typeof rawJobs !== 'object') && Array.isArray(doc['stages'])) {
+      const normalizedJobs: Record<string, unknown> = {};
+      let previousJobId: string | null = null;
+      for (const stage of doc['stages']) {
+        if (!stage || typeof stage !== 'object') continue;
+        const stageObj = stage as Record<string, unknown>;
+        const stageName = String(stageObj['name'] || stageObj['stage'] || 'stage');
+        if (Array.isArray(stageObj['jobs']) && stageObj['jobs'].length > 0) {
+          for (const j of stageObj['jobs']) {
+            if (!j || typeof j !== 'object') continue;
+            const jObj = j as Record<string, unknown>;
+            const jName = String(jObj['name'] || stageName);
+            const jId = jName.toLowerCase().replace(/[^a-z0-9_-]/g, '-');
+            const steps = Array.isArray(jObj['steps']) ? jObj['steps'] : [];
+            const cmds: string[] = [];
+            for (const st of steps) {
+              if (st && typeof st === 'object') {
+                const c = (st as any).run || (st as any).command || (st as any).script;
+                if (c) cmds.push(String(c));
+              } else if (typeof st === 'string') {
+                cmds.push(st);
+              }
+            }
+            normalizedJobs[jId] = {
+              name: jName,
+              stage: stageName,
+              image: jObj['image'] || stageObj['image'] || 'node:20-alpine',
+              commands: cmds.length > 0 ? cmds : jObj['commands'] || jObj['run'] || [],
+              needs: previousJobId ? [previousJobId] : [],
+            };
+            previousJobId = jId;
+          }
+        } else {
+          const sId = stageName.toLowerCase().replace(/[^a-z0-9_-]/g, '-');
+          const steps = Array.isArray(stageObj['steps']) ? stageObj['steps'] : [];
+          const cmds: string[] = [];
+          for (const st of steps) {
+            if (st && typeof st === 'object') {
+              const c = (st as any).run || (st as any).command || (st as any).script;
+              if (c) cmds.push(String(c));
+            } else if (typeof st === 'string') {
+              cmds.push(st);
+            }
+          }
+          normalizedJobs[sId] = {
+            name: stageName,
+            stage: stageName,
+            image: stageObj['image'] || 'node:20-alpine',
+            commands: cmds.length > 0 ? cmds : stageObj['commands'] || stageObj['run'] || [],
+            needs: previousJobId ? [previousJobId] : [],
+          };
+          previousJobId = sId;
+        }
+      }
+      rawJobs = normalizedJobs;
+    }
+
     if (typeof rawJobs !== 'object' || rawJobs === null || Array.isArray(rawJobs)) {
       errors.push({
         field: 'jobs',
-        message: '"jobs" must be a non-empty mapping of job definitions',
+        message: '"jobs" or "stages" must be provided as a non-empty pipeline definition',
       });
     }
 
@@ -117,7 +175,7 @@ export class PipelineYamlParserService {
 
     const jobIds = Object.keys(jobsMap);
     if (jobIds.length === 0) {
-      errors.push({ field: 'jobs', message: 'Pipeline must define at least one job' });
+      errors.push({ field: 'jobs', message: 'Pipeline must define at least one job or stage' });
     }
 
     // ── Step 5: Validate and normalize each job ───────────────────────────────

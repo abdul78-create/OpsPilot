@@ -257,5 +257,88 @@ jobs:
         }),
       );
     });
+
+    it('should parse Builder 4-stage YAML and replace "git clone repository ." with real repo URL', async () => {
+      mockPrisma.pipelineJob.update
+        .mockResolvedValueOnce({ ...mockJob, status: JobStatus.RUNNING })
+        .mockResolvedValueOnce({ ...mockJob, status: JobStatus.SUCCESS });
+
+      const gitSourceJob = {
+        ...mockJob,
+        id: 'job_git_source',
+        name: 'git-source',
+        stage: 'git-source',
+      };
+
+      const builderYaml = `
+version: "1.0"
+stages:
+  - name: git-source
+    jobs:
+      - name: git-source
+        steps:
+          - run: git clone repository .
+  - name: node-js-build
+    jobs:
+      - name: node-js-build
+        steps:
+          - run: npm ci && npm run build
+  - name: automated-tests
+    jobs:
+      - name: automated-tests
+        steps:
+          - run: npm test
+  - name: sast-security-scan
+    jobs:
+      - name: sast-security-scan
+        steps:
+          - run: trivy fs --severity HIGH,CRITICAL .
+`;
+
+      await jobExecutor.executeJob(
+        gitSourceJob as never,
+        'https://github.com/my-org/custom-repo.git',
+        builderYaml,
+      );
+
+      expect(mockDockerRunner.runStep).toHaveBeenCalledWith(
+        expect.objectContaining({
+          command: 'git clone https://github.com/my-org/custom-repo.git .',
+        }),
+      );
+    });
+
+    it('should throw an error when yamlConfig has no matching executable commands for the stage', async () => {
+      mockPrisma.pipelineJob.update.mockResolvedValueOnce({
+        ...mockJob,
+        status: JobStatus.RUNNING,
+      });
+
+      const orphanJob = {
+        ...mockJob,
+        name: 'unmatched-job',
+        stage: 'non-existent-stage',
+      };
+
+      const builderYaml = `
+version: "1.0"
+stages:
+  - name: git-source
+    jobs:
+      - name: git-source
+        steps:
+          - run: git clone repository .
+`;
+
+      await expect(
+        jobExecutor.executeJob(
+          orphanJob as never,
+          'https://github.com/my-org/custom-repo.git',
+          builderYaml,
+        ),
+      ).rejects.toThrow(
+        "No executable commands found for job 'unmatched-job' (stage: 'non-existent-stage') in pipeline configuration.",
+      );
+    });
   });
 });

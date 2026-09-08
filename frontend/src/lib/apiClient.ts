@@ -607,6 +607,23 @@ export async function createPipelineDefinition(
   });
 }
 
+export async function updatePipelineDefinition(
+  projectId: string,
+  pipelineId: string,
+  data: {
+    name?: string;
+    yamlConfig?: string;
+    description?: string;
+    triggerBranch?: string;
+    changeSummary?: string;
+  },
+) {
+  return apiFetch<{ data: PipelineDefinition }>(`/projects/${projectId}/pipelines/${pipelineId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
 export async function getPipeline(projectId: string, pipelineId: string) {
   return apiFetch<{ data: PipelineDefinition }>(`/projects/${projectId}/pipelines/${pipelineId}`);
 }

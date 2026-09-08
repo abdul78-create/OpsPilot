@@ -229,7 +229,7 @@ export function dagToYaml(
         yaml += `  - name: ${slug || 'test'}\n    jobs:\n      - name: test-suite\n        image: ${String(d.image || 'node:20-alpine')}\n        steps:\n          - name: run-tests\n            run: ${String(d.command || 'npm test')}\n`;
         break;
       case 'security':
-        yaml += `  - name: ${slug || 'security'}\n    jobs:\n      - name: security-audit\n        image: aquasec/trivy:latest\n        steps:\n          - name: trivy-scan\n            run: trivy fs --severity HIGH,CRITICAL .\n`;
+        yaml += `  - name: ${slug || 'security'}\n    jobs:\n      - name: security-audit\n        image: aquasec/trivy:latest\n        steps:\n          - name: trivy-scan\n            run: trivy fs . --severity HIGH,CRITICAL\n`;
         break;
       case 'approval':
         yaml += `  - name: ${slug || 'approval'}\n    jobs:\n      - name: manual-approval\n        image: alpine:latest\n        steps:\n          - name: gate-check\n            run: echo "Approved by ${String(d.approvers || 'ADMIN')}"\n`;

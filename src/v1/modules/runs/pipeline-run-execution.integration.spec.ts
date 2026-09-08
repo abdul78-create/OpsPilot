@@ -96,7 +96,19 @@ describe('Pipeline Run Execution Integration Test Suite', () => {
         projectId: 'proj_123',
         isActive: true,
         triggerBranch: 'main',
-        versions: [{ id: 'ver_123', versionNumber: 1 }],
+        versions: [
+          {
+            id: 'ver_123',
+            versionNumber: 1,
+            yamlConfig: `
+stages:
+  - name: git-source
+  - name: node-js-build
+  - name: automated-tests
+  - name: sast-security-scan
+`,
+          },
+        ],
       });
       mockPrisma.repositoryConnection.findFirst.mockResolvedValue({
         repositoryUrl: 'https://github.com/expressjs/express',
@@ -153,7 +165,19 @@ describe('Pipeline Run Execution Integration Test Suite', () => {
         projectId: 'proj_no_repo',
         isActive: true,
         triggerBranch: 'main',
-        versions: [{ id: 'ver_123', versionNumber: 1 }],
+        versions: [
+          {
+            id: 'ver_123',
+            versionNumber: 1,
+            yamlConfig: `
+stages:
+  - name: git-source
+  - name: node-js-build
+  - name: automated-tests
+  - name: sast-security-scan
+`,
+          },
+        ],
       });
       mockPrisma.repositoryConnection.findFirst.mockResolvedValue(null);
 

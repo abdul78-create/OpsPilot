@@ -53,6 +53,7 @@ export class RepositoryScannerService {
     };
 
     const hasPackageJson = checkFile('package.json');
+    const hasPackageLock = checkFile('package-lock.json');
     const hasBackendPkg = checkFile('backend/package.json');
     const hasFrontendPkg = checkFile('frontend/package.json');
     const hasDockerfile =
@@ -62,8 +63,11 @@ export class RepositoryScannerService {
     const hasDockerCompose = checkFile('docker-compose.yml') || checkFile('docker-compose.yaml');
     const hasK8s = checkFile('k8s') || checkFile('kubernetes');
     const hasRequirementsTxt = checkFile('requirements.txt');
+    const hasPyprojectToml = checkFile('pyproject.toml');
+    const hasPipfile = checkFile('Pipfile');
     const hasGoMod = checkFile('go.mod');
     const hasPomXml = checkFile('pom.xml');
+    const hasGradle = checkFile('build.gradle') || checkFile('build.gradle.kts');
     const hasPnpmLock = checkFile('pnpm-lock.yaml') || checkFile('pnpm-workspace.yaml');
     const hasYarnLock = checkFile('yarn.lock');
     const hasPrisma = checkFile('prisma') || checkFile('backend/prisma');
@@ -74,22 +78,74 @@ export class RepositoryScannerService {
     let framework: Framework = 'express';
     let packageManager: PackageManager = hasPnpmLock ? 'pnpm' : hasYarnLock ? 'yarn' : 'npm';
     let runtimeVersion = 'node:20-alpine';
-    let buildCommand = 'npm ci --include=dev && npm run build';
-    let testCommand = 'npm test -- --ci';
+    let buildCommand: string | undefined = undefined;
+    let testCommand: string | undefined = undefined;
     const startCommand = 'npm start';
+
+    // Helper: recursively check if any file in scanDir matches pattern
+    const hasMatchingFile = (
+      dir: string,
+      pattern: RegExp,
+      maxDepth = 3,
+      currentDepth = 0,
+    ): boolean => {
+      if (currentDepth > maxDepth || !fs.existsSync(dir)) return false;
+      try {
+        const entries = fs.readdirSync(dir, { withFileTypes: true });
+        for (const entry of entries) {
+          if (entry.name === 'node_modules' || entry.name === '.git' || entry.name === '.venv')
+            continue;
+          if (entry.isFile() && pattern.test(entry.name)) return true;
+          if (entry.isDirectory()) {
+            if (hasMatchingFile(path.join(dir, entry.name), pattern, maxDepth, currentDepth + 1))
+              return true;
+          }
+        }
+      } catch {}
+      return false;
+    };
 
     if (isMonorepo) {
       this.logger.log(`✓ Monorepo detected: backend & frontend packages present`);
       language = 'node';
       framework = 'express';
 
-      const backendBuild = hasPrisma
-        ? 'cd backend && npm ci --include=dev && npx prisma generate && npm run build'
-        : 'cd backend && npm ci --include=dev && npm run build';
-      const frontendBuild = 'cd frontend && npm ci --include=dev && npm run build';
+      let hasBackendBuild = false;
+      let hasBackendTest = false;
+      let hasFrontendBuild = false;
+      let hasFrontendTest = false;
 
-      buildCommand = `(${backendBuild}) && (${frontendBuild})`;
-      testCommand = `(cd backend && npm test -- --ci) && (cd frontend && npm test -- --ci)`;
+      if (hasBackendPkg) {
+        try {
+          const bp = JSON.parse(
+            fs.readFileSync(path.join(scanDir, 'backend/package.json'), 'utf-8'),
+          );
+          hasBackendBuild = Boolean(bp.scripts?.build);
+          hasBackendTest = Boolean(bp.scripts?.test);
+        } catch {}
+      }
+      if (hasFrontendPkg) {
+        try {
+          const fp = JSON.parse(
+            fs.readFileSync(path.join(scanDir, 'frontend/package.json'), 'utf-8'),
+          );
+          hasFrontendBuild = Boolean(fp.scripts?.build);
+          hasFrontendTest = Boolean(fp.scripts?.test);
+        } catch {}
+      }
+
+      const backendBuildPart = hasPrisma
+        ? `cd backend && ${hasPackageLock ? 'npm ci --legacy-peer-deps --ignore-scripts' : 'npm install --legacy-peer-deps --ignore-scripts'} && npx prisma generate${hasBackendBuild ? ' && npm run build' : ''}`
+        : `cd backend && ${hasPackageLock ? 'npm ci --legacy-peer-deps --ignore-scripts' : 'npm install --legacy-peer-deps --ignore-scripts'}${hasBackendBuild ? ' && npm run build' : ''}`;
+      const frontendBuildPart = `cd frontend && ${hasPackageLock ? 'npm ci --legacy-peer-deps --ignore-scripts' : 'npm install --legacy-peer-deps --ignore-scripts'}${hasFrontendBuild ? ' && npm run build' : ''}`;
+
+      buildCommand = `(${backendBuildPart}) && (${frontendBuildPart})`;
+      if (hasBackendTest || hasFrontendTest) {
+        const testParts: string[] = [];
+        if (hasBackendTest) testParts.push('cd backend && npm test');
+        if (hasFrontendTest) testParts.push('cd frontend && npm test');
+        testCommand = testParts.map((p) => `(${p})`).join(' && ');
+      }
     } else if (hasPackageJson) {
       language = 'node';
       try {
@@ -97,34 +153,97 @@ export class RepositoryScannerService {
         const deps = { ...pkgContent.dependencies, ...pkgContent.devDependencies };
         if (deps.next) {
           framework = 'nextjs';
-          buildCommand = 'npm ci --include=dev && npm run build';
         } else if (deps.express || deps['@nestjs/core']) {
           framework = 'express';
         }
+
+        const scripts = pkgContent.scripts || {};
+        const hasBuildScript = Boolean(scripts.build);
+        const hasTestScript = Boolean(scripts.test);
+
+        const installCmd = hasPnpmLock
+          ? 'pnpm install --frozen-lockfile'
+          : hasYarnLock
+            ? 'yarn install --frozen-lockfile'
+            : hasPackageLock
+              ? 'npm ci --legacy-peer-deps --ignore-scripts'
+              : 'npm install --legacy-peer-deps --ignore-scripts';
+
+        const prismaPart = hasPrisma ? ' && npx prisma generate' : '';
+
+        if (hasBuildScript) {
+          buildCommand = hasPnpmLock
+            ? `${installCmd}${prismaPart} && pnpm run build`
+            : hasYarnLock
+              ? `${installCmd}${prismaPart} && yarn build`
+              : `${installCmd}${prismaPart} && npm run build`;
+        } else {
+          buildCommand = `${installCmd}${prismaPart}`;
+        }
+
+        if (hasTestScript) {
+          testCommand = hasPnpmLock
+            ? 'pnpm test'
+            : hasYarnLock
+              ? 'yarn test'
+              : 'npm test -- --maxWorkers=2';
+        }
       } catch {
-        // Default node settings
+        buildCommand = 'npm install';
       }
-    } else if (hasRequirementsTxt) {
+    } else if (hasRequirementsTxt || hasPyprojectToml || hasPipfile) {
       language = 'python';
       framework = 'fastapi';
-      packageManager = 'pip';
       runtimeVersion = 'python:3.11-alpine';
-      buildCommand = 'pip install -r requirements.txt';
-      testCommand = 'pytest';
+
+      if (hasPipfile) {
+        packageManager = 'pipenv';
+        buildCommand = 'pipenv install';
+      } else if (hasPyprojectToml) {
+        packageManager = 'pip';
+        buildCommand = 'pip install .';
+      } else {
+        packageManager = 'pip';
+        buildCommand = 'pip install -r requirements.txt';
+      }
+
+      const hasTestsDir = checkFile('tests') || checkFile('test');
+      const hasTestFiles = hasMatchingFile(scanDir, /^test_.*\.py$|_test\.py$/);
+      if (hasTestsDir || hasTestFiles) {
+        testCommand = 'pytest';
+      }
     } else if (hasGoMod) {
       language = 'go';
       framework = 'gin';
       packageManager = 'go';
       runtimeVersion = 'golang:1.22-alpine';
-      buildCommand = 'go build -o app .';
-      testCommand = 'go test ./...';
+      buildCommand = 'go build -v ./...';
+
+      const hasGoTests = hasMatchingFile(scanDir, /_test\.go$/);
+      if (hasGoTests) {
+        testCommand = 'go test ./...';
+      }
     } else if (hasPomXml) {
       language = 'java';
       framework = 'spring';
-      packageManager = 'npm';
+      packageManager = 'maven';
       runtimeVersion = 'maven:3.9-eclipse-temurin';
       buildCommand = 'mvn clean package -DskipTests';
-      testCommand = 'mvn test';
+      const hasJavaTests = checkFile('src/test') || hasMatchingFile(scanDir, /Test\.java$/);
+      if (hasJavaTests) {
+        testCommand = 'mvn test';
+      }
+    } else if (hasGradle) {
+      language = 'java';
+      framework = 'spring';
+      packageManager = 'gradle';
+      runtimeVersion = 'gradle:jdk17-alpine';
+      buildCommand = './gradlew build -x test';
+      const hasJavaTests =
+        checkFile('src/test') || hasMatchingFile(scanDir, /Test\.java$|Test\.kt$/);
+      if (hasJavaTests) {
+        testCommand = './gradlew test';
+      }
     }
 
     const deploymentTarget: DeploymentTarget = hasK8s ? 'kubernetes' : 'docker';
@@ -143,7 +262,7 @@ export class RepositoryScannerService {
       capabilities: {
         docker: hasDockerfile || hasDockerCompose,
         kubernetes: hasK8s,
-        tests: true,
+        tests: Boolean(testCommand),
         monorepo: isMonorepo,
       },
     };

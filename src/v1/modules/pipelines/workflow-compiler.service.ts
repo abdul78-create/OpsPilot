@@ -58,14 +58,19 @@ ${stagesYaml}
   /**
    * Compiles StackDefinition & raw pipeline configuration into a validated ExecutionGraph
    */
-  compilePipeline(stack: StackDefinition, pipelineId: string = 'pipe_v1'): ExecutionGraph {
+  compilePipeline(
+    stack: StackDefinition,
+    pipelineId: string = 'pipe_v1',
+    repoUrl?: string,
+  ): ExecutionGraph {
+    const cloneCmd = repoUrl ? `git clone ${repoUrl} .` : 'git clone repository .';
     const stages: ExecutionStage[] = [
       {
         id: 'stg_1_clone',
         name: 'git-clone',
         stage: 'source',
         image: 'alpine/git:latest',
-        commands: ['git clone https://github.com/acme-corp/backend-api.git .'],
+        commands: [cloneCmd],
         dependsOn: [],
         timeoutSeconds: 120,
         maxRetries: 2,
@@ -74,7 +79,9 @@ ${stagesYaml}
         id: 'stg_2_install_build',
         name: 'install-and-build',
         stage: 'build',
-        image: stack.language === 'node' ? 'node:20-alpine' : 'python:3.11-alpine',
+        image:
+          stack.runtimeVersion ||
+          (stack.language === 'node' ? 'node:20-alpine' : 'python:3.11-alpine'),
         commands: [stack.buildCommand || 'npm ci && npm run build'],
         dependsOn: ['git-clone'],
         timeoutSeconds: 300,
@@ -83,13 +90,13 @@ ${stagesYaml}
       },
     ];
 
-    if (stack.capabilities.tests) {
+    if (stack.capabilities.tests && stack.testCommand) {
       stages.push({
         id: 'stg_3_test',
         name: 'run-test-suite',
         stage: 'test',
-        image: 'node:20-alpine',
-        commands: [stack.testCommand || 'npm test -- --ci'],
+        image: stack.runtimeVersion || 'node:20-alpine',
+        commands: [stack.testCommand],
         dependsOn: ['install-and-build'],
         timeoutSeconds: 180,
         maxRetries: 1,
@@ -103,7 +110,7 @@ ${stagesYaml}
         stage: 'deploy',
         image: 'docker:dind',
         commands: [
-          `docker build -t acme-backend:latest -f ${stack.dockerfilePath || 'Dockerfile'} .`,
+          `docker build -t ${pipelineId}:latest -f ${stack.dockerfilePath || 'Dockerfile'} .`,
         ],
         dependsOn: stack.capabilities.tests ? ['run-test-suite'] : ['install-and-build'],
         timeoutSeconds: 600,

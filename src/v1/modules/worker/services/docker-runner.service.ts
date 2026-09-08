@@ -37,9 +37,9 @@ export class DockerRunnerService {
     const cmdStr = options.command;
     const cacheVolume =
       options.cacheVolumeName || process.env.DOCKER_CACHE_VOLUME || 'opspilot_cache_data';
-    const memLimit = options.memoryLimit || process.env.RUNNER_MEMORY_LIMIT || '2g';
+    const memLimit = options.memoryLimit || process.env.RUNNER_MEMORY_LIMIT || '4g';
     const cpuLimit = options.cpuLimit || process.env.RUNNER_CPU_LIMIT || '2.0';
-    const pidsLimit = process.env.RUNNER_PIDS_LIMIT || '200';
+    const pidsLimit = process.env.RUNNER_PIDS_LIMIT || '2000';
 
     // Default to 'none' (air-gapped network isolation) unless explicitly required
     const network =
@@ -59,9 +59,9 @@ export class DockerRunnerService {
       '--security-opt',
       'no-new-privileges:true',
       '--ulimit',
-      'nofile=1024:1024',
+      'nofile=65536:65536',
       '--ulimit',
-      'nproc=100:100',
+      'nproc=2048:2048',
     ];
 
     const volumeArgs: string[] = [];
@@ -81,7 +81,7 @@ export class DockerRunnerService {
     const isProcessDriver = process.env.RUNNER_DRIVER === 'process';
     const fullDockerCmd = isProcessDriver
       ? `sh -c "${cmdStr}" (workspace: ${options.workspacePath || '.'})`
-      : `docker run --rm ${securityArgs.join(' ')} ${volumeArgs.join(' ')} ${image} sh -c "${cmdStr}"`;
+      : `docker run --rm ${securityArgs.join(' ')} ${volumeArgs.join(' ')} --entrypoint sh ${image} -c "${cmdStr}"`;
     this.logger.log(`▸ ${fullDockerCmd}`);
 
     if (this.logsService) {
@@ -96,7 +96,17 @@ export class DockerRunnerService {
     }
 
     return new Promise((resolve, reject) => {
-      const args = ['run', '--rm', ...securityArgs, ...volumeArgs, image, 'sh', '-c', cmdStr];
+      const args = [
+        'run',
+        '--rm',
+        ...securityArgs,
+        ...volumeArgs,
+        '--entrypoint',
+        'sh',
+        image,
+        '-c',
+        cmdStr,
+      ];
       const child = isProcessDriver
         ? spawn('sh', ['-c', cmdStr], {
             cwd:

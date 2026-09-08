@@ -4,9 +4,10 @@ import { AiOrchestrationController } from './ai-orchestration.controller';
 import { AiOrchestrationService } from './ai-orchestration.service';
 import { AiOrchestrationRepository } from './ai-orchestration.repository';
 import { GeminiAiProvider } from '../../../core/ai/providers/gemini-ai.provider';
+import { RepositoriesModule } from '../repositories/repositories.module';
 
 @Module({
-  imports: [ConfigModule],
+  imports: [ConfigModule, RepositoriesModule],
   controllers: [AiOrchestrationController],
   providers: [AiOrchestrationService, AiOrchestrationRepository, GeminiAiProvider],
   exports: [AiOrchestrationService, AiOrchestrationRepository, GeminiAiProvider],

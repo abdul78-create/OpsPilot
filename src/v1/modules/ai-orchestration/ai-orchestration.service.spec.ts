@@ -29,6 +29,9 @@ describe('AiOrchestrationService', () => {
     environment: {
       findFirst: jest.fn(),
     },
+    repositoryConnection: {
+      findFirst: jest.fn().mockResolvedValue(null),
+    },
   };
 
   const mockAiProvider = {

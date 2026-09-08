@@ -4,7 +4,8 @@
 
 export type Language = 'node' | 'python' | 'go' | 'java' | 'rust';
 export type Framework = 'nextjs' | 'express' | 'fastapi' | 'gin' | 'spring' | 'unknown';
-export type PackageManager = 'npm' | 'pnpm' | 'yarn' | 'pip' | 'go' | 'cargo';
+export type PackageManager =
+  'npm' | 'pnpm' | 'yarn' | 'pip' | 'go' | 'cargo' | 'maven' | 'gradle' | 'pipenv' | 'poetry';
 export type DeploymentTarget = 'kubernetes' | 'render' | 'railway' | 'docker' | 'none';
 
 export interface StackDefinition {
@@ -12,7 +13,7 @@ export interface StackDefinition {
   framework: Framework;
   packageManager: PackageManager;
   runtimeVersion: string;
-  buildCommand: string;
+  buildCommand?: string;
   testCommand?: string;
   startCommand?: string;
   dockerfilePath?: string;
