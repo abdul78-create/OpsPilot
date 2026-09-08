@@ -307,6 +307,27 @@ describe('AiOrchestrationService', () => {
       k8sNamespace: 'acme-prod-ns',
     };
 
+    const mockRepoConnA = {
+      id: 'conn_a_1',
+      projectId: 'prj_tenant_a',
+      repositoryUrl: 'https://github.com/tenant-a/service.git',
+      defaultBranch: 'main',
+    };
+
+    const mockRepoConnB = {
+      id: 'conn_b_1',
+      projectId: 'prj_tenant_b',
+      repositoryUrl: 'https://github.com/tenant-b/service.git',
+      defaultBranch: 'main',
+    };
+
+    beforeEach(() => {
+      mockPrisma.repositoryConnection.findFirst.mockImplementation(async ({ where }: any) => {
+        if (where?.projectId === 'prj_tenant_b') return mockRepoConnB;
+        return mockRepoConnA;
+      });
+    });
+
     it('A. Tenant A + configured staging → uses Tenant A staging target', async () => {
       mockPrisma.project.findFirst.mockResolvedValue(mockTenantAProject);
       mockPrisma.environment.findFirst.mockResolvedValue(mockTenantAStagingEnv);
@@ -672,6 +693,204 @@ describe('AiOrchestrationService', () => {
         expect(result.yamlConfig).not.toContain('prisma generate');
         const buildNode = result.nodes.find((n) => n.type === 'build');
         expect(buildNode.data.command).toBe('npm ci && npm run build');
+      });
+
+      describe('14. Mandatory Regression Test Suite (A through G)', () => {
+        it('A. Real repository produces exactly ONE checkout/source stage', async () => {
+          mockPrisma.project.findFirst.mockResolvedValue(mockTenantAProject);
+          mockPrisma.repositoryConnection.findFirst.mockResolvedValue({
+            id: 'conn_opspilot',
+            projectId: 'prj_tenant_a',
+            repositoryUrl: 'https://github.com/abdul78-create/OpsPilot.git',
+            defaultBranch: 'main',
+          });
+          (service as any).repoScanner = {
+            scanRepository: jest.fn().mockResolvedValue({
+              language: 'node',
+              framework: 'express',
+              packageManager: 'npm',
+              runtimeVersion: 'node:20-alpine',
+              buildCommand: 'npm ci && npx prisma generate && npm run build',
+              testCommand: 'npm test -- --maxWorkers=2',
+              detectedFiles: ['package.json', 'package-lock.json', 'prisma/schema.prisma'],
+              capabilities: {
+                docker: true,
+                kubernetes: false,
+                tests: true,
+                monorepo: false,
+                prisma: true,
+              },
+            }),
+          };
+
+          const result = await service.generatePipeline(
+            'Build, test, and security scan this repository',
+            'prj_tenant_a',
+            'org_tenant_a',
+          );
+
+          // Verify exactly ONE source node
+          const sourceNodes = result.nodes.filter((n) => n.type === 'source');
+          expect(sourceNodes.length).toBe(1);
+          expect(sourceNodes[0].data.repo).toBe('https://github.com/abdul78-create/OpsPilot.git');
+
+          // Verify exactly ONE checkout-source stage in yamlConfig
+          const checkoutMatches = result.yamlConfig.match(/checkout-source/g) || [];
+          expect(checkoutMatches.length).toBe(1);
+          expect(result.yamlConfig).toContain(
+            'run: git clone https://github.com/abdul78-create/OpsPilot.git .',
+          );
+        });
+
+        it('B. Placeholder "git clone repository ." is never emitted (Rejects when no real connection)', async () => {
+          mockPrisma.project.findFirst.mockResolvedValue(mockTenantAProject);
+          mockPrisma.repositoryConnection.findFirst.mockResolvedValue(null);
+
+          await expect(
+            service.generatePipeline('CI-only request', 'prj_tenant_a', 'org_tenant_a'),
+          ).rejects.toThrow("No Git repository connected to project 'Tenant A Service'");
+
+          // Also test when repo URL is literal 'repository'
+          mockPrisma.repositoryConnection.findFirst.mockResolvedValue({
+            id: 'conn_invalid',
+            projectId: 'prj_tenant_a',
+            repositoryUrl: 'repository',
+            defaultBranch: 'main',
+          });
+          await expect(
+            service.generatePipeline('CI-only request', 'prj_tenant_a', 'org_tenant_a'),
+          ).rejects.toThrow("No Git repository connected to project 'Tenant A Service'");
+        });
+
+        it('C. Build stage is present', async () => {
+          mockPrisma.project.findFirst.mockResolvedValue(mockTenantAProject);
+          mockPrisma.repositoryConnection.findFirst.mockResolvedValue(mockRepoConnA);
+
+          const result = await service.generatePipeline(
+            'Build and test repository',
+            'prj_tenant_a',
+            'org_tenant_a',
+          );
+          const buildNode = result.nodes.find((n) => n.type === 'build');
+          expect(buildNode).toBeDefined();
+          expect(result.yamlConfig).toContain('-build');
+          expect(result.yamlConfig).toContain('docker-build');
+        });
+
+        it('D. Test stage is present when tests exist', async () => {
+          mockPrisma.project.findFirst.mockResolvedValue(mockTenantAProject);
+          mockPrisma.repositoryConnection.findFirst.mockResolvedValue(mockRepoConnA);
+          (service as any).repoScanner = {
+            scanRepository: jest.fn().mockResolvedValue({
+              language: 'node',
+              framework: 'express',
+              packageManager: 'npm',
+              runtimeVersion: 'node:20-alpine',
+              buildCommand: 'npm ci && npm run build',
+              testCommand: 'npm test -- --maxWorkers=2',
+              detectedFiles: ['package.json'],
+              capabilities: {
+                docker: false,
+                kubernetes: false,
+                tests: true,
+                monorepo: false,
+                prisma: false,
+              },
+            }),
+          };
+
+          const result = await service.generatePipeline(
+            'CI pipeline with tests',
+            'prj_tenant_a',
+            'org_tenant_a',
+          );
+          const testNode = result.nodes.find((n) => n.type === 'test');
+          expect(testNode).toBeDefined();
+          expect(testNode.data.command).toBe('npm test -- --maxWorkers=2');
+          expect(result.yamlConfig).toContain('run: npm test -- --maxWorkers=2');
+        });
+
+        it('E. Security stage is present when supported', async () => {
+          mockPrisma.project.findFirst.mockResolvedValue(mockTenantAProject);
+          mockPrisma.repositoryConnection.findFirst.mockResolvedValue(mockRepoConnA);
+          (service as any).repoScanner = {
+            scanRepository: jest.fn().mockResolvedValue({
+              language: 'node',
+              framework: 'express',
+              packageManager: 'npm',
+              runtimeVersion: 'node:20-alpine',
+              buildCommand: 'npm ci && npm run build',
+              testCommand: 'npm test',
+              detectedFiles: ['package.json', 'Dockerfile'],
+              capabilities: {
+                docker: true,
+                kubernetes: false,
+                tests: true,
+                monorepo: false,
+                prisma: false,
+              },
+            }),
+          };
+
+          const result = await service.generatePipeline(
+            'CI-only request with security scan',
+            'prj_tenant_a',
+            'org_tenant_a',
+          );
+          const secNode = result.nodes.find((n) => n.type === 'security');
+          expect(secNode).toBeDefined();
+          expect(result.yamlConfig).toContain('sast-security-scan');
+          expect(result.yamlConfig).toContain('trivy fs . --severity HIGH,CRITICAL');
+        });
+
+        it('F. CI-only pipeline has no deployment stage', async () => {
+          mockPrisma.project.findFirst.mockResolvedValue(mockTenantAProject);
+          mockPrisma.repositoryConnection.findFirst.mockResolvedValue(mockRepoConnA);
+          mockPrisma.environment.findFirst.mockResolvedValue(null);
+
+          const prompt =
+            'This is a CI-only request. Do NOT deploy anything. Do not require staging or production.';
+          const result = await service.generatePipeline(prompt, 'prj_tenant_a', 'org_tenant_a');
+
+          expect(result.nodes.some((n) => n.type === 'deploy')).toBe(false);
+          expect(result.yamlConfig).not.toContain('deploy-');
+          expect(result.yamlConfig).not.toContain('kubectl');
+          expect(result.yamlConfig).not.toContain('environment:');
+        });
+
+        it('G. Prisma generate is preserved (npm ci && npx prisma generate && npm run build)', async () => {
+          mockPrisma.project.findFirst.mockResolvedValue(mockTenantAProject);
+          mockPrisma.repositoryConnection.findFirst.mockResolvedValue(mockRepoConnA);
+          (service as any).repoScanner = {
+            scanRepository: jest.fn().mockResolvedValue({
+              language: 'node',
+              framework: 'express',
+              packageManager: 'npm',
+              runtimeVersion: 'node:20-alpine',
+              buildCommand: 'npm ci && npx prisma generate && npm run build',
+              testCommand: 'npm test -- --maxWorkers=2',
+              detectedFiles: ['package.json', 'prisma/schema.prisma'],
+              capabilities: {
+                docker: true,
+                kubernetes: false,
+                tests: true,
+                monorepo: false,
+                prisma: true,
+              },
+            }),
+          };
+
+          const result = await service.generatePipeline(
+            'Generate CI pipeline for this repo',
+            'prj_tenant_a',
+            'org_tenant_a',
+          );
+          expect(result.yamlConfig).toContain(
+            'run: npm ci && npx prisma generate && npm run build',
+          );
+          const buildNode = result.nodes.find((n) => n.type === 'build');
+          expect(buildNode.data.command).toBe('npm ci && npx prisma generate && npm run build');
+        });
       });
     });
   });

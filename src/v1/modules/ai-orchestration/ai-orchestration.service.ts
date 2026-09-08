@@ -616,14 +616,26 @@ export class AiOrchestrationService {
         })
       : null;
 
+    if (
+      !repoConn ||
+      !repoConn.repositoryUrl ||
+      repoConn.repositoryUrl.trim() === '' ||
+      repoConn.repositoryUrl.trim() === 'repository'
+    ) {
+      throw new BadRequestException(
+        `No Git repository connected to project '${project.name}'. Connect a repository in Project Settings first.`,
+      );
+    }
+
+    const repoUrl = repoConn.repositoryUrl.trim();
+    const branch = repoConn.defaultBranch || 'main';
+
     let detectedStack: StackDefinition | null = null;
-    if (repoConn && this.repoScanner) {
+    if (this.repoScanner) {
       try {
-        detectedStack = await this.repoScanner.scanRepository(repoConn.repositoryUrl, '');
+        detectedStack = await this.repoScanner.scanRepository(repoUrl, '');
       } catch (scanErr) {
-        this.logger.warn(
-          `Repository scan failed for ${repoConn.repositoryUrl}: ${(scanErr as Error).message}`,
-        );
+        this.logger.warn(`Repository scan failed for ${repoUrl}: ${(scanErr as Error).message}`);
       }
     }
 
@@ -684,18 +696,22 @@ export class AiOrchestrationService {
         ? 'pytest'
         : isGo
           ? 'go test ./...'
-          : 'npm test';
+          : 'npm test -- --maxWorkers=2';
 
     const hasTests = detectedStack
       ? Boolean(detectedStack.testCommand && detectedStack.capabilities.tests)
-      : true;
+      : !p.includes('no test') && !p.includes('skip test');
 
     const hasSecurity =
       hasSecurityPrompt ||
-      Boolean(detectedStack?.capabilities.docker || detectedStack?.detectedFiles?.length);
-
-    const repoUrl = repoConn?.repositoryUrl || 'repository';
-    const branch = repoConn?.defaultBranch || 'main';
+      (!p.includes('no security') &&
+        Boolean(
+          detectedStack?.capabilities.docker ||
+          detectedStack?.detectedFiles?.some(
+            (f) => f.includes('Dockerfile') || f.includes('docker'),
+          ) ||
+          isExplicitCiOnly,
+        ));
 
     const pipelineName = `${stackName} Delivery Pipeline`;
 

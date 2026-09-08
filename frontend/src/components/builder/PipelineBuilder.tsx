@@ -41,6 +41,7 @@ import {
   getActiveProjectId,
   setActiveProjectId,
   listPipelines,
+  listRepositories,
 } from '../../lib/apiClient';
 import {
   Play, Save, Zap, Sliders, History,
@@ -58,10 +59,13 @@ const STEP_ELAPSED   = ['1.0s', '34.2s', '11.8s', '8.4s', 'Approved', '1m 12s', 
 
 // ─── Clean Starter Pipeline Canvas ─────────────────────────────────────────
 const initialNodes: Node[] = [
-  { id: '1', type: 'source', position: { x: 100, y: 200 }, data: { label: 'Git Source Trigger', runState: 'idle' } },
+  { id: '1', type: 'source', position: { x: 100, y: 200 }, data: { label: 'Git Source', runState: 'idle' } },
+  { id: '2', type: 'build', position: { x: 340, y: 200 }, data: { label: 'Node.js Build', image: 'node:20-alpine', command: 'npm ci && npm run build', runState: 'idle' } },
 ];
 
-const initialEdges: Edge[] = [];
+const initialEdges: Edge[] = [
+  { id: 'e1-2', source: '1', target: '2', animated: true, style: { stroke: 'var(--accent)', strokeWidth: 2 } },
+];
 
 // ─── Helper: compute contextual pipeline default name from DAG nodes ─────────
 export function resolvePipelineDefaultName(targetNodes: Node[]): string {
@@ -95,6 +99,7 @@ function BuilderCanvas() {
   const [validationModalOpen, setValidationModalOpen] = useState(false);
   const [generatedYaml, setGeneratedYaml]     = useState('');
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(() => getActiveProjectId());
+  const [connectedRepoUrl, setConnectedRepoUrl] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -111,6 +116,28 @@ function BuilderCanvas() {
       }
       if (isMounted && pid) {
         setCurrentProjectId(pid);
+        try {
+          const repoRes = await listRepositories(pid);
+          const repos = repoRes?.data || [];
+          if (repos.length > 0 && isMounted) {
+            const defaultRepo = repos[0];
+            setConnectedRepoUrl(defaultRepo.repositoryUrl);
+            setNodes((nds) =>
+              nds.map((n) =>
+                n.type === 'source' && (!n.data?.repo || n.data.repo === 'repository')
+                  ? {
+                      ...n,
+                      data: {
+                        ...n.data,
+                        repo: defaultRepo.repositoryUrl,
+                        branch: defaultRepo.defaultBranch || 'main',
+                      },
+                    }
+                  : n,
+              ),
+            );
+          }
+        } catch {}
       }
     }
     resolveProject();
@@ -348,16 +375,33 @@ function BuilderCanvas() {
 
   // ── Add node ───────────────────────────────────────────────────────────────
   const handleAddNode = useCallback((type: string, label: string) => {
+    if (type === 'source') {
+      const existingSource = nodes.find((n) => n.type === 'source');
+      if (existingSource) {
+        setSelectedNodeId(existingSource.id);
+        toast({
+          kind: 'info',
+          title: 'Trigger Step Exists',
+          message: 'A trigger/source step is already configured for this pipeline.',
+        });
+        return;
+      }
+    }
     pushSnapshot(nodes, edges);
+    const existingRepo = nodes.find((n) => n.type === 'source')?.data?.repo || connectedRepoUrl;
     const newNode: Node = {
       id: String(Date.now()),
       type,
       position: { x: 450 + Math.random() * 100, y: 160 + Math.random() * 80 },
-      data: { label, runState: 'idle' },
+      data: {
+        label,
+        runState: 'idle',
+        ...(type === 'source' && existingRepo ? { repo: existingRepo } : {}),
+      },
     };
     setNodes((nds) => [...nds, newNode]);
     setSelectedNodeId(newNode.id);
-  }, [nodes, edges, pushSnapshot, setNodes]);
+  }, [nodes, edges, pushSnapshot, setNodes, toast, connectedRepoUrl]);
 
   // ── Connect ─────────────────────────────────────────────────────────────────
   const onConnect = useCallback((params: Connection) => {
@@ -395,6 +439,22 @@ function BuilderCanvas() {
 
     setTimeout(() => fitView({ duration: 600, padding: 0.2 }), 100);
   }, [nodes, edges, pushSnapshot, setNodes, setEdges, fitView]);
+
+  // ── SessionStorage pickup from AI Auto-Builder or PipelineGeniusMode ──────
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const stored = sessionStorage.getItem('opspilot_generated_pipeline');
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          if (parsed && Array.isArray(parsed.nodes) && parsed.nodes.length > 0) {
+            sessionStorage.removeItem('opspilot_generated_pipeline');
+            handleAIGenerate(parsed);
+          }
+        } catch {}
+      }
+    }
+  }, [handleAIGenerate]);
 
   const selectedNode = nodes.find((n) => n.id === selectedNodeId) ?? null;
 

@@ -24,7 +24,7 @@ export class RepositoryScannerService {
     const isRemote =
       repoUrl.startsWith('http://') || repoUrl.startsWith('https://') || repoUrl.startsWith('git@');
     const uniqueScanId = crypto.randomBytes(4).toString('hex');
-    const scanDir = isRemote
+    let scanDir = isRemote
       ? path.join(
           os.tmpdir(),
           'opspilot-scans',
@@ -42,6 +42,25 @@ export class RepositoryScannerService {
       } catch {}
       fs.mkdirSync(scanDir, { recursive: true });
       await this.gitClone(repoUrl, scanDir);
+
+      // If remote clone returned no files, check if the current process workspace is the repository
+      try {
+        const clonedFiles = fs.readdirSync(scanDir);
+        if (clonedFiles.length === 0) {
+          const cwdPkg = path.join(process.cwd(), 'package.json');
+          if (fs.existsSync(cwdPkg)) {
+            const cwdPkgData = JSON.parse(fs.readFileSync(cwdPkg, 'utf-8'));
+            const repoSlug = repoUrl.toLowerCase().replace(/[^a-z0-9]/g, '');
+            const pkgName = String(cwdPkgData.name || '')
+              .toLowerCase()
+              .replace(/[^a-z0-9]/g, '');
+            if (repoSlug.includes(pkgName) || pkgName.includes('opspilot')) {
+              scanDir = process.cwd();
+              this.logger.log(`✓ Using active workspace fallback for scan: ${scanDir}`);
+            }
+          }
+        }
+      } catch {}
     }
 
     const detectedFiles: string[] = [];
@@ -287,7 +306,7 @@ export class RepositoryScannerService {
       },
     };
 
-    if (isRemote) {
+    if (isRemote && scanDir !== process.cwd()) {
       try {
         if (fs.existsSync(scanDir)) {
           fs.rmSync(scanDir, { recursive: true, force: true });

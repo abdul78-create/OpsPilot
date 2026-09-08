@@ -33,6 +33,7 @@ describe('Visual DAG Builder AI Features Production Wiring Spec', () => {
     deployment: { findFirst: jest.fn(), count: jest.fn() },
     project: { findFirst: jest.fn() },
     environment: { findFirst: jest.fn() },
+    repositoryConnection: { findFirst: jest.fn() },
   };
 
   const defaultMockProject = {
@@ -99,6 +100,12 @@ describe('Visual DAG Builder AI Features Production Wiring Spec', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockPrisma.project.findFirst.mockResolvedValue(defaultMockProject);
+    mockPrisma.repositoryConnection.findFirst.mockResolvedValue({
+      id: 'conn_test_123',
+      projectId: 'prj_test_123',
+      repositoryUrl: 'https://github.com/customer/test-repo.git',
+      defaultBranch: 'main',
+    });
     mockPrisma.environment.findFirst.mockImplementation(async ({ where }: any) => {
       if (where.type === EnvironmentType.STAGING) return defaultMockStagingEnv;
       if (where.type === EnvironmentType.PRODUCTION) return defaultMockProdEnv;
@@ -364,10 +371,24 @@ describe('Visual DAG Builder AI Features Production Wiring Spec', () => {
 
       // Frontend validateDAG safety: marks DAG invalid when deploy node has ambiguous environment
       const ambiguousNodes = [
-        { id: '1', type: 'source', position: { x: 0, y: 0 }, data: { label: 'Source' } },
-        { id: '2', type: 'deploy', position: { x: 200, y: 0 }, data: { label: 'Cluster Deploy' } },
+        {
+          id: '1',
+          type: 'source',
+          position: { x: 0, y: 0 },
+          data: { label: 'Source', repo: 'https://github.com/my-org/my-app.git' },
+        },
+        {
+          id: '2',
+          type: 'build',
+          position: { x: 100, y: 0 },
+          data: { label: 'Node Build', command: 'npm run build' },
+        },
+        { id: '3', type: 'deploy', position: { x: 200, y: 0 }, data: { label: 'Cluster Deploy' } },
       ];
-      const edges = [{ id: 'e1', source: '1', target: '2' }];
+      const edges = [
+        { id: 'e1', source: '1', target: '2' },
+        { id: 'e2', source: '2', target: '3' },
+      ];
       const valResult = validateDAG(ambiguousNodes as any, edges as any);
       expect(valResult.valid).toBe(false);
       expect(
@@ -380,6 +401,90 @@ describe('Visual DAG Builder AI Features Production Wiring Spec', () => {
       expect(() => dagToYaml(ambiguousNodes as any, edges as any)).toThrow(
         /deployment environment must be explicitly 'staging' or 'production'/,
       );
+    });
+
+    describe('14-DAG. DAGCompiler Regression Suite (A through G)', () => {
+      it('A & B. Real repository produces exactly ONE checkout stage, NEVER emits "git clone repository .", and de-duplicates multiple triggers', () => {
+        const nodes = [
+          {
+            id: '1',
+            type: 'source',
+            data: {
+              label: 'Git Source Trigger',
+              repo: 'https://github.com/customer/my-service.git',
+            },
+          },
+          {
+            id: '2',
+            type: 'source',
+            data: { label: 'GitHub Trigger', repo: 'https://github.com/customer/my-service.git' },
+          },
+          {
+            id: '3',
+            type: 'build',
+            data: {
+              label: 'Node.js Build',
+              command: 'npm ci && npx prisma generate && npm run build',
+            },
+          },
+        ];
+        const edges = [
+          { id: 'e1-3', source: '1', target: '3' },
+          { id: 'e2-3', source: '2', target: '3' },
+        ];
+
+        const yaml = dagToYaml(nodes as any, edges as any, 'OpsPilot CI', 'main');
+
+        // Exactly ONE checkout stage
+        const checkoutMatches = yaml.match(/checkout-source/g) || [];
+        expect(checkoutMatches.length).toBe(1);
+
+        // Never emit placeholder "repository"
+        expect(yaml).not.toContain('git clone repository .');
+        expect(yaml).toContain('run: git clone https://github.com/customer/my-service.git .');
+      });
+
+      it('B-neg. DAGCompiler strictly rejects missing or placeholder repository URL', () => {
+        const nodes = [
+          { id: '1', type: 'source', data: { label: 'Git Source Trigger', repo: 'repository' } },
+          {
+            id: '2',
+            type: 'build',
+            data: { label: 'Node.js Build', command: 'npm ci && npm run build' },
+          },
+        ];
+        const edges = [{ id: 'e1-2', source: '1', target: '2' }];
+
+        expect(() => dagToYaml(nodes as any, edges as any)).toThrow(
+          /placeholder repository URL|Git repository URL is missing or invalid/,
+        );
+      });
+
+      it('C. DAGCompiler strictly rejects canvas missing a Build step', () => {
+        const nodes = [
+          {
+            id: '1',
+            type: 'source',
+            data: { label: 'Git Source Trigger', repo: 'https://github.com/customer/app.git' },
+          },
+          {
+            id: '2',
+            type: 'source',
+            data: { label: 'GitHub Trigger', repo: 'https://github.com/customer/app.git' },
+          },
+        ];
+        const edges: any[] = [];
+
+        expect(() => dagToYaml(nodes as any, edges as any)).toThrow(
+          /Pipeline requires at least one Build (step|stage)/,
+        );
+
+        const valResult = validateDAG(nodes as any, edges as any);
+        expect(valResult.valid).toBe(false);
+        expect(valResult.errors).toContain(
+          'Pipeline requires at least one Build step (e.g. Node Build, Docker Build).',
+        );
+      });
     });
 
     it('customer project has NO staging environment → explicit rejection', async () => {

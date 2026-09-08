@@ -99,7 +99,26 @@ export function validateDAG(nodes: DAGNode[], edges: DAGEdge[]): DAGValidationRe
   const triggerNodes = nodes.filter((n) => n.type === 'source');
   if (triggerNodes.length === 0) {
     errors.push('Pipeline requires at least one Trigger / Source step (e.g. GitHub Trigger).');
+  } else if (triggerNodes.length > 1) {
+    warnings.push('Multiple trigger steps detected; unified checkout stage will be used.');
   }
+
+  // 1b. Verify Build node existence (Requirement 14.C: Build stage must be present)
+  const buildNodes = nodes.filter((n) => n.type === 'build');
+  if (buildNodes.length === 0) {
+    errors.push('Pipeline requires at least one Build step (e.g. Node Build, Docker Build).');
+  }
+
+  // 1c. Reject placeholder repository URL (Requirement 2 & 3: Never emit placeholder repo)
+  triggerNodes.forEach((node) => {
+    const d = (node.data || {}) as Record<string, unknown>;
+    const repoStr = String(d.repo || '').trim();
+    if (repoStr === 'repository') {
+      errors.push(
+        `Trigger step '${String(d.label || node.id)}' has placeholder repository URL 'repository'. Connect a real repository in Project Settings.`,
+      );
+    }
+  });
 
   // 2. Build adjacency list & in-degree map for Kahn's Algorithm
   const adj = new Map<string, string[]>();
@@ -163,7 +182,7 @@ export function validateDAG(nodes: DAGNode[], edges: DAGEdge[]): DAGValidationRe
     const env = resolveDeployEnvironment(d);
     if (!env) {
       errors.push(
-        `Deploy step '${String(d.label || node.id)}' has an ambiguous or missing deployment environment. Must explicitly configure 'staging' or 'production'.`,
+        `Deploy step '${String(d.label || node.id)}' has an ambiguous or missing deployment environment; deployment environment must be explicitly 'staging' or 'production'.`,
       );
     }
   });
@@ -185,12 +204,32 @@ export function dagToYaml(
   pipelineName: string = 'OpsPilot Visual Pipeline',
   branch: string = 'main',
 ): string {
-  const { executionOrder } = validateDAG(nodes, edges);
+  const { executionOrder, errors } = validateDAG(nodes, edges);
+  if (errors.length > 0) {
+    throw new Error(`Cannot compile invalid pipeline DAG: ${errors.join('; ')}`);
+  }
   const nodeMap = new Map<string, DAGNode>(nodes.map((n) => [n.id, n]));
 
   const orderedNodes = (executionOrder.length > 0 ? executionOrder : nodes.map((n) => n.id))
     .map((id) => nodeMap.get(id))
     .filter((n): n is DAGNode => !!n);
+
+  // Requirement 14.C: Build stage MUST be present
+  const buildNodes = orderedNodes.filter((n) => n.type === 'build');
+  if (buildNodes.length === 0) {
+    throw new Error('Cannot compile pipeline: Pipeline requires at least one Build stage.');
+  }
+
+  // Requirement 1, 2, 3: Real repository URL must be resolved, NEVER placeholder 'repository'
+  const triggerNodes = orderedNodes.filter((n) => n.type === 'source');
+  const validRepo = triggerNodes
+    .map((n) => String(n.data?.repo || '').trim())
+    .find((r) => r && r !== 'repository');
+  if (!validRepo) {
+    throw new Error(
+      'Cannot compile pipeline: Git repository URL is missing or invalid. Connect a repository in Project Settings.',
+    );
+  }
 
   // Check if any deploy stage targets staging or production
   const deployNode = orderedNodes.find((n) => n.type === 'deploy');
@@ -209,6 +248,8 @@ export function dagToYaml(
 
   let yaml = `version: '1.0'\nname: ${finalPipelineName}\ntrigger:\n  branch: ${branch}\nstages:\n`;
 
+  let hasEmittedCheckout = false;
+
   orderedNodes.forEach((node) => {
     const d = node.data || {};
     const type = node.type || 'build';
@@ -220,7 +261,10 @@ export function dagToYaml(
 
     switch (type) {
       case 'source':
-        yaml += `  - name: ${slug || 'source'}\n    jobs:\n      - name: checkout-source\n        image: alpine/git:latest\n        steps:\n          - name: git-checkout\n            run: git clone ${String(d.repo || 'repository')} .\n`;
+        // Requirement 4 & 14.A: Exactly ONE checkout stage emitted, NEVER duplicate checkout stages
+        if (hasEmittedCheckout) return;
+        hasEmittedCheckout = true;
+        yaml += `  - name: ${slug || 'git-source'}\n    jobs:\n      - name: checkout-source\n        image: alpine/git:latest\n        steps:\n          - name: git-checkout\n            run: git clone ${validRepo} .\n`;
         break;
       case 'build': {
         const buildCmd = d.command ? String(d.command) : 'npm ci && npm run build';
