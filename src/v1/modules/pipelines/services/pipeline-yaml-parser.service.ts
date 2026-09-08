@@ -94,7 +94,7 @@ export class PipelineYamlParserService {
     const version = this.requireString(doc, 'version', errors) ?? '1';
     const name = this.requireString(doc, 'name', errors) ?? 'Unnamed Pipeline';
 
-    if (version !== '1' && version !== '"1"') {
+    if (version !== '1' && version !== '"1"' && version !== '1.0') {
       errors.push({ field: 'version', message: `Unsupported version '${version}'. Must be "1"` });
     }
 

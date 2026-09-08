@@ -101,10 +101,37 @@ export class RepositoryScannerService {
     let language: Language = 'node';
     let framework: Framework = 'express';
     let packageManager: PackageManager = hasPnpmLock ? 'pnpm' : hasYarnLock ? 'yarn' : 'npm';
-    let runtimeVersion = 'node:20-alpine';
     let buildCommand: string | undefined = undefined;
     let testCommand: string | undefined = undefined;
     const startCommand = 'npm start';
+
+    // Native dependency & build toolchain detection:
+    // Detect native C/C++ addons (e.g. argon2, bcrypt, sharp, sqlite3, binding.gyp)
+    // that require make, g++, and python3 during npm ci / npm install.
+    const hasNativeModules = this.detectNativeDependencies(scanDir, checkFile);
+
+    let nodeMajor = '20';
+    if (hasPackageJson) {
+      try {
+        const pkgContent = JSON.parse(fs.readFileSync(path.join(scanDir, 'package.json'), 'utf-8'));
+        if (pkgContent.engines && typeof pkgContent.engines.node === 'string') {
+          const match = pkgContent.engines.node.match(/(\d+)/);
+          if (match) {
+            const major = parseInt(match[1], 10);
+            if (major === 18 || major === 20 || major === 22) {
+              nodeMajor = String(major);
+            }
+          }
+        }
+      } catch {}
+    }
+
+    let runtimeVersion = hasNativeModules ? `node:${nodeMajor}` : `node:${nodeMajor}-alpine`;
+    if (hasNativeModules) {
+      this.logger.log(
+        `✓ Native Node dependencies detected — selecting image with C/C++ toolchain: ${runtimeVersion}`,
+      );
+    }
 
     // Helper: recursively check if any file in scanDir matches pattern
     const hasMatchingFile = (
@@ -303,6 +330,7 @@ export class RepositoryScannerService {
         tests: Boolean(testCommand),
         monorepo: isMonorepo,
         prisma: hasPrisma,
+        nativeModules: hasNativeModules,
       },
     };
 
@@ -334,5 +362,140 @@ export class RepositoryScannerService {
       child.on('close', () => resolve());
       child.on('error', () => resolve());
     });
+  }
+
+  /**
+   * Known native C/C++ packages and build toolchains that require
+   * make, g++, gcc, and python3 during npm/yarn/pnpm installation.
+   */
+  private static readonly NATIVE_DEPENDENCY_NAMES = new Set([
+    'argon2',
+    'bcrypt',
+    'sharp',
+    'sqlite3',
+    'better-sqlite3',
+    'canvas',
+    'node-sass',
+    'node-gyp',
+    're2',
+    'snappy',
+    'leveldown',
+    'rocksdb',
+    'couchbase',
+    'microtime',
+    'kerberos',
+    'isolated-vm',
+    'ffi-napi',
+    'ref-napi',
+    'sodium-native',
+    'tree-sitter',
+    'pg-native',
+    'pcap',
+    'serialport',
+    'cpu-features',
+    'keccak',
+    'secp256k1',
+    'usb',
+    'node-pre-gyp',
+    '@mapbox/node-pre-gyp',
+    'cmake-js',
+  ]);
+
+  /**
+   * Detects whether a Node.js repository has native dependencies or requires native build tooling
+   * (e.g. node-gyp, make, g++, python3) from package.json, package-lock.json, or binding.gyp.
+   */
+  private detectNativeDependencies(scanDir: string, checkFile: (rel: string) => boolean): boolean {
+    // 1. Direct binding.gyp check
+    if (
+      checkFile('binding.gyp') ||
+      checkFile('backend/binding.gyp') ||
+      checkFile('frontend/binding.gyp')
+    ) {
+      return true;
+    }
+
+    // 2. Direct package.json dependency inspection
+    const packageJsonPaths = ['package.json', 'backend/package.json', 'frontend/package.json'];
+    for (const pkgRel of packageJsonPaths) {
+      const fullPath = path.join(scanDir, pkgRel);
+      if (!fs.existsSync(fullPath)) continue;
+      try {
+        const pkgData = JSON.parse(fs.readFileSync(fullPath, 'utf-8'));
+        const allDeps = {
+          ...pkgData.dependencies,
+          ...pkgData.devDependencies,
+          ...pkgData.optionalDependencies,
+          ...pkgData.peerDependencies,
+        };
+
+        for (const dep of Object.keys(allDeps)) {
+          const lower = dep.toLowerCase();
+          if (
+            RepositoryScannerService.NATIVE_DEPENDENCY_NAMES.has(lower) ||
+            lower.includes('node-gyp') ||
+            lower.includes('node-addon-api') ||
+            lower.includes('cmake-js') ||
+            lower.includes('prebuild')
+          ) {
+            return true;
+          }
+        }
+
+        if (pkgData.scripts && typeof pkgData.scripts === 'object') {
+          for (const scriptVal of Object.values(pkgData.scripts)) {
+            if (typeof scriptVal === 'string') {
+              const lower = scriptVal.toLowerCase();
+              if (
+                lower.includes('node-gyp') ||
+                lower.includes('cmake-js') ||
+                /\bmake\b/.test(lower) ||
+                /\bg\+\+\b/.test(lower)
+              ) {
+                return true;
+              }
+            }
+          }
+        }
+      } catch {}
+    }
+
+    // 3. Lockfile inspection (package-lock.json)
+    const lockfilePaths = [
+      'package-lock.json',
+      'backend/package-lock.json',
+      'frontend/package-lock.json',
+    ];
+    for (const lockRel of lockfilePaths) {
+      const fullPath = path.join(scanDir, lockRel);
+      if (!fs.existsSync(fullPath)) continue;
+      try {
+        const lockData = JSON.parse(fs.readFileSync(fullPath, 'utf-8'));
+        if (lockData.packages && typeof lockData.packages === 'object') {
+          for (const pkgKey of Object.keys(lockData.packages)) {
+            const pkgName = pkgKey.split('node_modules/').pop()?.toLowerCase();
+            if (pkgName && RepositoryScannerService.NATIVE_DEPENDENCY_NAMES.has(pkgName)) {
+              return true;
+            }
+            const pkgEntry = lockData.packages[pkgKey];
+            if (pkgEntry) {
+              if (pkgEntry.gypfile === true) return true;
+              const deps = { ...pkgEntry.dependencies, ...pkgEntry.devDependencies };
+              if (deps && (deps['node-gyp'] || deps['cmake-js'])) return true;
+            }
+          }
+        }
+        if (lockData.dependencies && typeof lockData.dependencies === 'object') {
+          for (const depKey of Object.keys(lockData.dependencies)) {
+            const depLower = depKey.toLowerCase();
+            if (RepositoryScannerService.NATIVE_DEPENDENCY_NAMES.has(depLower)) {
+              return true;
+            }
+          }
+        }
+      } catch {}
+    }
+
+    return false;
   }
 }

@@ -982,6 +982,46 @@ describe('AiOrchestrationService', () => {
           const buildNode = result.nodes.find((n) => n.type === 'build');
           expect(buildNode.data.command).toBe('npm ci && npx prisma generate && npm run build');
         });
+
+        it('H. Repository with native modules (e.g. argon2) → uses node:20 image with full C/C++ toolchain', async () => {
+          mockPrisma.project.findFirst.mockResolvedValue(mockTenantAProject);
+          mockPrisma.repositoryConnection.findFirst.mockResolvedValue({
+            id: 'conn_opspilot',
+            projectId: 'prj_tenant_a',
+            repositoryUrl: 'https://github.com/abdul78-create/OpsPilot.git',
+            defaultBranch: 'main',
+          });
+          (service as any).repoScanner = {
+            scanRepository: jest.fn().mockResolvedValue({
+              language: 'node',
+              framework: 'express',
+              packageManager: 'npm',
+              runtimeVersion: 'node:20',
+              buildCommand: 'npm ci && npx prisma generate && npm run build',
+              testCommand: 'npm test -- --maxWorkers=2',
+              detectedFiles: ['package.json', 'package-lock.json', 'prisma/schema.prisma'],
+              capabilities: {
+                docker: true,
+                kubernetes: false,
+                tests: true,
+                monorepo: false,
+                prisma: true,
+                nativeModules: true,
+              },
+            }),
+          };
+
+          const result = await service.generatePipeline(
+            'Generate a CI-only pipeline using the repository actual configuration. Do not deploy anything.',
+            'prj_tenant_a',
+            'org_tenant_a',
+          );
+          expect(result.yamlConfig).toContain('image: node:20');
+          expect(result.yamlConfig).not.toContain('image: node:20-alpine');
+          const buildNode = result.nodes.find((n) => n.type === 'build');
+          expect(buildNode.data.image).toBe('node:20');
+          expect(buildNode.data.command).toBe('npm ci && npx prisma generate && npm run build');
+        });
       });
     });
   });

@@ -646,13 +646,23 @@ export class AiOrchestrationService {
           ? 'Go'
           : 'Node.js';
 
+    const hasNativePrompt =
+      p.includes('argon2') ||
+      p.includes('bcrypt') ||
+      p.includes('native module') ||
+      p.includes('node-gyp') ||
+      p.includes('make') ||
+      p.includes('toolchain');
+
     const runtimeImage = detectedStack?.runtimeVersion
       ? detectedStack.runtimeVersion
       : isPython
         ? 'python:3.11-slim'
         : isGo
           ? 'golang:1.22-alpine'
-          : 'node:20-alpine';
+          : hasNativePrompt
+            ? 'node:20'
+            : 'node:20-alpine';
 
     const hasPrisma = Boolean(
       detectedStack?.capabilities?.prisma ||
@@ -770,7 +780,7 @@ export class AiOrchestrationService {
       edges.push({ id: `e${edgeIndex++}`, source: lastNodeId, target: 'node_deploy' });
     }
 
-    const yamlConfig = `version: '1.0'
+    const yamlConfig = `version: "1"
 name: ${pipelineName}
 trigger:
   branch: ${branch}

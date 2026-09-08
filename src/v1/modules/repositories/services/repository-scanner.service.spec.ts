@@ -201,4 +201,105 @@ describe('RepositoryScannerService & WorkflowCompilerService', () => {
     );
     expect(stack.capabilities.prisma).toBe(true);
   });
+
+  describe('Native C/C++ Dependency & Toolchain Detection', () => {
+    it('4. Repository with argon2 in package.json → selects node:20 with nativeModules capability', async () => {
+      const testDir = createTempDir();
+      fs.writeFileSync(
+        path.join(testDir, 'package.json'),
+        JSON.stringify({
+          name: 'argon2-auth-app',
+          scripts: { build: 'nest build', test: 'jest' },
+          dependencies: { argon2: '^0.45.1', '@nestjs/core': '^10.0.0' },
+        }),
+      );
+      fs.writeFileSync(path.join(testDir, 'package-lock.json'), '{}');
+
+      const stack = await scanner.scanRepository('local/argon2-auth-app', testDir);
+
+      expect(stack.language).toBe('node');
+      expect(stack.runtimeVersion).toBe('node:20');
+      expect(stack.capabilities.nativeModules).toBe(true);
+      expect(stack.buildCommand).toBe('npm ci && npm run build');
+    });
+
+    it('5. Repository with bcrypt in package-lock.json → selects node:20 with build toolchain', async () => {
+      const testDir = createTempDir();
+      fs.writeFileSync(
+        path.join(testDir, 'package.json'),
+        JSON.stringify({
+          name: 'bcrypt-app',
+          scripts: { build: 'tsc' },
+          dependencies: { express: '^4.18.2' },
+        }),
+      );
+      fs.writeFileSync(
+        path.join(testDir, 'package-lock.json'),
+        JSON.stringify({
+          name: 'bcrypt-app',
+          lockfileVersion: 3,
+          packages: {
+            '': { name: 'bcrypt-app' },
+            'node_modules/bcrypt': {
+              version: '5.1.1',
+              hasInstallScript: true,
+            },
+          },
+        }),
+      );
+
+      const stack = await scanner.scanRepository('local/bcrypt-app', testDir);
+
+      expect(stack.language).toBe('node');
+      expect(stack.runtimeVersion).toBe('node:20');
+      expect(stack.capabilities.nativeModules).toBe(true);
+    });
+
+    it('6. Repository with binding.gyp file → selects node:20 with build toolchain', async () => {
+      const testDir = createTempDir();
+      fs.writeFileSync(
+        path.join(testDir, 'package.json'),
+        JSON.stringify({
+          name: 'gyp-app',
+          scripts: { build: 'tsc' },
+        }),
+      );
+      fs.writeFileSync(path.join(testDir, 'binding.gyp'), '{}');
+
+      const stack = await scanner.scanRepository('local/gyp-app', testDir);
+
+      expect(stack.language).toBe('node');
+      expect(stack.runtimeVersion).toBe('node:20');
+      expect(stack.capabilities.nativeModules).toBe(true);
+    });
+
+    it('7. Clean repository without native dependencies → selects lightweight node:20-alpine', async () => {
+      const testDir = createTempDir();
+      fs.writeFileSync(
+        path.join(testDir, 'package.json'),
+        JSON.stringify({
+          name: 'pure-js-app',
+          scripts: { build: 'next build' },
+          dependencies: { react: '^18.2.0', next: '^14.0.0' },
+        }),
+      );
+      fs.writeFileSync(path.join(testDir, 'package-lock.json'), '{}');
+
+      const stack = await scanner.scanRepository('local/pure-js-app', testDir);
+
+      expect(stack.language).toBe('node');
+      expect(stack.runtimeVersion).toBe('node:20-alpine');
+      expect(stack.capabilities.nativeModules).toBe(false);
+    });
+
+    it('8. Actual OpsPilot workspace containing argon2 → detects nativeModules and emits node:20', async () => {
+      const rootDir = path.resolve(__dirname, '../../../../..');
+      const stack = await scanner.scanRepository('local/workspace', rootDir);
+
+      expect(stack.language).toBe('node');
+      expect(stack.runtimeVersion).toBe('node:20');
+      expect(stack.capabilities.nativeModules).toBe(true);
+      expect(stack.buildCommand).toBe('npm ci && npx prisma generate && npm run build');
+    });
+  });
 });

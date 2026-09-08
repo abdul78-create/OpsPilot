@@ -25,6 +25,7 @@ export interface StackDefinition {
     tests: boolean;
     monorepo: boolean;
     prisma?: boolean;
+    nativeModules?: boolean;
   };
 }
 
