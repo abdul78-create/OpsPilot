@@ -63,6 +63,193 @@
 
 ---
 
+## 🛠️ Technology Stack
+
+### Languages
+
+| Language | Where Used |
+|---|---|
+| **TypeScript** | Entire backend (`src/`) and frontend (`frontend/src/`) — primary language |
+| **JavaScript** | 33+ E2E, chaos, load, and acceptance test scripts (`scripts/`) |
+| **SQL** | Prisma migrations and database seed files |
+| **YAML** | Pipeline definitions, Docker Compose, GitHub Actions CI |
+| **Bash / Shell** | Startup, cloud bootstrap, and migration scripts |
+| **Prisma SDL** | `prisma/schema.prisma` — ORM schema definition |
+
+---
+
+### Backend (`src/`)
+
+#### Runtime & Framework
+| Technology | Version / Notes |
+|---|---|
+| **Node.js** | v20 (runtime) |
+| **NestJS** | v10 — modular backend framework (24 feature modules) |
+| **Express** | Underlying HTTP adapter via `@nestjs/platform-express` |
+| **TypeScript** | v5.3 |
+
+#### Database & ORM
+| Technology | Notes |
+|---|---|
+| **PostgreSQL** | v16 — primary relational database |
+| **Prisma ORM** | v5.9 — schema, migrations, Prisma Client |
+
+#### Queue & Caching
+| Technology | Notes |
+|---|---|
+| **BullMQ** | v6 — distributed job queue for pipeline runs |
+| **Redis** | v7 — BullMQ backend + idempotency cache |
+| **ioredis** | Node.js Redis client |
+
+#### Authentication & Security
+| Technology | Notes |
+|---|---|
+| **Passport.js** | Auth middleware |
+| **passport-jwt** | JWT Bearer strategy |
+| **passport-google-oauth20** | Google OAuth 2.0 SSO |
+| **passport-github2** | GitHub OAuth SSO |
+| **@nestjs/jwt** | JWT signing and verification |
+| **argon2** | Password hashing (native module — requires build toolchain) |
+| **AES-256-GCM** | Secrets vault encryption (Node.js `crypto` built-in) |
+| **HMAC-SHA256** | Webhook signature verification |
+| **Helmet** | HTTP security headers |
+| **@nestjs/throttler** | Rate limiting (100 req/min) |
+
+#### AI / LLM Integration
+| Technology | Notes |
+|---|---|
+| **Google Gemini API** | Primary AI provider for pipeline generation, RCA, risk scoring |
+| **OpenAI API** | Optional secondary AI provider |
+| **Rule-based AI** | Deterministic fallback when no LLM key is configured |
+
+#### Logging & Observability
+| Technology | Notes |
+|---|---|
+| **Pino** | Structured JSON logging |
+| **nestjs-pino** | NestJS Pino integration |
+| **Server-Sent Events (SSE)** | Real-time log streaming to frontend |
+| **@nestjs/event-emitter** | Internal event bus |
+| **@nestjs/terminus** | Health check endpoints |
+
+#### API & Validation
+| Technology | Notes |
+|---|---|
+| **@nestjs/swagger** | v7 — OpenAPI/Swagger docs (auto-generated) |
+| **class-validator** | DTO validation |
+| **class-transformer** | DTO serialization |
+| **Joi** | Config schema validation |
+
+#### Pipeline Runner
+| Technology | Notes |
+|---|---|
+| **Docker** | Ephemeral container execution engine — each job runs in an isolated container |
+| **kubectl** | Kubernetes deployment commands generated in pipeline YAML |
+| **js-yaml** | Runtime YAML parsing in job executor |
+
+#### Feature Modules
+| Module | Responsibility |
+|---|---|
+| `ai-orchestration` | AI pipeline generation, RCA, risk scoring, security audit |
+| `pipelines` | Pipeline definitions, YAML compiler, version management |
+| `runs` | Pipeline run orchestration and state machine |
+| `deployments` | Kubernetes deployment records and rollouts |
+| `worker` | Docker job executor and pipeline runner |
+| `repositories` | Git repo scanner (language & stack detection) |
+| `environments` | Staging/Production environment management |
+| `secrets` | AES-256 encrypted secret storage |
+| `auth` | JWT + OAuth authentication flows |
+| `organizations` / `users` | Multi-tenant RBAC |
+| `billing` | Subscription management |
+| `observability` / `slo` | Metrics, SLO tracking |
+| `incidents` / `alerts` | Incident management |
+| `audit-logs` | Full audit trail |
+| `flaky-tests` | Flaky test detection and tracking |
+
+---
+
+### Frontend (`frontend/`)
+
+#### Runtime & Framework
+| Technology | Version / Notes |
+|---|---|
+| **React** | v19 |
+| **Next.js** | v16.2 — App Router with 26+ route segments |
+| **TypeScript** | v5 |
+
+#### UI & Styling
+| Technology | Notes |
+|---|---|
+| **Tailwind CSS** | v4 — utility-first styling |
+| **CSS Custom Properties** | Design token system for dark mode and theming in `globals.css` |
+| **class-variance-authority** | Variant-based component styling |
+| **tailwind-merge** + **clsx** | Conditional class merging utilities |
+
+#### Visual Pipeline Builder
+| Technology | Notes |
+|---|---|
+| **@xyflow/react** | v12 — Interactive node-based DAG canvas (React Flow) |
+| **DAGCompiler** | Custom TypeScript YAML compiler (`DAGCompiler.ts`) |
+| **Monaco Editor** | `@monaco-editor/react` — in-browser code editor for YAML/Shell |
+| **Custom Node Types** | Source, Build, Test, Security, Deploy, Health, Approval, Rollback, Notification |
+
+#### Data Fetching & State
+| Technology | Notes |
+|---|---|
+| **TanStack Query (React Query)** | v5 — server state management and caching |
+| **Fetch API** | Native HTTP client in `apiClient.ts` |
+
+#### Terminal & Visualization
+| Technology | Notes |
+|---|---|
+| **xterm.js** | `@xterm/xterm` v6 — in-browser terminal with WebGL rendering |
+| **@xterm/addon-fit** | Auto-resize addon |
+| **Recharts** | v3 — Observability and metrics charts |
+
+#### UX Components
+| Technology | Notes |
+|---|---|
+| **cmdk** | Command palette (⌘K) |
+| **react-resizable-panels** | Resizable layout panels |
+| **lucide-react** | Icon library |
+| **Nginx** | Static file serving in Docker |
+
+---
+
+### Infrastructure & DevOps
+
+#### Containerization
+| Technology | Notes |
+|---|---|
+| **Docker** | Multi-stage Dockerfiles for backend and frontend |
+| **Docker Compose** | `docker-compose.yml` (dev) + `docker-compose.prod.yml` (prod) |
+| **Nginx** | Reverse proxy + static frontend serving + TLS termination |
+
+#### CI/CD & Code Quality
+| Technology | Notes |
+|---|---|
+| **GitHub Actions** | Automated CI pipelines (`.github/`) |
+| **Husky** | Pre-commit hooks |
+| **lint-staged** | Lint on staged files only |
+| **ESLint** | v8 (backend) / v9 (frontend) |
+| **Prettier** | v3 — consistent code formatting |
+
+#### Testing
+| Technology | Notes |
+|---|---|
+| **Jest** | v29 — unit and integration tests |
+| **ts-jest** | TypeScript Jest transformer |
+| **Supertest** | HTTP integration testing |
+| **Custom E2E scripts** | 33 Node.js scripts: golden-path, chaos, load, acceptance, DR |
+
+#### Cloud & Deployment
+| Technology | Notes |
+|---|---|
+| **Render** | Cloud hosting for live backend + frontend |
+| **Kubernetes** | Deployment targets in generated pipeline YAML |
+| **Let's Encrypt / Certbot** | TLS certificates for production |
+
+---
+
 ## 🚀 Quickstart via Docker Compose
 
 ### Prerequisites
