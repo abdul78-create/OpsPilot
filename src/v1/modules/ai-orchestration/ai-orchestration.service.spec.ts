@@ -598,6 +598,81 @@ describe('AiOrchestrationService', () => {
         expect(result.yamlConfig).toContain('deploy-production');
         expect(result.yamlConfig).not.toContain('deploy-staging');
       });
+
+      it('K. Repository with Prisma (prisma/schema.prisma) → includes npx prisma generate in buildCommand and YAML', async () => {
+        mockPrisma.project.findFirst.mockResolvedValue(mockTenantAProject);
+        mockPrisma.environment.findFirst.mockResolvedValue(null);
+        mockPrisma.repositoryConnection.findFirst.mockResolvedValue({
+          id: 'conn_1',
+          projectId: 'prj_tenant_a',
+          repositoryUrl: 'https://github.com/customer/prisma-service',
+          defaultBranch: 'main',
+        });
+
+        (service as any).repoScanner = {
+          scanRepository: jest.fn().mockResolvedValue({
+            language: 'node',
+            framework: 'express',
+            packageManager: 'npm',
+            runtimeVersion: 'node:20-alpine',
+            buildCommand: 'npm ci && npx prisma generate && npm run build',
+            testCommand: 'npm test',
+            detectedFiles: ['package.json', 'package-lock.json', 'prisma/schema.prisma'],
+            capabilities: {
+              docker: false,
+              kubernetes: false,
+              tests: true,
+              monorepo: false,
+              prisma: true,
+            },
+          }),
+        };
+
+        const prompt = 'Build and test this repository';
+        const result = await service.generatePipeline(prompt, 'prj_tenant_a', 'org_tenant_a');
+
+        expect(result.yamlConfig).toContain('run: npm ci && npx prisma generate && npm run build');
+        const buildNode = result.nodes.find((n) => n.type === 'build');
+        expect(buildNode.data.command).toBe('npm ci && npx prisma generate && npm run build');
+      });
+
+      it('L. Repository without Prisma → strictly omits npx prisma generate from buildCommand and YAML', async () => {
+        mockPrisma.project.findFirst.mockResolvedValue(mockTenantAProject);
+        mockPrisma.environment.findFirst.mockResolvedValue(null);
+        mockPrisma.repositoryConnection.findFirst.mockResolvedValue({
+          id: 'conn_2',
+          projectId: 'prj_tenant_a',
+          repositoryUrl: 'https://github.com/customer/standard-service',
+          defaultBranch: 'main',
+        });
+
+        (service as any).repoScanner = {
+          scanRepository: jest.fn().mockResolvedValue({
+            language: 'node',
+            framework: 'express',
+            packageManager: 'npm',
+            runtimeVersion: 'node:20-alpine',
+            buildCommand: 'npm ci && npm run build',
+            testCommand: 'npm test',
+            detectedFiles: ['package.json', 'package-lock.json'],
+            capabilities: {
+              docker: false,
+              kubernetes: false,
+              tests: true,
+              monorepo: false,
+              prisma: false,
+            },
+          }),
+        };
+
+        const prompt = 'Build and test this repository';
+        const result = await service.generatePipeline(prompt, 'prj_tenant_a', 'org_tenant_a');
+
+        expect(result.yamlConfig).toContain('run: npm ci && npm run build');
+        expect(result.yamlConfig).not.toContain('prisma generate');
+        const buildNode = result.nodes.find((n) => n.type === 'build');
+        expect(buildNode.data.command).toBe('npm ci && npm run build');
+      });
     });
   });
 

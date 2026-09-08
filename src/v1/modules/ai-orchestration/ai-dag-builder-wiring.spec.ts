@@ -284,6 +284,55 @@ describe('Visual DAG Builder AI Features Production Wiring Spec', () => {
       expect(yaml).not.toContain('prod-us-east-1');
     });
 
+    it('dagToYaml preserves real Prisma generate command on build node', () => {
+      const nodes = [
+        {
+          id: '1',
+          type: 'source',
+          data: { label: 'Git Source', repo: 'https://github.com/my-org/my-repo' },
+        },
+        {
+          id: '2',
+          type: 'build',
+          data: {
+            label: 'Node.js Build',
+            image: 'node:20-alpine',
+            command: 'npm ci && npx prisma generate && npm run build',
+          },
+        },
+      ];
+      const edges = [{ id: 'e1', source: '1', target: '2' }];
+
+      const yaml = dagToYaml(nodes as any, edges as any, 'OpsPilot Visual Pipeline', 'main');
+
+      expect(yaml).toContain('run: npm ci && npx prisma generate && npm run build');
+    });
+
+    it('dagToYaml generates standard build command when build node has no Prisma', () => {
+      const nodes = [
+        {
+          id: '1',
+          type: 'source',
+          data: { label: 'Git Source', repo: 'https://github.com/my-org/my-repo' },
+        },
+        {
+          id: '2',
+          type: 'build',
+          data: {
+            label: 'Node.js Build',
+            image: 'node:20-alpine',
+            command: 'npm ci && npm run build',
+          },
+        },
+      ];
+      const edges = [{ id: 'e1', source: '1', target: '2' }];
+
+      const yaml = dagToYaml(nodes as any, edges as any, 'OpsPilot Visual Pipeline', 'main');
+
+      expect(yaml).toContain('run: npm ci && npm run build');
+      expect(yaml).not.toContain('prisma generate');
+    });
+
     it('ambiguous environment → safe rejection / no unsafe default', async () => {
       // Unspecified deploy target
       await expect(

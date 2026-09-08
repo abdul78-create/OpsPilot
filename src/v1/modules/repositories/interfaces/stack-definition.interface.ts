@@ -24,6 +24,7 @@ export interface StackDefinition {
     kubernetes: boolean;
     tests: boolean;
     monorepo: boolean;
+    prisma?: boolean;
   };
 }
 

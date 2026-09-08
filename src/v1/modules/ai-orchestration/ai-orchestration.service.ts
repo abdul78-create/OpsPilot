@@ -660,13 +660,23 @@ export class AiOrchestrationService {
           ? 'golang:1.22-alpine'
           : 'node:20-alpine';
 
+    const hasPrisma = Boolean(
+      detectedStack?.capabilities?.prisma ||
+      detectedStack?.detectedFiles?.some(
+        (f) => f.includes('schema.prisma') || f === 'prisma' || f === 'backend/prisma',
+      ) ||
+      (detectedStack?.buildCommand && detectedStack.buildCommand.includes('prisma generate')),
+    );
+
     const buildCommand = detectedStack?.buildCommand
       ? detectedStack.buildCommand
       : isPython
         ? 'pip install -r requirements.txt'
         : isGo
           ? 'go build -v ./...'
-          : 'npm ci && npm run build';
+          : hasPrisma
+            ? 'npm ci && npx prisma generate && npm run build'
+            : 'npm ci && npm run build';
 
     const testCommand = detectedStack?.testCommand
       ? detectedStack.testCommand

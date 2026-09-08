@@ -130,4 +130,75 @@ describe('RepositoryScannerService & WorkflowCompilerService', () => {
     expect(stack.buildCommand).toBe('go build -v ./...');
     expect(stack.testCommand).toBe('go test ./...');
   });
+
+  it('1. Repository with Prisma (prisma/schema.prisma) → includes npx prisma generate in buildCommand', async () => {
+    const testDir = createTempDir();
+    fs.writeFileSync(
+      path.join(testDir, 'package.json'),
+      JSON.stringify({
+        name: 'prisma-app',
+        scripts: { build: 'nest build' },
+      }),
+    );
+    fs.writeFileSync(path.join(testDir, 'package-lock.json'), '{}');
+    fs.mkdirSync(path.join(testDir, 'prisma'), { recursive: true });
+    fs.writeFileSync(
+      path.join(testDir, 'prisma', 'schema.prisma'),
+      'datasource db { provider = "postgresql" url = env("DATABASE_URL") }',
+    );
+
+    const stack = await scanner.scanRepository('local/prisma-app', testDir);
+
+    expect(stack.language).toBe('node');
+    expect(stack.packageManager).toBe('npm');
+    expect(stack.buildCommand).toBe('npm ci && npx prisma generate && npm run build');
+    expect(stack.detectedFiles).toContain('prisma/schema.prisma');
+    expect(stack.capabilities.prisma).toBe(true);
+  });
+
+  it('2. Repository without Prisma → omits npx prisma generate from buildCommand', async () => {
+    const testDir = createTempDir();
+    fs.writeFileSync(
+      path.join(testDir, 'package.json'),
+      JSON.stringify({
+        name: 'clean-app',
+        scripts: { build: 'nest build' },
+      }),
+    );
+    fs.writeFileSync(path.join(testDir, 'package-lock.json'), '{}');
+
+    const stack = await scanner.scanRepository('local/clean-app', testDir);
+
+    expect(stack.language).toBe('node');
+    expect(stack.packageManager).toBe('npm');
+    expect(stack.buildCommand).toBe('npm ci && npm run build');
+    expect(stack.buildCommand).not.toContain('prisma generate');
+    expect(stack.capabilities.prisma).toBe(false);
+  });
+
+  it('3. Repository with Prisma using pnpm → preserves package manager and adds npx prisma generate', async () => {
+    const testDir = createTempDir();
+    fs.writeFileSync(
+      path.join(testDir, 'package.json'),
+      JSON.stringify({
+        name: 'pnpm-prisma-app',
+        scripts: { build: 'next build' },
+      }),
+    );
+    fs.writeFileSync(path.join(testDir, 'pnpm-lock.yaml'), '');
+    fs.mkdirSync(path.join(testDir, 'prisma'), { recursive: true });
+    fs.writeFileSync(
+      path.join(testDir, 'prisma', 'schema.prisma'),
+      'datasource db { provider = "sqlite" url = "file:./dev.db" }',
+    );
+
+    const stack = await scanner.scanRepository('local/pnpm-prisma-app', testDir);
+
+    expect(stack.language).toBe('node');
+    expect(stack.packageManager).toBe('pnpm');
+    expect(stack.buildCommand).toBe(
+      'pnpm install --frozen-lockfile && npx prisma generate && pnpm run build',
+    );
+    expect(stack.capabilities.prisma).toBe(true);
+  });
 });

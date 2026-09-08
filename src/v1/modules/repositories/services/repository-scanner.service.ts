@@ -70,7 +70,12 @@ export class RepositoryScannerService {
     const hasGradle = checkFile('build.gradle') || checkFile('build.gradle.kts');
     const hasPnpmLock = checkFile('pnpm-lock.yaml') || checkFile('pnpm-workspace.yaml');
     const hasYarnLock = checkFile('yarn.lock');
-    const hasPrisma = checkFile('prisma') || checkFile('backend/prisma');
+    const hasPrisma =
+      checkFile('prisma/schema.prisma') ||
+      checkFile('backend/prisma/schema.prisma') ||
+      checkFile('schema.prisma') ||
+      checkFile('prisma') ||
+      checkFile('backend/prisma');
 
     const isMonorepo = (hasBackendPkg && hasFrontendPkg) || checkFile('pnpm-workspace.yaml');
 
@@ -278,6 +283,7 @@ export class RepositoryScannerService {
         kubernetes: hasK8s,
         tests: Boolean(testCommand),
         monorepo: isMonorepo,
+        prisma: hasPrisma,
       },
     };
 
@@ -303,8 +309,7 @@ export class RepositoryScannerService {
         env: {
           ...process.env,
           GIT_TERMINAL_PROMPT: '0',
-          GIT_ASKPASS: '/bin/true',
-          HOME: '/tmp',
+          HOME: process.env.HOME || process.env.USERPROFILE || os.tmpdir(),
         },
       });
       child.on('close', () => resolve());

@@ -222,9 +222,11 @@ export function dagToYaml(
       case 'source':
         yaml += `  - name: ${slug || 'source'}\n    jobs:\n      - name: checkout-source\n        image: alpine/git:latest\n        steps:\n          - name: git-checkout\n            run: git clone ${String(d.repo || 'repository')} .\n`;
         break;
-      case 'build':
-        yaml += `  - name: ${slug || 'build'}\n    jobs:\n      - name: docker-build\n        image: ${String(d.image || 'node:20-alpine')}\n        steps:\n          - name: build-artifact\n            run: npm ci && npm run build\n`;
+      case 'build': {
+        const buildCmd = d.command ? String(d.command) : 'npm ci && npm run build';
+        yaml += `  - name: ${slug || 'build'}\n    jobs:\n      - name: docker-build\n        image: ${String(d.image || 'node:20-alpine')}\n        steps:\n          - name: build-artifact\n            run: ${buildCmd}\n`;
         break;
+      }
       case 'test':
         yaml += `  - name: ${slug || 'test'}\n    jobs:\n      - name: test-suite\n        image: ${String(d.image || 'node:20-alpine')}\n        steps:\n          - name: run-tests\n            run: ${String(d.command || 'npm test')}\n`;
         break;
