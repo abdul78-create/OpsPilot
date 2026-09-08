@@ -432,6 +432,122 @@ describe('AiOrchestrationService', () => {
         'Target deployment environment is ambiguous or not specified. Please explicitly specify either "staging" or "production".',
       );
     });
+
+    // ── REGRESSION MATRIX: CI-Only vs Explicit Deployment Generation ──
+    describe('Regression Matrix: CI-Only vs Deployment Environment Resolution', () => {
+      beforeEach(() => {
+        jest.clearAllMocks();
+      });
+
+      it('A. CI-only prompt ("Build and test this repository") succeeds without any environment configured', async () => {
+        mockPrisma.project.findFirst.mockResolvedValue(mockTenantAProject);
+        mockPrisma.environment.findFirst.mockResolvedValue(null);
+
+        const prompt = 'Build and test this repository';
+        const result = await service.generatePipeline(prompt, 'prj_tenant_a', 'org_tenant_a');
+
+        expect(result).toBeDefined();
+        expect(result.yamlConfig).toBeDefined();
+        expect(mockPrisma.environment.findFirst).not.toHaveBeenCalled();
+      });
+
+      it('B. CI-only YAML and DAG contains no deployment stage', async () => {
+        mockPrisma.project.findFirst.mockResolvedValue(mockTenantAProject);
+        mockPrisma.environment.findFirst.mockResolvedValue(null);
+
+        const prompt = 'Run tests and security scan';
+        const result = await service.generatePipeline(prompt, 'prj_tenant_a', 'org_tenant_a');
+
+        expect(result.nodes.some((n) => n.type === 'deploy')).toBe(false);
+        expect(result.yamlConfig).not.toContain('deploy');
+        expect(result.yamlConfig).not.toContain('kubectl');
+        expect(result.yamlConfig).not.toContain('bitnami');
+        expect(result.yamlConfig).toContain('checkout-source');
+        expect(result.yamlConfig).toContain('test-suite');
+        expect(result.yamlConfig).toContain('security-audit');
+      });
+
+      it('C. "Build and deploy to staging" explicitly requires staging environment', async () => {
+        mockPrisma.project.findFirst.mockResolvedValue(mockTenantAProject);
+        mockPrisma.environment.findFirst.mockResolvedValue({
+          ...mockTenantAStagingEnv,
+          connectionStatus: 'CONFIGURED',
+        });
+
+        const prompt = 'Build and deploy to staging';
+        const result = await service.generatePipeline(prompt, 'prj_tenant_a', 'org_tenant_a');
+
+        expect(mockPrisma.environment.findFirst).toHaveBeenCalledWith({
+          where: { projectId: 'prj_tenant_a', type: EnvironmentType.STAGING, deletedAt: null },
+        });
+        expect(result.nodes.some((n) => n.type === 'deploy')).toBe(true);
+        expect(result.yamlConfig).toContain('acme-staging-ns');
+        expect(result.yamlConfig).toContain('deploy-staging');
+      });
+
+      it('D. "Deploy this to production" explicitly requires production environment', async () => {
+        mockPrisma.project.findFirst.mockResolvedValue(mockTenantAProject);
+        mockPrisma.environment.findFirst.mockResolvedValue({
+          ...mockTenantAProdEnv,
+          connectionStatus: 'CONFIGURED',
+        });
+
+        const prompt = 'Deploy this to production';
+        const result = await service.generatePipeline(prompt, 'prj_tenant_a', 'org_tenant_a');
+
+        expect(mockPrisma.environment.findFirst).toHaveBeenCalledWith({
+          where: { projectId: 'prj_tenant_a', type: EnvironmentType.PRODUCTION, deletedAt: null },
+        });
+        expect(result.nodes.some((n) => n.type === 'deploy')).toBe(true);
+        expect(result.yamlConfig).toContain('acme-prod-ns');
+        expect(result.yamlConfig).toContain('deploy-production');
+      });
+
+      it('E. "Build and deploy" without target environment is rejected as ambiguous', async () => {
+        mockPrisma.project.findFirst.mockResolvedValue(mockTenantAProject);
+
+        await expect(
+          service.generatePipeline('Build and deploy', 'prj_tenant_a', 'org_tenant_a'),
+        ).rejects.toThrow(
+          'Target deployment environment is ambiguous or not specified. Please explicitly specify either "staging" or "production".',
+        );
+      });
+
+      it('F. Unconfigured requested deployment target is strictly rejected', async () => {
+        mockPrisma.project.findFirst.mockResolvedValue(mockTenantAProject);
+        mockPrisma.environment.findFirst.mockResolvedValue({
+          id: 'env_staging_unconfigured',
+          projectId: 'prj_tenant_a',
+          name: 'Staging',
+          slug: 'staging',
+          type: EnvironmentType.STAGING,
+          connectionStatus: 'NOT_CONFIGURED',
+          clusterName: 'k8s-cluster',
+          k8sNamespace: 'staging-ns',
+        });
+
+        await expect(
+          service.generatePipeline('Build and deploy to staging', 'prj_tenant_a', 'org_tenant_a'),
+        ).rejects.toThrow(
+          'Staging deployment target is not configured for this project. Connect a deployment target in Environment Settings first.',
+        );
+      });
+
+      it('G. No default staging or production environment is selected for CI-only request', async () => {
+        mockPrisma.project.findFirst.mockResolvedValue(mockTenantAProject);
+        mockPrisma.environment.findFirst.mockResolvedValue(mockTenantAProdEnv);
+
+        const prompt = 'Analyze connected repository and generate a CI pipeline for our product';
+        const result = await service.generatePipeline(prompt, 'prj_tenant_a', 'org_tenant_a');
+
+        expect(mockPrisma.environment.findFirst).not.toHaveBeenCalled();
+        expect(result.nodes.some((n) => n.type === 'deploy')).toBe(false);
+        expect(result.yamlConfig).not.toContain('acme-prod-ns');
+        expect(result.yamlConfig).not.toContain('staging');
+        expect(result.yamlConfig).not.toContain('production');
+        expect(result.yamlConfig).not.toContain('deploy-');
+      });
+    });
   });
 
   describe('findById()', () => {

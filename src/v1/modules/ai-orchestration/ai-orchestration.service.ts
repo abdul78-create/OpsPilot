@@ -522,14 +522,12 @@ export class AiOrchestrationService {
     const p = prompt.toLowerCase();
     const hasSecurityPrompt =
       p.includes('security') || p.includes('sast') || p.includes('trivy') || p.includes('scan');
-    const hasDeploy =
-      p.includes('deploy') ||
-      p.includes('railway') ||
-      p.includes('k8s') ||
-      p.includes('staging') ||
-      p.includes('production') ||
-      p.includes('prod') ||
-      p.includes('cloud run');
+
+    // Deployment is required ONLY when the user explicitly asks for deployment.
+    // CI-only prompts (e.g. "Build and test this repository", "Run tests and security scan") must NOT require an environment.
+    const hasDeploy = /\b(deploy|deployment|deploying|ship\s+to|release\s+to|deliver\s+to)\b/i.test(
+      prompt,
+    );
 
     let deployEnv: 'staging' | 'production' | null = null;
     let resolvedEnvRecord: any = null;
