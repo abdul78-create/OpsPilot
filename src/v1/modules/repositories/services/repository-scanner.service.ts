@@ -135,9 +135,9 @@ export class RepositoryScannerService {
       }
 
       const backendBuildPart = hasPrisma
-        ? `cd backend && ${hasPackageLock ? 'npm ci --legacy-peer-deps --ignore-scripts' : 'npm install --legacy-peer-deps --ignore-scripts'} && npx prisma generate${hasBackendBuild ? ' && npm run build' : ''}`
-        : `cd backend && ${hasPackageLock ? 'npm ci --legacy-peer-deps --ignore-scripts' : 'npm install --legacy-peer-deps --ignore-scripts'}${hasBackendBuild ? ' && npm run build' : ''}`;
-      const frontendBuildPart = `cd frontend && ${hasPackageLock ? 'npm ci --legacy-peer-deps --ignore-scripts' : 'npm install --legacy-peer-deps --ignore-scripts'}${hasFrontendBuild ? ' && npm run build' : ''}`;
+        ? `cd backend && ${hasPackageLock ? 'npm ci' : 'npm install'} && npx prisma generate${hasBackendBuild ? ' && npm run build' : ''}`
+        : `cd backend && ${hasPackageLock ? 'npm ci' : 'npm install'}${hasBackendBuild ? ' && npm run build' : ''}`;
+      const frontendBuildPart = `cd frontend && ${hasPackageLock ? 'npm ci' : 'npm install'}${hasFrontendBuild ? ' && npm run build' : ''}`;
 
       buildCommand = `(${backendBuildPart}) && (${frontendBuildPart})`;
       if (hasBackendTest || hasFrontendTest) {
@@ -161,20 +161,38 @@ export class RepositoryScannerService {
         const hasBuildScript = Boolean(scripts.build);
         const hasTestScript = Boolean(scripts.test);
 
-        const installCmd = hasPnpmLock
-          ? 'pnpm install --frozen-lockfile'
-          : hasYarnLock
-            ? 'yarn install --frozen-lockfile'
-            : hasPackageLock
-              ? 'npm ci --legacy-peer-deps --ignore-scripts'
-              : 'npm install --legacy-peer-deps --ignore-scripts';
+        const declaredPm =
+          typeof pkgContent.packageManager === 'string'
+            ? pkgContent.packageManager.toLowerCase()
+            : '';
+        const isPnpm = hasPnpmLock || declaredPm.startsWith('pnpm');
+        const isYarn = hasYarnLock || declaredPm.startsWith('yarn');
+        const isBun =
+          checkFile('bun.lockb') || checkFile('bun.lock') || declaredPm.startsWith('bun');
+
+        let installCmd = 'npm install';
+        if (isPnpm) {
+          packageManager = 'pnpm';
+          installCmd = 'pnpm install --frozen-lockfile';
+        } else if (isYarn) {
+          packageManager = 'yarn';
+          installCmd = 'yarn install --frozen-lockfile';
+        } else if (isBun) {
+          installCmd = 'bun install --frozen-lockfile';
+        } else if (hasPackageLock) {
+          packageManager = 'npm';
+          installCmd = 'npm ci';
+        } else {
+          packageManager = 'npm';
+          installCmd = 'npm install';
+        }
 
         const prismaPart = hasPrisma ? ' && npx prisma generate' : '';
 
         if (hasBuildScript) {
-          buildCommand = hasPnpmLock
+          buildCommand = isPnpm
             ? `${installCmd}${prismaPart} && pnpm run build`
-            : hasYarnLock
+            : isYarn
               ? `${installCmd}${prismaPart} && yarn build`
               : `${installCmd}${prismaPart} && npm run build`;
         } else {
@@ -182,11 +200,7 @@ export class RepositoryScannerService {
         }
 
         if (hasTestScript) {
-          testCommand = hasPnpmLock
-            ? 'pnpm test'
-            : hasYarnLock
-              ? 'yarn test'
-              : 'npm test -- --maxWorkers=2';
+          testCommand = isPnpm ? 'pnpm test' : isYarn ? 'yarn test' : 'npm test -- --maxWorkers=2';
         }
       } catch {
         buildCommand = 'npm install';

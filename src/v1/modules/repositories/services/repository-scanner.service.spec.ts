@@ -69,7 +69,7 @@ describe('RepositoryScannerService & WorkflowCompilerService', () => {
 
     expect(stack.language).toBe('node');
     expect(stack.framework).toBe('express');
-    expect(stack.buildCommand).toBe('npm install --legacy-peer-deps --ignore-scripts');
+    expect(stack.buildCommand).toBe('npm install');
     expect(stack.testCommand).toBeUndefined();
   });
 

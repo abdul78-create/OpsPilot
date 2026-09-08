@@ -650,7 +650,7 @@ export class AiOrchestrationService {
         ? 'pip install -r requirements.txt'
         : isGo
           ? 'go build -v ./...'
-          : 'npm ci --legacy-peer-deps --ignore-scripts && npm run build';
+          : 'npm ci && npm run build';
 
     const testCommand = detectedStack?.testCommand
       ? detectedStack.testCommand

@@ -4,10 +4,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { DeveloperShell } from '@/components/layout/DeveloperShell';
 import {
-  GitBranch, Play, RefreshCw, Plus, Loader2, CheckCircle2, Clock, Activity,
+  GitBranch, Play, RefreshCw, Plus, Loader2, CheckCircle2, Clock, Activity, Trash2,
 } from 'lucide-react';
 import {
-  listPipelines, triggerPipeline, Pipeline,
+  listPipelines, triggerPipeline, deletePipeline, Pipeline,
 } from '@/lib/apiClient';
 import {
   SkeletonTableRows, EmptyState, StatusPill, SearchInput, Pagination,
@@ -33,8 +33,23 @@ export default function PipelinesPage() {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [triggering, setTriggering] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const { toast } = useToast();
   const router = useRouter();
+
+  const handleDelete = async (p: Pipeline) => {
+    if (!window.confirm(`Are you sure you want to delete pipeline "${p.name}"?`)) return;
+    setDeletingId(p.id);
+    try {
+      await deletePipeline(p.projectId, p.id);
+      toast({ kind: 'success', title: 'Pipeline deleted', message: `Pipeline "${p.name}" was removed` });
+      setPipelines(prev => prev.filter(item => item.id !== p.id));
+    } catch {
+      toast({ kind: 'error', title: 'Delete failed', message: 'Could not delete pipeline' });
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -151,7 +166,7 @@ export default function PipelinesPage() {
             <span className="w-28 text-right">Success Rate</span>
             <span className="w-28 text-right">Last Trigger</span>
             <span className="w-24 text-center">Status</span>
-            <span className="w-20 text-right">Actions</span>
+            <span className="w-28 text-right">Actions</span>
           </div>
 
           <div className="flex-1 overflow-y-auto">
@@ -208,14 +223,23 @@ export default function PipelinesPage() {
                     <StatusPill status={p.status ?? 'queued'} />
                   </div>
 
-                  <div className="w-20 flex justify-end" onClick={e => e.stopPropagation()}>
+                  <div className="w-28 flex items-center justify-end gap-1.5" onClick={e => e.stopPropagation()}>
                     <button
                       onClick={() => handleTrigger(p)}
-                      disabled={triggering === p.id}
-                      className="flex items-center gap-1 text-[11px] font-semibold bg-[var(--accent)] text-[var(--accent-fg)] px-3 py-1 rounded-lg transition-opacity hover:opacity-85 disabled:opacity-50 shadow-sm"
+                      disabled={triggering === p.id || deletingId === p.id}
+                      className="flex items-center gap-1 text-[11px] font-semibold bg-[var(--accent)] text-[var(--accent-fg)] px-2.5 py-1 rounded-lg transition-opacity hover:opacity-85 disabled:opacity-50 shadow-sm"
+                      title="Run Pipeline"
                     >
                       {triggering === p.id ? <Loader2 size={11} className="animate-spin" /> : <Play size={11} />}
                       Run
+                    </button>
+                    <button
+                      onClick={() => handleDelete(p)}
+                      disabled={deletingId === p.id || triggering === p.id}
+                      className="p-1 rounded-lg text-[var(--text-muted)] hover:text-[var(--error)] hover:bg-[var(--error-dim)] transition-colors disabled:opacity-50"
+                      title="Delete Pipeline"
+                    >
+                      {deletingId === p.id ? <Loader2 size={12} className="animate-spin" /> : <Trash2 size={12} />}
                     </button>
                   </div>
                 </div>

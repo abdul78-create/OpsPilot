@@ -628,6 +628,12 @@ export async function getPipeline(projectId: string, pipelineId: string) {
   return apiFetch<{ data: PipelineDefinition }>(`/projects/${projectId}/pipelines/${pipelineId}`);
 }
 
+export async function deletePipeline(projectId: string, pipelineId: string) {
+  return apiFetch<void>(`/projects/${projectId}/pipelines/${pipelineId}`, {
+    method: 'DELETE',
+  });
+}
+
 export async function triggerPipeline(pipelineId: string, branch?: string, commitSha?: string) {
   const body: Record<string, string> = { branch: branch ?? 'main' };
   if (commitSha) body.commitSha = commitSha;
