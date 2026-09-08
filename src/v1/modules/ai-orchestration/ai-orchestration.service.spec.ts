@@ -620,6 +620,97 @@ describe('AiOrchestrationService', () => {
         expect(result.yamlConfig).not.toContain('deploy-staging');
       });
 
+      it('J2. Affirmative-First Deployment Intent Parser Suite (All CI-Only vs Deploy Scenarios)', async () => {
+        const ciOnlyPrompts = [
+          'Do not deploy',
+          'Do NOT deploy to staging',
+          'Do not deploy to production',
+          'Do not deploy to staging or production',
+          'Do not create a deployment',
+          'Do not add a deployment',
+          'Do not run deployment',
+          'Do not include deployment',
+          'without deployment',
+          'without any deployment',
+          'zero deployment stages',
+          'no deployment',
+          'omit deployment',
+          'exclude deployment',
+          'CI-only',
+          'production-ready build',
+          'production build',
+          'production quality',
+        ];
+
+        for (const p of ciOnlyPrompts) {
+          const intent = service.parseDeploymentIntent(p);
+          expect(intent.hasAffirmativeDeploy).toBe(false);
+          expect(intent.targetEnv).toBeNull();
+          expect(intent.isAmbiguous).toBe(false);
+        }
+
+        // Affirmative staging
+        expect(service.parseDeploymentIntent('Deploy to staging')).toEqual({
+          hasAffirmativeDeploy: true,
+          targetEnv: 'staging',
+          isAmbiguous: false,
+        });
+        expect(service.parseDeploymentIntent('Build and deploy to staging')).toEqual({
+          hasAffirmativeDeploy: true,
+          targetEnv: 'staging',
+          isAmbiguous: false,
+        });
+
+        // Affirmative production
+        expect(service.parseDeploymentIntent('Deploy to production')).toEqual({
+          hasAffirmativeDeploy: true,
+          targetEnv: 'production',
+          isAmbiguous: false,
+        });
+        expect(service.parseDeploymentIntent('Build and deploy to production')).toEqual({
+          hasAffirmativeDeploy: true,
+          targetEnv: 'production',
+          isAmbiguous: false,
+        });
+
+        // Ambiguous rejection
+        expect(service.parseDeploymentIntent('Build and deploy')).toEqual({
+          hasAffirmativeDeploy: true,
+          targetEnv: null,
+          isAmbiguous: true,
+        });
+        expect(service.parseDeploymentIntent('Deploy to Kubernetes')).toEqual({
+          hasAffirmativeDeploy: true,
+          targetEnv: null,
+          isAmbiguous: true,
+        });
+        expect(service.parseDeploymentIntent('Deploy to Render')).toEqual({
+          hasAffirmativeDeploy: true,
+          targetEnv: null,
+          isAmbiguous: true,
+        });
+      });
+
+      it('J3. CI-Only Generation Matrix: ZERO deployment stages, ZERO environment lookup for negative prompts', async () => {
+        mockPrisma.project.findFirst.mockResolvedValue(mockTenantAProject);
+        mockPrisma.environment.findFirst.mockClear();
+
+        const testPrompts = [
+          'Do NOT deploy to staging',
+          'zero deployment stages',
+          'Do not create a deployment',
+          'production-ready build with unit tests',
+        ];
+
+        for (const prompt of testPrompts) {
+          const result = await service.generatePipeline(prompt, 'prj_tenant_a', 'org_tenant_a');
+          expect(mockPrisma.environment.findFirst).not.toHaveBeenCalled();
+          expect(result.nodes.some((n) => n.type === 'deploy')).toBe(false);
+          expect(result.yamlConfig).not.toContain('deploy-');
+          expect(result.yamlConfig).not.toContain('kubectl');
+        }
+      });
+
       it('K. Repository with Prisma (prisma/schema.prisma) → includes npx prisma generate in buildCommand and YAML', async () => {
         mockPrisma.project.findFirst.mockResolvedValue(mockTenantAProject);
         mockPrisma.environment.findFirst.mockResolvedValue(null);

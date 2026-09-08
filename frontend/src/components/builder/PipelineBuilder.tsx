@@ -378,12 +378,9 @@ function BuilderCanvas() {
     if (type === 'source') {
       const existingSource = nodes.find((n) => n.type === 'source');
       if (existingSource) {
+        // Reuse and focus the existing source node rather than displaying intrusive warning toasts
         setSelectedNodeId(existingSource.id);
-        toast({
-          kind: 'info',
-          title: 'Trigger Step Exists',
-          message: 'A trigger/source step is already configured for this pipeline.',
-        });
+        setInspectorOpen(true);
         return;
       }
     }

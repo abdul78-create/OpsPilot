@@ -29,6 +29,12 @@ import { StackDefinition } from '../repositories/interfaces/stack-definition.int
 
 export const AI_PROVIDER_TOKEN = 'IAiProvider';
 
+export interface DeploymentIntent {
+  hasAffirmativeDeploy: boolean;
+  targetEnv: 'staging' | 'production' | null;
+  isAmbiguous: boolean;
+}
+
 @Injectable()
 export class AiOrchestrationService {
   private readonly logger = new Logger(AiOrchestrationService.name);
@@ -523,52 +529,28 @@ export class AiOrchestrationService {
     const hasSecurityPrompt =
       p.includes('security') || p.includes('sast') || p.includes('trivy') || p.includes('scan');
 
-    // Deployment is required ONLY when the user explicitly asks for deployment.
-    // CI-only prompts (e.g. "Build and test this repository", "Run tests and security scan", "CI-only. Do not deploy") must NOT require an environment.
-    const hasAffirmativeDeployTarget =
-      /\b(deploy\s+to|deployment\s+to|ship\s+to|release\s+to|deliver\s+to)\b/i.test(prompt);
-
-    const isExplicitCiOnly =
-      !hasAffirmativeDeployTarget &&
-      /\b(ci[\s-]only|only\s+ci|build[\s-]only|test[\s-]only|no\s+deploy(?:ment)?|do\s+not\s+deploy(?:ment)?|don't\s+deploy(?:ment)?|dont\s+deploy(?:ment)?|without\s+deploy(?:ment)?|skip\s+deploy(?:ment)?)\b/i.test(
-        prompt,
-      );
-
-    const cleanedPromptForDeploy = prompt.replace(
-      /\b(do\s+not|don't|dont|never|without|no|skip)\s+(?:require\s+|want\s+to\s+)?(deploy\w*|ship|release|deliver|staging|production|prod)\b[^.!?\n]*/gi,
-      '',
-    );
-
-    const hasDeploy =
-      !isExplicitCiOnly &&
-      /\b(deploy|deployment|deploying|ship\s+to|release\s+to|deliver\s+to)\b/i.test(
-        cleanedPromptForDeploy,
-      );
+    // Affirmative-first deployment detection:
+    // Deployment is activated ONLY if the user affirmatively requests deployment.
+    // Negated deployment phrases ("do not deploy to staging", "zero deployment", etc.)
+    // or non-deployment uses of "production" ("production-ready build") NEVER activate deployment.
+    const deploymentIntent = this.parseDeploymentIntent(prompt);
 
     let deployEnv: 'staging' | 'production' | null = null;
     let resolvedEnvRecord: any = null;
 
-    if (hasDeploy) {
-      const isStaging = /\b(staging|stage|preprod|pre-prod|non-?prod)\b/i.test(
-        cleanedPromptForDeploy,
-      );
-      const isProduction = /\b(production|prod)\b/i.test(cleanedPromptForDeploy);
-
-      if (isStaging && !isProduction) {
-        deployEnv = 'staging';
-      } else if (isProduction && !isStaging) {
-        deployEnv = 'production';
-      } else {
+    if (deploymentIntent.hasAffirmativeDeploy) {
+      if (deploymentIntent.isAmbiguous || !deploymentIntent.targetEnv) {
         throw new BadRequestException(
           'Target deployment environment is ambiguous or not specified. Please explicitly specify either "staging" or "production".',
         );
       }
 
+      deployEnv = deploymentIntent.targetEnv;
       const targetEnvType =
         deployEnv === 'staging' ? EnvironmentType.STAGING : EnvironmentType.PRODUCTION;
       const targetLabel = deployEnv === 'staging' ? 'Staging' : 'Production';
 
-      // Look up customer's actual environment record in database
+      // Look up customer's actual environment record in database ONLY when affirmative deployment is confirmed
       const envRecord = await this.prisma.environment.findFirst({
         where: {
           projectId: project.id,
@@ -709,8 +691,7 @@ export class AiOrchestrationService {
           detectedStack?.capabilities.docker ||
           detectedStack?.detectedFiles?.some(
             (f) => f.includes('Dockerfile') || f.includes('docker'),
-          ) ||
-          isExplicitCiOnly,
+          ),
         ));
 
     const pipelineName = `${stackName} Delivery Pipeline`;
@@ -851,5 +832,93 @@ ${
       nodes,
       edges,
     };
+  }
+
+  /**
+   * Parses customer prompts for deployment intent using an affirmative-first parser.
+   * Deployment is activated ONLY if the user affirmatively requests deployment.
+   * Negated deploy phrases (e.g. "do not deploy to staging", "zero deployment", "no deployment")
+   * or non-deployment uses of "production" (e.g. "production-ready build") NEVER activate deployment.
+   */
+  public parseDeploymentIntent(prompt: string): DeploymentIntent {
+    if (!prompt || typeof prompt !== 'string') {
+      return { hasAffirmativeDeploy: false, targetEnv: null, isAmbiguous: false };
+    }
+
+    // 1. Check if the prompt has any deployment intent keyword at all
+    const rawHasDeployWord =
+      /\b(deploy|deployment|deploying|ship\s+to|release\s+to|deliver\s+to)\b/i.test(prompt);
+
+    if (!rawHasDeployWord) {
+      // No deployment keyword at all (e.g. "production-ready build", "build and test", "npm test")
+      return { hasAffirmativeDeploy: false, targetEnv: null, isAmbiguous: false };
+    }
+
+    // 2. Normalize and split prompt into clauses (by punctuation and sentence boundaries)
+    // Avoid splitting dots in framework names like 'Next.js' or 'Node.js' by requiring whitespace after period
+    const rawClauses = prompt
+      .split(/[,\n;!?]+|\.(?:\s+|$)|\b(?:but|however|whereas|although)\b/i)
+      .map((c) => c.trim())
+      .filter(Boolean);
+
+    const clauses = rawClauses.length > 0 ? rawClauses : [prompt.trim()];
+
+    let affirmativeStaging = false;
+    let affirmativeProduction = false;
+    let affirmativeUntargetedDeploy = false;
+
+    // Negation words preceding deploy or environment
+    const negationPrefixRegex =
+      /\b(do\s+not|don't|dont|never|without|no|zero|skip|omit|exclude|avoid)\b/i;
+
+    for (const clause of clauses) {
+      const hasDeployWord =
+        /\b(deploy|deployment|deploying|ship\s+to|release\s+to|deliver\s+to)\b/i.test(clause);
+      if (!hasDeployWord) {
+        continue;
+      }
+
+      // Check if this clause is negated
+      const isClauseNegated =
+        negationPrefixRegex.test(clause) ||
+        /\b(not\s+(?:required|needed|wanted|deploying))\b/i.test(clause) ||
+        /\b(ci[\s-]only|only\s+ci|build[\s-]only|test[\s-]only)\b/i.test(clause);
+
+      if (isClauseNegated) {
+        continue;
+      }
+
+      // Affirmative deployment clause:
+      const hasStagingWord = /\b(staging|stage|preprod|pre-prod|non-?prod)\b/i.test(clause);
+      const hasProdWord =
+        /\b(?:deploy\s+to\s+|deployment\s+to\s+|ship\s+to\s+|release\s+to\s+|to\s+)?(production|prod)\b/i.test(
+          clause,
+        ) && !/\bproduction[\s-](?:ready|build|quality|test|grade)\b/i.test(clause);
+
+      if (hasStagingWord && !hasProdWord) {
+        affirmativeStaging = true;
+      } else if (hasProdWord && !hasStagingWord) {
+        affirmativeProduction = true;
+      } else if (hasStagingWord && hasProdWord) {
+        affirmativeStaging = true;
+        affirmativeProduction = true;
+      } else {
+        affirmativeUntargetedDeploy = true;
+      }
+    }
+
+    if (!affirmativeStaging && !affirmativeProduction && !affirmativeUntargetedDeploy) {
+      return { hasAffirmativeDeploy: false, targetEnv: null, isAmbiguous: false };
+    }
+
+    if (affirmativeStaging && !affirmativeProduction) {
+      return { hasAffirmativeDeploy: true, targetEnv: 'staging', isAmbiguous: false };
+    }
+
+    if (affirmativeProduction && !affirmativeStaging) {
+      return { hasAffirmativeDeploy: true, targetEnv: 'production', isAmbiguous: false };
+    }
+
+    return { hasAffirmativeDeploy: true, targetEnv: null, isAmbiguous: true };
   }
 }
