@@ -210,10 +210,43 @@ export default function LoginPage() {
         return;
       }
 
-      const tokens = (data as any)?.tokens as Record<string, string> | undefined;
-      const user = (data as any)?.user;
-      localStorage.setItem('opspilot_token', tokens?.accessToken || '');
+      const rawData = (data as any)?.data || data;
+      const tokens = (rawData as any)?.tokens as Record<string, string> | undefined;
+      const user = (rawData as any)?.user;
+      const accessToken = tokens?.accessToken || '';
+      localStorage.setItem('opspilot_token', accessToken);
       localStorage.setItem('opspilot_user', JSON.stringify(user || {}));
+
+      // Pre-seed active demo organization & project for instant dashboard hydration
+      try {
+        const orgRes = await fetch(`${apiBase}/organizations`, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        if (orgRes.ok) {
+          const orgJson = await orgRes.json();
+          const orgs = orgJson?.data || [];
+          const demoOrg = orgs.find((o: any) => o.slug === 'demo-org-opspilot-internal') || orgs[0];
+          if (demoOrg?.id) {
+            localStorage.setItem('opspilot_org_id', demoOrg.id);
+            const projRes = await fetch(`${apiBase}/organizations/${demoOrg.id}/projects`, {
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+                'x-organization-id': demoOrg.id,
+              },
+            });
+            if (projRes.ok) {
+              const projJson = await projRes.json();
+              const projs = projJson?.data || [];
+              if (projs[0]?.id) {
+                localStorage.setItem('opspilot_project_id', projs[0].id);
+              }
+            }
+          }
+        }
+      } catch {
+        /* ignore */
+      }
+
       window.location.href = '/dashboard';
     } catch {
       setError('Network connection error. Ensure the NestJS backend is reachable.');

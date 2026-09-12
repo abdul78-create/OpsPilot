@@ -202,7 +202,8 @@ function getHeaders(extra: Record<string, string> = {}): Record<string, string> 
 }
 
 export async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  const url = `${API_BASE}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
+  const base = getApiBaseUrl();
+  const url = `${base}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
   const res = await fetch(url, {
     ...options,
     headers: getHeaders((options.headers as Record<string, string>) ?? {}),
