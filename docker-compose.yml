@@ -78,6 +78,7 @@ services:
       GEMINI_API_KEY:         ${GEMINI_API_KEY:-}
       LOG_LEVEL:              ${LOG_LEVEL:-info}
       SWAGGER_PATH:           api/docs
+      DEMO_MODE_ENABLED:      ${DEMO_MODE_ENABLED:-true}
     ports:
       - "3000:3000"
     depends_on:
