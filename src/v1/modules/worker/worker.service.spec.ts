@@ -18,6 +18,9 @@ describe('Worker Module', () => {
     pipelineJob: {
       update: jest.fn(),
     },
+    pipelineRun: {
+      findUnique: jest.fn().mockResolvedValue(null),
+    },
   };
 
   const mockEventBus = {

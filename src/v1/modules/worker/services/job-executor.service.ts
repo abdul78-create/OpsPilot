@@ -37,7 +37,7 @@ export class JobExecutorService {
     // ──────────────────────────────────────────────────────────
     //  DEMO MODE: Route to isolated demo runner — no Docker/git
     // ──────────────────────────────────────────────────────────
-    const run = await this.prisma.pipelineRun.findUnique({ where: { id: job.pipelineRunId } });
+    const run = await this.prisma?.pipelineRun?.findUnique?.({ where: { id: job.pipelineRunId } });
     const meta = run?.metadata as Record<string, unknown> | null;
     if (meta?.demoMode === true) {
       if (!this.demoRunner) {
