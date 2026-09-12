@@ -150,44 +150,6 @@ export default function LoginPage() {
     window.location.href = `${oauthBase}/auth/github`;
   };
 
-  const handleQuickLoginQA = async () => {
-    setEmail('qa@opspilot.dev');
-    setPassword('QASecretPassword@2026!');
-    setError('');
-    setOauthHelp(null);
-    setLoading(true);
-    try {
-      const apiBase = getApiBaseUrl();
-      const res = await fetch(`${apiBase}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: 'qa@opspilot.dev', password: 'QASecretPassword@2026!' }),
-      });
-      let data: Record<string, unknown> = {};
-      try {
-        data = await res.json();
-      } catch {
-        /* ignore */
-      }
-
-      if (!res.ok) {
-        setError((data.message as string) || 'Demo QA login failed');
-        return;
-      }
-
-      const tokens = (data.data as Record<string, unknown>)?.tokens as
-        Record<string, string> | undefined;
-      const user = (data.data as Record<string, unknown>)?.user;
-      localStorage.setItem('opspilot_token', tokens?.accessToken || '');
-      localStorage.setItem('opspilot_user', JSON.stringify(user || {}));
-      window.location.href = '/dashboard';
-    } catch {
-      setError('Network connection error. Ensure the NestJS backend is reachable.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   /** Demo Login — hits /auth/demo-login and receives isDemo=true JWT */
   const handleDemoLogin = async () => {
     setError('');
@@ -577,23 +539,10 @@ export default function LoginPage() {
               </div>
 
               <p className="text-[11px] leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-                Third-party {oauthHelp === 'github' ? 'GitHub' : 'Google'} OAuth credentials are not set in your local <code className="px-1.5 py-0.5 rounded font-mono text-[10px]" style={{ background: 'var(--bg-tertiary)' }}>.env</code>. You can log in instantly with the verified demo account or view setup instructions.
+                Third-party {oauthHelp === 'github' ? 'GitHub' : 'Google'} OAuth credentials are not configured in your environment. You can use email authentication, launch Demo Mode below, or configure OAuth credentials.
               </p>
 
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-1">
-                <button
-                  type="button"
-                  onClick={handleQuickLoginQA}
-                  disabled={loading}
-                  className="flex-1 py-2 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all shadow-sm"
-                  style={{
-                    background: 'var(--accent)',
-                    color: '#FFFFFF',
-                  }}
-                >
-                  {loading ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
-                  <span>Sign in with Demo QA Account</span>
-                </button>
                 <button
                   type="button"
                   onClick={() => setShowEnvGuide((prev) => !prev)}
@@ -646,7 +595,6 @@ export default function LoginPage() {
               border: '1.5px solid rgba(124,58,237,0.3)',
               borderRadius: '16px',
               padding: '16px',
-              marginBottom: '4px',
             }}
           >
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
@@ -684,7 +632,7 @@ export default function LoginPage() {
                       borderRadius: '4px',
                     }}
                   >
-                    Simulated
+                    SIMULATED
                   </span>
                 </div>
                 <p
@@ -695,7 +643,7 @@ export default function LoginPage() {
                     margin: '0 0 12px 0',
                   }}
                 >
-                  Experience the complete CI/CD workflow — pipeline execution, real-time logs, artifacts, and deployments — using safe, isolated demo data. No credentials needed.
+                  Experience the complete CI/CD workflow using safe, isolated demo data.
                 </p>
                 <button
                   id="demo-login-btn"
@@ -733,50 +681,6 @@ export default function LoginPage() {
                 </button>
               </div>
             </div>
-          </div>
-
-          {/* Quick Demo QA Access Pill */}
-          <div
-            className="p-3 rounded-xl border flex items-center justify-between gap-3 text-xs"
-            style={{
-              background: 'var(--bg-secondary)',
-              borderColor: 'var(--border)',
-            }}
-          >
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div
-                className="w-2 h-2 rounded-full shrink-0"
-                style={{ background: 'var(--success, #10B981)' }}
-              />
-              <div className="min-w-0">
-                <div className="font-semibold text-xs flex items-center gap-1.5" style={{ color: 'var(--text-primary)' }}>
-                  <span>Demo QA Account</span>
-                  <span
-                    className="text-[9px] px-1.5 py-0.2 rounded font-mono uppercase font-bold"
-                    style={{ background: 'var(--accent-dim)', color: 'var(--accent)' }}
-                  >
-                    Verified
-                  </span>
-                </div>
-                <div className="text-[11px] truncate font-mono" style={{ color: 'var(--text-muted)' }}>
-                  qa@opspilot.dev
-                </div>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={handleQuickLoginQA}
-              disabled={loading}
-              className="shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold border flex items-center gap-1.5 transition-all hover:bg-[var(--accent)] hover:text-white"
-              style={{
-                borderColor: 'var(--border)',
-                background: 'var(--bg-tertiary)',
-                color: 'var(--accent)',
-              }}
-            >
-              {loading ? <Loader2 size={12} className="animate-spin" /> : <ArrowRight size={12} />}
-              <span>1-Click Sign In</span>
-            </button>
           </div>
 
           {/* Divider */}
