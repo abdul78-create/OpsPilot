@@ -4,6 +4,7 @@ import { DemoSeedService } from './demo-seed.service';
 import { DemoRunnerService } from './demo-runner.service';
 import { AuthModule } from '../auth/auth.module';
 import { LogStreamingModule } from '../log-streaming/log-streaming.module';
+import { StateMachineService } from '../../../core/worker/state-machine.service';
 
 /**
  * DemoModule
@@ -19,7 +20,7 @@ import { LogStreamingModule } from '../log-streaming/log-streaming.module';
 @Module({
   imports: [AuthModule, LogStreamingModule],
   controllers: [DemoController],
-  providers: [DemoSeedService, DemoRunnerService],
+  providers: [DemoSeedService, DemoRunnerService, StateMachineService],
   exports: [DemoSeedService, DemoRunnerService],
 })
 export class DemoModule {}
