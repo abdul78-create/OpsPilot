@@ -5,6 +5,8 @@ import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { Maximize2, Minimize2, X, Copy, Check, Wifi, WifiOff } from 'lucide-react';
 
+import { getApiBaseUrl } from '@/lib/apiClient';
+
 interface TerminalStreamProps {
   runId: string;
   apiBase?: string;
@@ -20,7 +22,7 @@ interface TerminalStreamProps {
  */
 export function TerminalStream({
   runId,
-  apiBase = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000',
+  apiBase,
   height = 480,
   onClose,
 }: TerminalStreamProps) {
@@ -100,7 +102,8 @@ export function TerminalStream({
       ? localStorage.getItem('opspilot_token') ?? ''
       : '';
 
-    const streamUrl = `${apiBase}/v1/pipelines/runs/${runId}/logs/stream?token=${encodeURIComponent(token)}`;
+    const rootBase = (apiBase || getApiBaseUrl()).replace(/\/v1\/?$/, '');
+    const streamUrl = `${rootBase}/v1/pipelines/runs/${runId}/logs/stream?token=${encodeURIComponent(token)}`;
 
     const sse = new EventSource(streamUrl);
     sseRef.current = sse;

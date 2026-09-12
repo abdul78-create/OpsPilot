@@ -63,6 +63,43 @@ export class ArtifactsService {
     return this.serializeArtifact(artifact);
   }
 
+  async findAll(organizationId?: string, projectId?: string): Promise<any[]> {
+    const whereClause: any = { deletedAt: null };
+    if (projectId) {
+      whereClause.pipelineRun = {
+        pipelineDefinition: { projectId },
+      };
+    } else if (organizationId) {
+      whereClause.pipelineRun = {
+        pipelineDefinition: {
+          project: { organizationId },
+        },
+      };
+    }
+
+    const list = await this.prisma.artifact.findMany({
+      where: whereClause,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        pipelineRun: {
+          select: {
+            id: true,
+            pipelineDefinitionId: true,
+            pipelineDefinition: {
+              select: {
+                id: true,
+                name: true,
+                projectId: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return list.map((a) => this.serializeArtifact(a));
+  }
+
   async findByPipelineRun(pipelineRunId: string): Promise<any[]> {
     const run = await this.prisma.pipelineRun.findFirst({
       where: { id: pipelineRunId, deletedAt: null },
@@ -186,10 +223,19 @@ export class ArtifactsService {
 
   private serializeArtifact(artifact: any): any {
     if (!artifact) return artifact;
+    const sizeNumber =
+      typeof artifact.sizeBytes === 'bigint'
+        ? Number(artifact.sizeBytes)
+        : Number(artifact.sizeBytes ?? 0);
     return {
       ...artifact,
-      sizeBytes:
-        typeof artifact.sizeBytes === 'bigint' ? Number(artifact.sizeBytes) : artifact.sizeBytes,
+      sizeBytes: sizeNumber,
+      size: sizeNumber,
+      sha256: artifact.checksum,
+      mimeType:
+        artifact.name?.endsWith('.tar.gz') || artifact.name?.endsWith('.tgz')
+          ? 'application/gzip'
+          : 'application/octet-stream',
     };
   }
 }

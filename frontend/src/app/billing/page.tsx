@@ -11,6 +11,7 @@ import {
   fetchSubscriptionAndUsage,
   fetchInvoices,
   createCheckout,
+  isDemoMode,
   SubscriptionUsageData,
   InvoiceItem,
 } from '@/lib/apiClient';
@@ -74,17 +75,86 @@ export default function BillingPage() {
 
       if (subRes.status === 'fulfilled' && subRes.value?.data) {
         setSubData(subRes.value.data);
+      } else if (isDemoMode()) {
+        setSubData({
+          organizationId: 'b856e632-f010-4edc-9f47-22a5ec87fcb8',
+          plan: {
+            name: 'Demo Enterprise Trial',
+            price: '$0',
+            maxBuildMinutes: 10000,
+            maxDeployments: 1000,
+            maxArtifactStorageMB: 51200,
+            maxTeamSeats: 15,
+            aiRcaEnabled: true,
+          },
+          usage: {
+            buildMinutes: 342,
+            buildMinutesLimit: 10000,
+            buildMinutesPercent: 3.4,
+            deployments: 12,
+            deploymentsLimit: 1000,
+            deploymentsPercent: 1.2,
+            artifactStorageMB: 84,
+            artifactStorageLimitMB: 51200,
+            artifactStoragePercent: 0.16,
+            teamSeats: 3,
+            teamSeatsLimit: 15,
+            teamSeatsPercent: 20,
+          },
+        });
       } else {
         setSubData(null);
       }
 
       if (invRes.status === 'fulfilled' && invRes.value?.data) {
         setInvoices(invRes.value.data);
+      } else if (isDemoMode()) {
+        setInvoices([
+          {
+            id: 'inv_demo_01',
+            invoiceNumber: 'INV-DEMO-001',
+            amount: 0,
+            currency: 'USD',
+            status: 'PAID',
+            periodStart: new Date(Date.now() - 30 * 86400000).toISOString(),
+            periodEnd: new Date().toISOString(),
+            pdfUrl: '#',
+          } as any,
+        ]);
       } else {
         setInvoices([]);
       }
     } catch {
-      setSubData(null);
+      if (isDemoMode()) {
+        setSubData({
+          organizationId: 'b856e632-f010-4edc-9f47-22a5ec87fcb8',
+          plan: {
+            name: 'Demo Enterprise Trial',
+            price: '$0',
+            maxBuildMinutes: 10000,
+            maxDeployments: 1000,
+            maxArtifactStorageMB: 51200,
+            maxTeamSeats: 15,
+            aiRcaEnabled: true,
+          },
+          usage: {
+            buildMinutes: 342,
+            buildMinutesLimit: 10000,
+            buildMinutesPercent: 3.4,
+            deployments: 12,
+            deploymentsLimit: 1000,
+            deploymentsPercent: 1.2,
+            artifactStorageMB: 84,
+            artifactStorageLimitMB: 51200,
+            artifactStoragePercent: 0.16,
+            teamSeats: 3,
+            teamSeatsLimit: 15,
+            teamSeatsPercent: 20,
+          },
+        });
+      } else {
+        setSubData(null);
+      }
       setInvoices([]);
     } finally {
       setLoading(false);
@@ -114,6 +184,14 @@ export default function BillingPage() {
 
   const handleUpgrade = async (planKey: string) => {
     if (planKey === activePlanKey) return;
+    if (isDemoMode()) {
+      toast({
+        kind: 'info',
+        title: 'Simulated Demo Environment',
+        message: 'Plan checkout is unavailable in Demo Mode. Your environment has full feature access.',
+      });
+      return;
+    }
     setUpgrading(planKey);
     try {
       const res = await createCheckout(planKey);

@@ -40,9 +40,11 @@ export class GlobalSecretsController {
     summary: 'List all Secrets (Masked) across Organization or specified Environment',
   })
   async findAllGlobal(
-    @Headers('x-organization-id') orgId: string,
+    @CurrentUser() user: JwtPayload,
+    @Headers('x-organization-id') orgId?: string,
     @Query('environmentId') environmentId?: string,
   ) {
+    const targetOrgId = orgId || user?.oid || (user as any)?.organizationId;
     if (environmentId) {
       const secrets = await this.secretsService.findAll(environmentId);
       return {
@@ -50,7 +52,7 @@ export class GlobalSecretsController {
         data: secrets,
       };
     }
-    const secrets = await this.secretsService.findAllByOrganization(orgId);
+    const secrets = await this.secretsService.findAllByOrganization(targetOrgId);
     return {
       message: 'Secrets metadata list retrieved successfully',
       data: secrets,
@@ -62,14 +64,15 @@ export class GlobalSecretsController {
   @ApiOperation({ summary: 'Create and encrypt Secret for active Environment' })
   async createGlobal(
     @CurrentUser() user: JwtPayload,
-    @Headers('x-organization-id') orgId: string,
     @Body() dto: CreateSecretDto & { environmentId?: string },
+    @Headers('x-organization-id') orgId?: string,
   ) {
+    const targetOrgId = orgId || user?.oid || (user as any)?.organizationId;
     let targetEnvId = dto.environmentId;
     if (!targetEnvId) {
       const env = await this.prisma.environment.findFirst({
         where: {
-          project: { organizationId: orgId, deletedAt: null },
+          project: { organizationId: targetOrgId, deletedAt: null },
           deletedAt: null,
         },
       });

@@ -53,6 +53,20 @@ export function setActiveProjectId(projectId: string): void {
   }
 }
 
+export function isDemoMode(): boolean {
+  if (typeof window === 'undefined') return false;
+  const token = localStorage.getItem('opspilot_token');
+  if (!token) return false;
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return false;
+    const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+    return payload?.isDemo === true;
+  } catch {
+    return false;
+  }
+}
+
 export interface UserProfile {
   id: string;
   email: string;
@@ -116,6 +130,7 @@ export interface PipelineRun {
   durationSeconds?: number;
   createdAt: string;
   pipelineName?: string;
+  projectName?: string;
   repositoryUrl?: string;
   jobs?: PipelineJob[];
 }
@@ -574,7 +589,36 @@ export async function testEnvironmentConnection(
 // ─── Pipelines ────────────────────────────────────────────────────────────────
 
 export async function listPipelines(projectId?: string) {
-  const targetProjectId = projectId || getActiveProjectId();
+  if (projectId && projectId !== 'all') {
+    return apiFetch<{ data: PipelineDefinition[] }>(`/projects/${projectId}/pipelines`);
+  }
+
+  // If projectId is not specified or 'all', fetch across all projects in the organization
+  try {
+    const projRes = await listProjects();
+    const projects = projRes.data ?? [];
+    if (projects.length > 0) {
+      const allPipelines: PipelineDefinition[] = [];
+      await Promise.all(
+        projects.map(async (p) => {
+          try {
+            const res = await apiFetch<{ data: PipelineDefinition[] }>(`/projects/${p.id}/pipelines`);
+            (res.data ?? []).forEach((pipe) => {
+              allPipelines.push({
+                ...pipe,
+                description: pipe.description || `${p.name} CI/CD Pipeline`,
+              });
+            });
+          } catch {}
+        }),
+      );
+      if (allPipelines.length > 0) {
+        return { data: allPipelines };
+      }
+    }
+  } catch {}
+
+  const targetProjectId = getActiveProjectId();
   if (!targetProjectId) {
     return { data: [] as PipelineDefinition[] };
   }
@@ -655,20 +699,42 @@ export async function listAllRuns(
   limit = 50,
 ): Promise<PipelineRun[]> {
   try {
-    const targetProjectId = projectId || getActiveProjectId();
-    if (!targetProjectId) return [];
-    const pipelines = await listPipelines(targetProjectId);
     const allRuns: PipelineRun[] = [];
-    await Promise.all(
-      (pipelines.data ?? []).map(async (p) => {
-        try {
-          const runs = await listRunsForPipeline(p.id, limit);
-          (runs.data ?? []).forEach((r) => allRuns.push({ ...r, pipelineName: p.name }));
-        } catch {
-          /* skip */
-        }
-      }),
-    );
+    if (projectId && projectId !== 'all') {
+      const pipelines = await listPipelines(projectId);
+      await Promise.all(
+        (pipelines.data ?? []).map(async (p) => {
+          try {
+            const runs = await listRunsForPipeline(p.id, limit);
+            (runs.data ?? []).forEach((r) => allRuns.push({ ...r, pipelineName: p.name }));
+          } catch {
+            /* skip */
+          }
+        }),
+      );
+    } else {
+      // Fetch across all projects in the organization
+      const projects = await listProjects().catch(() => ({ data: [] }));
+      await Promise.all(
+        (projects.data ?? []).map(async (proj) => {
+          try {
+            const pipelines = await apiFetch<{ data: PipelineDefinition[] }>(
+              `/projects/${proj.id}/pipelines`,
+            );
+            await Promise.all(
+              (pipelines.data ?? []).map(async (p) => {
+                try {
+                  const runs = await listRunsForPipeline(p.id, limit);
+                  (runs.data ?? []).forEach((r) =>
+                    allRuns.push({ ...r, pipelineName: p.name, projectName: proj.name }),
+                  );
+                } catch {}
+              }),
+            );
+          } catch {}
+        }),
+      );
+    }
     return allRuns.sort(
       (a, b) => new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime(),
     );
@@ -866,15 +932,46 @@ export async function listAiReports(orgId?: string, type?: string) {
 
 // ─── Artifacts ────────────────────────────────────────────────────────────────
 
-export async function listArtifacts(runId?: string) {
+export async function listArtifacts(runId?: string, projectId?: string) {
   if (runId) {
-    return apiFetch<{ data: Artifact[] }>(`/pipeline-runs/${runId}/artifacts`);
+    const res = await apiFetch<{ data: any[] }>(`/pipeline-runs/${runId}/artifacts`);
+    const mapped: Artifact[] = (res.data ?? []).map((a) => ({
+      id: a.id,
+      name: a.name,
+      pipelineRunId: a.pipelineRunId,
+      size: a.size ?? Number(a.sizeBytes ?? 0),
+      sha256: a.sha256 ?? a.checksum ?? '',
+      mimeType:
+        a.mimeType ??
+        (a.name?.endsWith('.tar.gz') || a.name?.endsWith('.tgz')
+          ? 'application/gzip'
+          : 'application/octet-stream'),
+      createdAt: a.createdAt,
+      downloadUrl: a.downloadUrl ?? `${getApiBaseUrl()}/artifacts/${a.id}/download`,
+    }));
+    return { data: mapped };
   }
-  return { data: [] };
+  const query = projectId ? `?projectId=${encodeURIComponent(projectId)}` : '';
+  const res = await apiFetch<{ data: any[] }>(`/artifacts${query}`);
+  const mapped: Artifact[] = (res.data ?? []).map((a) => ({
+    id: a.id,
+    name: a.name,
+    pipelineRunId: a.pipelineRunId,
+    size: a.size ?? Number(a.sizeBytes ?? 0),
+    sha256: a.sha256 ?? a.checksum ?? '',
+    mimeType:
+      a.mimeType ??
+      (a.name?.endsWith('.tar.gz') || a.name?.endsWith('.tgz')
+        ? 'application/gzip'
+        : 'application/octet-stream'),
+    createdAt: a.createdAt,
+    downloadUrl: a.downloadUrl ?? `${getApiBaseUrl()}/artifacts/${a.id}/download`,
+  }));
+  return { data: mapped };
 }
 
 export function getArtifactDownloadUrl(artifactId: string): string {
-  return `${API_BASE}/artifacts/${artifactId}/download`;
+  return `${getApiBaseUrl()}/artifacts/${artifactId}/download`;
 }
 
 // ─── Deployments ──────────────────────────────────────────────────────────────

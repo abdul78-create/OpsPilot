@@ -653,17 +653,23 @@ export class AuthService {
       throw new NotFoundException('Demo user not found after seeding.');
     }
 
-    // Issue a short-lived (2h) access token with isDemo=true claim
+    // Issue a short-lived (2h) access token with isDemo=true claim and demo organization context
     const accessToken = this.tokenService.generateAccessToken({
       sub: user.id,
       email: user.email,
       role: user.role,
       isSuperAdmin: false,
       isDemo: true,
+      oid: ctx.orgId,
       type: 'access',
     });
 
-    this.logger.log(`[DEMO] Demo login successful for ${user.email}`);
+    const org = await this.prisma.organization.findUnique({
+      where: { id: ctx.orgId },
+      include: { projects: { where: { deletedAt: null } } },
+    });
+
+    this.logger.log(`[DEMO] Demo login successful for ${user.email} (Org: ${ctx.orgId})`);
 
     return {
       user: {
@@ -677,6 +683,8 @@ export class AuthService {
         // Demo sessions do not issue refresh tokens
         refreshToken: '',
       },
+      organization: org ? { id: org.id, name: org.name, slug: org.slug } : undefined,
+      projects: org?.projects?.map((p) => ({ id: p.id, name: p.name, slug: p.slug })) || [],
     };
   }
 }

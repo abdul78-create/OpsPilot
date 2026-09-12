@@ -28,4 +28,10 @@ export class AuthResponseDto {
 
   @ApiProperty({ type: AuthTokenDataDto })
   tokens!: AuthTokenDataDto;
+
+  @ApiProperty({ required: false })
+  organization?: any;
+
+  @ApiProperty({ required: false })
+  projects?: any[];
 }

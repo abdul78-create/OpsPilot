@@ -37,7 +37,10 @@ export class RunsService {
   ): Promise<PipelineRun & { jobs: PipelineJob[] }> {
     const pipeline = await this.prisma.pipelineDefinition.findFirst({
       where: { id: pipelineId, deletedAt: null },
-      include: { versions: { orderBy: { versionNumber: 'desc' }, take: 1 } },
+      include: {
+        versions: { orderBy: { versionNumber: 'desc' }, take: 1 },
+        project: { select: { id: true, slug: true, organizationId: true } },
+      },
     });
 
     if (!pipeline) {
@@ -62,8 +65,19 @@ export class RunsService {
     );
 
     const result = await this.txManager.execute(async (tx) => {
-      // Detect demo pipeline — tag the run so workers route to DemoRunnerService
-      const isDemoRun = pipeline.slug === DEMO_PIPELINE_SLUG;
+      // Detect demo pipeline or demo project — tag the run so workers route to DemoRunnerService
+      const isDemoRun =
+        pipeline.slug === DEMO_PIPELINE_SLUG ||
+        [
+          'demo-cicd-pipeline',
+          'ecommerce-pipeline',
+          'banking-pipeline',
+          'ai-analytics-pipeline',
+        ].includes(pipeline.slug) ||
+        pipeline.project?.organizationId === 'b856e632-f010-4edc-9f47-22a5ec87fcb8' ||
+        ['demo-ecommerce-platform', 'demo-banking-api', 'demo-ai-analytics-service'].includes(
+          pipeline.project?.slug ?? '',
+        );
 
       const run = await tx.pipelineRun.create({
         data: {

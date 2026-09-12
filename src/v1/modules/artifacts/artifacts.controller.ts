@@ -5,6 +5,7 @@ import {
   Delete,
   Body,
   Param,
+  Query,
   Res,
   UseGuards,
   HttpStatus,
@@ -28,6 +29,19 @@ import { PipelinePermissions } from '@shared/constants/permissions.constants';
 @UseGuards(JwtAuthGuard, TenantGuard, PermissionsGuard)
 export class ArtifactsController {
   constructor(private readonly artifactsService: ArtifactsService) {}
+
+  @Get('artifacts')
+  @Permissions(PipelinePermissions.READ)
+  @ApiOperation({ summary: 'List all artifacts for organization or project' })
+  @ApiResponse({ status: HttpStatus.OK, type: [ArtifactResponseDto] })
+  async findAll(@CurrentUser() user: JwtPayload, @Query('projectId') projectId?: string) {
+    const orgId = user?.oid || (user as any)?.organizationId;
+    const artifacts = await this.artifactsService.findAll(orgId, projectId);
+    return {
+      message: 'Artifacts retrieved successfully',
+      data: artifacts,
+    };
+  }
 
   @Post('pipeline-runs/:runId/artifacts')
   @Permissions(PipelinePermissions.CREATE)

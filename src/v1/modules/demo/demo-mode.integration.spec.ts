@@ -73,6 +73,12 @@ describe('Demo Mode Automated Integration & Security Test Suite', () => {
     },
     organization: {
       findFirst: jest.fn(),
+      findUnique: jest.fn().mockResolvedValue({
+        id: 'org_demo_123',
+        name: 'OpsPilot Demo Org',
+        slug: 'opspilot-demo',
+        projects: [],
+      }),
       create: jest.fn(),
     },
     member: {
@@ -81,32 +87,73 @@ describe('Demo Mode Automated Integration & Security Test Suite', () => {
     },
     project: {
       findFirst: jest.fn(),
-      create: jest.fn(),
+      findMany: jest.fn().mockResolvedValue([]),
+      create: jest
+        .fn()
+        .mockImplementation((args) => Promise.resolve({ id: 'proj_mock_id', ...args.data })),
+      delete: jest.fn().mockResolvedValue({}),
+      deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
     },
     repositoryConnection: {
       findFirst: jest.fn(),
       create: jest.fn(),
+      deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
     },
     environment: {
       findFirst: jest.fn(),
+      create: jest
+        .fn()
+        .mockImplementation((args) => Promise.resolve({ id: 'env_mock_id', ...args.data })),
+      deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
+    },
+    secret: {
+      findFirst: jest.fn().mockResolvedValue({ id: 'sec_1' }),
       create: jest.fn(),
+      deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
     },
     pipelineDefinition: {
       findFirst: jest.fn(),
-      create: jest.fn(),
+      findMany: jest.fn().mockResolvedValue([]),
+      create: jest
+        .fn()
+        .mockImplementation((args) => Promise.resolve({ id: 'pipe_mock_id', ...args.data })),
+      delete: jest.fn().mockResolvedValue({ id: 'pipe_mock_id' }),
+      deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
     },
     pipelineVersion: {
       findFirst: jest.fn(),
-      create: jest.fn(),
+      create: jest
+        .fn()
+        .mockImplementation((args) => Promise.resolve({ id: 'pver_mock_id', ...args.data })),
+      deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
     },
     pipelineJob: {
       update: jest.fn(),
+      create: jest.fn(),
+      deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
     },
     pipelineRun: {
       update: jest.fn(),
+      count: jest.fn().mockResolvedValue(3),
+      create: jest.fn(),
+      deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
+    },
+    pipelineRunLog: {
+      create: jest.fn(),
+      deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
     },
     artifact: {
       findFirst: jest.fn(),
+      create: jest.fn(),
+      deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
+    },
+    deployment: {
+      findFirst: jest.fn(),
+      create: jest.fn(),
+      deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
+    },
+    incident: {
+      findFirst: jest.fn().mockResolvedValue({ id: 'inc_mock_1' }),
       create: jest.fn(),
     },
   };

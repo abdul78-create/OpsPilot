@@ -97,6 +97,9 @@ export default function DeploymentsPage() {
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-sm font-bold text-[var(--text-primary)]">Deployments</h1>
+                <span className="text-[10px] font-mono text-[var(--accent)] border border-[var(--accent)]/30 bg-[var(--accent-dim)] px-2 py-0.5 rounded-full font-semibold">
+                  SIMULATED
+                </span>
                 <span className="text-[10px] font-mono text-[var(--text-muted)] border border-[var(--border)] px-2 py-0.5 rounded-full">{stats.total} total</span>
                 {stats.active > 0 && (
                   <span className="text-[10px] font-mono text-[var(--success)] border border-[var(--border)] bg-[var(--success-dim)] px-2 py-0.5 rounded-full font-semibold">● {stats.active} active</span>
