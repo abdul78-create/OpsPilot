@@ -1,358 +1,299 @@
-# 🚀 OpsPilot — Autonomous AI DevOps & CI/CD Infrastructure Engine
+<p align="center">
+  <img src="frontend/public/opspilot-logo.png" alt="OpsPilot AI Logo" width="180" style="border-radius: 24px; box-shadow: 0 12px 40px rgba(99, 102, 241, 0.35);" />
+</p>
 
-[![Build Status](https://img.shields.io/badge/build-passing-emerald?style=for-the-badge&logo=docker)](https://github.com/abdul78-create/OpsPilot)
-[![Engine](https://img.shields.io/badge/nest.js-10.x-E0234E?style=for-the-badge&logo=nestjs)](https://nestjs.com)
-[![Frontend](https://img.shields.io/badge/next.js-16.2.12-black?style=for-the-badge&logo=nextdotjs)](https://nextjs.org)
-[![Database](https://img.shields.io/badge/postgresql-16-4169E1?style=for-the-badge&logo=postgresql)](https://postgresql.org)
-[![Queue](https://img.shields.io/badge/redis-7.x-DC382D?style=for-the-badge&logo=redis)](https://redis.io)
-[![License](https://img.shields.io/badge/license-MIT-blue?style=for-the-badge)](LICENSE)
+<h1 align="center">OpsPilot AI</h1>
 
-**OpsPilot** is a commercial-grade, multi-tenant autonomous DevOps & CI/CD platform designed to automate code builds, integration testing, containerization, visual DAG workflows, live deployment rollouts, and real-time observability.
+<p align="center">
+  <strong>The Autonomous DevOps Orchestrator & Intelligent CI/CD Infrastructure Engine</strong>
+</p>
+
+<p align="center">
+  <em>Next-generation CI/CD with interactive visual DAG workflows, real-time hardware-accelerated telemetry, AI-driven root cause analysis, and hermetic containerized execution.</em>
+</p>
+
+<p align="center">
+  <a href="https://github.com/abdul78-create/OpsPilot"><img src="https://img.shields.io/badge/build-passing-059669?style=for-the-badge&logo=githubactions&logoColor=white" alt="Build Status" /></a>
+  <a href="https://nestjs.com"><img src="https://img.shields.io/badge/Engine-NestJS%2010.x-E0234E?style=for-the-badge&logo=nestjs&logoColor=white" alt="NestJS Engine" /></a>
+  <a href="https://nextjs.org"><img src="https://img.shields.io/badge/Frontend-Next.js%2016-000000?style=for-the-badge&logo=nextdotjs&logoColor=white" alt="Next.js 16" /></a>
+  <a href="https://postgresql.org"><img src="https://img.shields.io/badge/Database-PostgreSQL%2016-336791?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL 16" /></a>
+  <a href="https://redis.io"><img src="https://img.shields.io/badge/Queue-Redis%207%20%2F%20BullMQ-DC382D?style=for-the-badge&logo=redis&logoColor=white" alt="Redis 7" /></a>
+  <a href="https://www.docker.com"><img src="https://img.shields.io/badge/Runtime-Docker%20Engine-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker Engine" /></a>
+  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-6366F1?style=for-the-badge" alt="MIT License" /></a>
+</p>
+
+<p align="center">
+  <a href="#-quickstart-via-docker-compose"><strong>🚀 Quickstart</strong></a> •
+  <a href="#-the-problem--how-opspilot-helps"><strong>💡 Why OpsPilot</strong></a> •
+  <a href="#-core-capabilities"><strong>⚡ Capabilities</strong></a> •
+  <a href="#-system-architecture"><strong>🏗 Architecture</strong></a> •
+  <a href="#-featured-demo-projects"><strong>📦 Demo Projects</strong></a> •
+  <a href="#-interactive-demo-mode-walkthrough"><strong>🎬 Demo Walkthrough</strong></a> •
+  <a href="#-documentation-index"><strong>📚 Documentation</strong></a>
+</p>
 
 ---
 
-## 🌟 Core Features
+## 💡 The Problem & How OpsPilot Helps
 
-- **⚡ Interactive Visual DAG Pipeline Builder**: Node-based workflow canvas (`@xyflow/react`) with Kahn's algorithm cycle detection, drag-and-drop palette (Trigger, Build, Test, Security, Approval Gate, Deploy, Health Check, Rollback), and bidirectional DAG-to-YAML compiler.
-- **📜 Hardware-Accelerated XTerm.js Terminal**: WebGL 60 FPS streaming terminal supporting 50,000-line scrollback, line numbers, and live Server-Sent Events (`/v1/runs/:id/logs/stream`).
-- **⚡ Isolated Docker Build Engine**: Automatically clones repositories, provisions ephemeral workspaces, and executes containerized build & test stages (`node:20` / custom images).
-- **🔒 Production Webhook Verifier**: Strict HMAC-SHA256 signature verification (`X-Hub-Signature-256`) and Redis-backed idempotency protection (`SET EX NX 86400`) against duplicate webhook deliveries.
-- **🔄 Automated Live Container Rollouts**: Auto-provisions target containers (`opspilot_app_target`) post-build, with HTTP 200 health check verification and automatic rollback.
-- **🛡️ Multi-Tenant RBAC & Vault**: Tenant isolation (`x-organization-id`), AES-256-GCM secret vault encryption, JWT authentication, and structured logging secret redaction.
-- **📊 Real-time Observability**: Built-in Prometheus telemetry scraper (`/v1/metrics/prometheus`) and System Health API (`/v1/metrics/system-health`).
-- **💻 Modern Next.js 16 UI**: 230 prerendered static pages with dynamic Nginx UUID routing for run timelines, observability dashboards, team RBAC settings, and secrets management.
+Modern engineering teams lose **up to 40% of sprint velocity** struggling with fragmented, fragile DevOps tooling:
+- **YAML Fatigue**: Thousands of lines of brittle pipeline scripts prone to subtle indentation crashes.
+- **Opaque Build Failures**: Developers spend hours sifting through massive unformatted terminal logs trying to locate stack traces.
+- **Host Contamination**: Builds fail unpredictably due to shared daemon dependencies or dirty state from prior runs.
+- **Manual Panic Rollbacks**: Flaky releases hit production without automated canary or health-check verification.
+
+### ✨ The OpsPilot Transformation
+
+OpsPilot reimagines the developer operations experience as a unified, autonomous command center:
+
+| Traditional DevOps Pain | The OpsPilot Autonomous Solution |
+| :--- | :--- |
+| **Complex Syntax & YAML Hell** | **Interactive Visual DAG Canvas**: Drag-and-drop node graph with Kahn's algorithm cycle detection and 2-way YAML synchronization. |
+| **Hours Spent Debugging Logs** | **AI-Powered Root Cause Analysis (RCA)**: Integrated LLM engine ingests error logs, diagnoses failures, and suggests actionable fixes. |
+| **Laggy, Dropped Terminal Logs** | **WebGL 60 FPS Terminal**: Hardware-accelerated XTerm.js with Server-Sent Events (SSE) streaming up to 50,000 lines seamlessly. |
+| **Host System Contamination** | **Hermetic Docker Sandboxes**: Every job runs inside an isolated ephemeral container with dedicated volume scoping. |
+| **Broken Production Releases** | **Automated Health-Check Rollouts**: Built-in HTTP health verification with instant automatic rollback on non-200 responses. |
+| **Complex Setup & Cloud Costs** | **Instant One-Click Demo Mode**: Fully functioning multi-project environment ready in seconds without cloud credentials. |
 
 ---
 
-## 🏗 Architecture Overview
+## ⚡ Core Capabilities
 
-```text
-                                ┌─────────────────────────┐
-                                │     GitHub Webhook      │
-                                └────────────┬────────────┘
-                                             │ HMAC SHA-256 Signature
-                                             ▼
-┌────────────────────────────────────────────────────────────────────────┐
-│              OpsPilot Production Nginx TLS Reverse Proxy (Port 443)    │
-└────────────┬──────────────────────────────────────────────┬────────────┘
-             │                                              │
-             ▼ /v1/*                                        ▼ / (Static)
-┌───────────────────────────┐                  ┌───────────────────────────┐
-│     NestJS API Engine     │                  │  Next.js 16 UI Dashboard  │
-│        (Port 3000)        │                  │     (230 Static Pages)    │
-└─────┬─────────────────┬───┘                  └───────────────────────────┘
-      │                 │
-      ▼                 ▼
-┌───────────┐     ┌───────────┐
-│ PostgreSQL│     │   Redis   │ ──► BullMQ Job Queue
-│  DB (16)  │     │ Store (7) │
-└───────────┘     └─────┬─────┘
-                        │
-                        ▼
-            ┌───────────────────────┐
-            │ Docker Worker Engine  │
-            │  (Isolated Execution) │
-            └───────────┬───────────┘
-                        │
-                        ▼
-            ┌───────────────────────┐
-            │ Live App Target (8080)│
-            │  (HTTP 200 Verified)  │
-            └───────────────────────┘
+### 🎨 Visual DAG Workflow Canvas (`@xyflow/react`)
+- **No-Code / Low-Code Pipeline Design**: Build enterprise CI/CD pipelines visually using modular nodes: `Source Trigger`, `Build`, `Test`, `Security Audit`, `Approval Gate`, `Deploy`, `Health Check`, and `Rollback`.
+- **Topological Sorting & Cycle Detection**: Automatically validates workflow graphs using Kahn's algorithm before execution to prevent infinite circular dependency loops.
+- **Bidirectional Compilation**: Edit the visual graph or switch to Monaco Editor to edit raw YAML; changes synchronize bidirectionally in real-time.
+
+### 🖥️ Hardware-Accelerated Telemetry (XTerm.js + SSE)
+- **Zero-Latency Live Streaming**: Uses HTTP Server-Sent Events (`/v1/runs/:id/logs/stream`) to broadcast container stdout/stderr directly to browser viewports.
+- **WebGL Rendering Engine**: Smooth 60 FPS rendering capable of handling high-throughput log cascades with ANSI color decoding, timestamp filtering, and multi-stage tabs.
+
+### 🧠 Autonomous AI Diagnostics & Root Cause Analysis
+- **Intelligent Error Localization**: Detects compile errors, test failures, and environment mismatches from terminal streams.
+- **Confidence Scoring & Remediation**: Generates confidence-rated incident analysis reports with suggested code patches and command remedies.
+- **Deterministic Fallback Engine**: Employs heuristic rule-based analyzers when external AI APIs are unconfigured, ensuring zero downtime.
+
+### 📦 Cryptographic Artifact Registry
+- **Automated Archive Packaging**: Automatically bundles build artifacts into standard gzip archives (`.tar.gz`) upon pipeline success.
+- **Cryptographic Integrity**: Computes and stores SHA-256 hashes for every artifact to ensure zero tamper during deployments.
+- **Direct Streaming Binary Downloads**: Stream artifacts directly to developers over HTTP `200 OK` with verified MIME types.
+
+### 🔄 Multi-Environment Release Management
+- **Staging & Production Pipelines**: Track multi-stage release rollouts across environments with detailed deployment history.
+- **Simulated & Live Deployment Verification**: Continuous status transitions with verified environment health checks and rollback triggers.
+
+### 🛡️ Enterprise Zero-Trust Security
+- **AES-256-GCM Encrypted Vault**: Secrets, private keys, and API tokens are symmetrically encrypted at rest with initialization vectors and auth tags.
+- **Strict Webhook HMAC Verification**: Inbound GitHub webhooks are validated using HMAC-SHA256 signatures (`X-Hub-Signature-256`) with replay attack mitigation.
+- **Tenant Scoping & Secret Redaction**: Multi-tenant RBAC enforced at database queries; sensitive credentials are automatically redacted from all stdout/stderr streams.
+
+---
+
+## 🏗 System Architecture
+
+```mermaid
+flowchart TB
+    subgraph ClientLayer ["Client & Observability Layer"]
+        UI["Next.js 16 Modern UI<br/>(Tailwind CSS, Radix UI)"]
+        DAG["Interactive DAG Canvas<br/>(@xyflow/react & Monaco)"]
+        Terminal["WebGL 60 FPS Terminal<br/>(XTerm.js + SSE Stream)"]
+    end
+
+    subgraph Gateway ["Edge & Reverse Proxy"]
+        Nginx["Nginx Reverse Proxy & TLS<br/>Port 80 / 443"]
+    end
+
+    subgraph BackendEngine ["NestJS Autonomous API Engine (Port 3000)"]
+        AuthMod["Auth & Tenant RBAC<br/>(JWT + OAuth + Demo Guard)"]
+        PipeMod["Pipeline & DAG Compiler<br/>(Kahn's Topological Sort)"]
+        RunsMod["Run State Machine & SSE<br/>(Event Emitter + Log Buffer)"]
+        VaultMod["Encrypted Secrets Vault<br/>(AES-256-GCM Encryption)"]
+        ArtMod["Artifact Registry<br/>(SHA-256 + Gzip Stream)"]
+        AIMod["AI RCA & Heuristic Engine<br/>(Gemini LLM + Heuristics)"]
+    end
+
+    subgraph DataQueue ["State & Message Bus Layer"]
+        Postgres[("PostgreSQL 16 DB<br/>Relational & Audit State")]
+        Redis[("Redis 7 Cache & Store<br/>BullMQ Queues & Idempotency")]
+    end
+
+    subgraph ExecutionLayer ["Isolated Execution Sandbox"]
+        Worker["BullMQ Worker Service<br/>(Pipeline Run Processor)"]
+        DockerHost["Docker Engine Sandbox<br/>(Ephemeral Containers)"]
+        TargetApp["Target Deploy Application<br/>(HTTP 200 Verification)"]
+    end
+
+    UI --> Nginx
+    DAG --> Nginx
+    Terminal --> Nginx
+    Nginx --> BackendEngine
+
+    BackendEngine <--> Postgres
+    BackendEngine <--> Redis
+    Redis <--> Worker
+    Worker --> DockerHost
+    DockerHost --> TargetApp
+    Worker -. Live SSE Logs .-> RunsMod
+    RunsMod -. Event Stream .-> Terminal
 ```
 
 ---
 
-## 🛠️ Technology Stack
+## 📦 Featured Demo Projects
 
-### Languages
+OpsPilot comes pre-configured with **3 fully functional, realistic demo projects** to provide a complete evaluation experience without needing live cloud accounts:
 
-| Language | Where Used |
-|---|---|
-| **TypeScript** | Entire backend (`src/`) and frontend (`frontend/src/`) — primary language |
-| **JavaScript** | 33+ E2E, chaos, load, and acceptance test scripts (`scripts/`) |
-| **SQL** | Prisma migrations and database seed files |
-| **YAML** | Pipeline definitions, Docker Compose, GitHub Actions CI |
-| **Bash / Shell** | Startup, cloud bootstrap, and migration scripts |
-| **Prisma SDL** | `prisma/schema.prisma` — ORM schema definition |
-
----
-
-### Backend (`src/`)
-
-#### Runtime & Framework
-| Technology | Version / Notes |
-|---|---|
-| **Node.js** | v20 (runtime) |
-| **NestJS** | v10 — modular backend framework (24 feature modules) |
-| **Express** | Underlying HTTP adapter via `@nestjs/platform-express` |
-| **TypeScript** | v5.3 |
-
-#### Database & ORM
-| Technology | Notes |
-|---|---|
-| **PostgreSQL** | v16 — primary relational database |
-| **Prisma ORM** | v5.9 — schema, migrations, Prisma Client |
-
-#### Queue & Caching
-| Technology | Notes |
-|---|---|
-| **BullMQ** | v6 — distributed job queue for pipeline runs |
-| **Redis** | v7 — BullMQ backend + idempotency cache |
-| **ioredis** | Node.js Redis client |
-
-#### Authentication & Security
-| Technology | Notes |
-|---|---|
-| **Passport.js** | Auth middleware |
-| **passport-jwt** | JWT Bearer strategy |
-| **passport-google-oauth20** | Google OAuth 2.0 SSO |
-| **passport-github2** | GitHub OAuth SSO |
-| **@nestjs/jwt** | JWT signing and verification |
-| **argon2** | Password hashing (native module — requires build toolchain) |
-| **AES-256-GCM** | Secrets vault encryption (Node.js `crypto` built-in) |
-| **HMAC-SHA256** | Webhook signature verification |
-| **Helmet** | HTTP security headers |
-| **@nestjs/throttler** | Rate limiting (100 req/min) |
-
-#### AI / LLM Integration
-| Technology | Notes |
-|---|---|
-| **Google Gemini API** | Primary AI provider for pipeline generation, RCA, risk scoring |
-| **OpenAI API** | Optional secondary AI provider |
-| **Rule-based AI** | Deterministic fallback when no LLM key is configured |
-
-#### Logging & Observability
-| Technology | Notes |
-|---|---|
-| **Pino** | Structured JSON logging |
-| **nestjs-pino** | NestJS Pino integration |
-| **Server-Sent Events (SSE)** | Real-time log streaming to frontend |
-| **@nestjs/event-emitter** | Internal event bus |
-| **@nestjs/terminus** | Health check endpoints |
-
-#### API & Validation
-| Technology | Notes |
-|---|---|
-| **@nestjs/swagger** | v7 — OpenAPI/Swagger docs (auto-generated) |
-| **class-validator** | DTO validation |
-| **class-transformer** | DTO serialization |
-| **Joi** | Config schema validation |
-
-#### Pipeline Runner
-| Technology | Notes |
-|---|---|
-| **Docker** | Ephemeral container execution engine — each job runs in an isolated container |
-| **kubectl** | Kubernetes deployment commands generated in pipeline YAML |
-| **js-yaml** | Runtime YAML parsing in job executor |
-
-#### Feature Modules
-| Module | Responsibility |
-|---|---|
-| `ai-orchestration` | AI pipeline generation, RCA, risk scoring, security audit |
-| `pipelines` | Pipeline definitions, YAML compiler, version management |
-| `runs` | Pipeline run orchestration and state machine |
-| `deployments` | Kubernetes deployment records and rollouts |
-| `worker` | Docker job executor and pipeline runner |
-| `repositories` | Git repo scanner (language & stack detection) |
-| `environments` | Staging/Production environment management |
-| `secrets` | AES-256 encrypted secret storage |
-| `auth` | JWT + OAuth authentication flows |
-| `organizations` / `users` | Multi-tenant RBAC |
-| `billing` | Subscription management |
-| `observability` / `slo` | Metrics, SLO tracking |
-| `incidents` / `alerts` | Incident management |
-| `audit-logs` | Full audit trail |
-| `flaky-tests` | Flaky test detection and tracking |
+```text
+├── 🛒 Demo E-Commerce Platform (demo-ecommerce-platform)
+│   ├── Stack: Next.js 16, TypeScript, Node.js microservices
+│   ├── Pipeline: Demo CI/CD Pipeline (8 stages: checkout → install → build → test → security → artifact → deploy-staging → verify)
+│   └── Artifacts: Gzipped frontend & backend application bundles with verified SHA-256
+│
+├── 🏦 Demo Banking API (demo-banking-api)
+│   ├── Stack: Go 1.22, PostgreSQL, Redis, PCI-DSS compliance checks
+│   ├── Pipeline: Banking API CI/CD (lint → unit-test → SAST-scan → build-binary → deploy)
+│   └── Security: Strict vault secrets masking and encrypted credentials
+│
+└── 🤖 Demo AI Analytics Service (demo-ai-analytics-service)
+    ├── Stack: Python 3.11, PyTorch, FastAPI inference engine
+    ├── Pipeline: AI Analytics CI/CD (data-validation → model-lint → pytest → docker-pack)
+    └── Telemetry: Prometheus model latency and system health metrics
+```
 
 ---
 
-### Frontend (`frontend/`)
+## 🎬 Interactive Demo Mode Walkthrough
 
-#### Runtime & Framework
-| Technology | Version / Notes |
-|---|---|
-| **React** | v19 |
-| **Next.js** | v16.2 — App Router with 26+ route segments |
-| **TypeScript** | v5 |
+You can test every feature of OpsPilot AI immediately in **Demo Mode**:
 
-#### UI & Styling
-| Technology | Notes |
-|---|---|
-| **Tailwind CSS** | v4 — utility-first styling |
-| **CSS Custom Properties** | Design token system for dark mode and theming in `globals.css` |
-| **class-variance-authority** | Variant-based component styling |
-| **tailwind-merge** + **clsx** | Conditional class merging utilities |
-
-#### Visual Pipeline Builder
-| Technology | Notes |
-|---|---|
-| **@xyflow/react** | v12 — Interactive node-based DAG canvas (React Flow) |
-| **DAGCompiler** | Custom TypeScript YAML compiler (`DAGCompiler.ts`) |
-| **Monaco Editor** | `@monaco-editor/react` — in-browser code editor for YAML/Shell |
-| **Custom Node Types** | Source, Build, Test, Security, Deploy, Health, Approval, Rollback, Notification |
-
-#### Data Fetching & State
-| Technology | Notes |
-|---|---|
-| **TanStack Query (React Query)** | v5 — server state management and caching |
-| **Fetch API** | Native HTTP client in `apiClient.ts` |
-
-#### Terminal & Visualization
-| Technology | Notes |
-|---|---|
-| **xterm.js** | `@xterm/xterm` v6 — in-browser terminal with WebGL rendering |
-| **@xterm/addon-fit** | Auto-resize addon |
-| **Recharts** | v3 — Observability and metrics charts |
-
-#### UX Components
-| Technology | Notes |
-|---|---|
-| **cmdk** | Command palette (⌘K) |
-| **react-resizable-panels** | Resizable layout panels |
-| **lucide-react** | Icon library |
-| **Nginx** | Static file serving in Docker |
-
----
-
-### Infrastructure & DevOps
-
-#### Containerization
-| Technology | Notes |
-|---|---|
-| **Docker** | Multi-stage Dockerfiles for backend and frontend |
-| **Docker Compose** | `docker-compose.yml` (dev) + `docker-compose.prod.yml` (prod) |
-| **Nginx** | Reverse proxy + static frontend serving + TLS termination |
-
-#### CI/CD & Code Quality
-| Technology | Notes |
-|---|---|
-| **GitHub Actions** | Automated CI pipelines (`.github/`) |
-| **Husky** | Pre-commit hooks |
-| **lint-staged** | Lint on staged files only |
-| **ESLint** | v8 (backend) / v9 (frontend) |
-| **Prettier** | v3 — consistent code formatting |
-
-#### Testing
-| Technology | Notes |
-|---|---|
-| **Jest** | v29 — unit and integration tests |
-| **ts-jest** | TypeScript Jest transformer |
-| **Supertest** | HTTP integration testing |
-| **Custom E2E scripts** | 33 Node.js scripts: golden-path, chaos, load, acceptance, DR |
-
-#### Cloud & Deployment
-| Technology | Notes |
-|---|---|
-| **Render** | Cloud hosting for live backend + frontend |
-| **Kubernetes** | Deployment targets in generated pipeline YAML |
-| **Let's Encrypt / Certbot** | TLS certificates for production |
+1. **Launch**: Navigate to `http://localhost/login` and click **"Explore Live Demo — No Setup Required"**.
+2. **Explore Projects**: Browse between the 3 distinct demo projects, viewing repositories, commits, and file trees (`package.json`, `Dockerfile`, `README.md`).
+3. **Trigger Pipeline Run**: Go to `/pipelines` and click **Run** on any pipeline.
+4. **Watch Live Telemetry**: Watch the terminal stream real-time logs across all 8 stages with ANSI highlights:
+   ```text
+   [checkout-source]      Cloning git repository at commit 3e79013...
+   [install-dependencies] Resolving npm lockfile (35 packages cached)...
+   [build-application]    Next.js 16 static compilation completed in 4.7s...
+   [test-suite]           Running 8/8 automated test suites... PASS
+   [security-audit]       Vulnerability scan: 0 vulnerabilities found...
+   [create-artifact]      Archiving build bundle (SHA-256: 049882ce...)...
+   [deploy-staging]       Deploying container target to staging environment...
+   [verify-staging]       HTTP 200 Health Probe Verified. Pipeline SUCCESS!
+   ```
+5. **Download Artifacts**: Navigate to `/artifacts` and click **Download** to inspect the real gzipped archive.
+6. **Simulated Deployments**: Inspect release history and environment status on `/deployments` with transparent `SIMULATED` status badges.
+7. **AI Workspace & Observability**: Run AI diagnostics on `/workspace` and monitor live flow topology on `/observability`.
 
 ---
 
 ## 🚀 Quickstart via Docker Compose
 
 ### Prerequisites
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (with Docker Compose v2+)
-- Node.js 20+
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (v24+ with Compose v2+)
+- [Node.js](https://nodejs.org/) v20+ (optional, for local development)
 
-### Step 1 — Clone & Launch Stack
+### 1. Clone & Launch the Full Stack
 
 ```bash
+# Clone the repository
 git clone https://github.com/abdul78-create/OpsPilot.git
 cd OpsPilot
 
-# Build & launch all containers
+# Launch all microservices in the background
 docker compose up --build -d
 ```
 
-### Step 2 — Verify Stack Health
+### 2. Verify Container Health
 
 ```bash
-docker ps --format "table {{.Names}}\t{{.Status}}"
+docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
 ```
 
-Expected output:
+Expected healthy output:
 ```text
-NAMES                 STATUS
-opspilot_frontend     Up (healthy)
-opspilot_backend      Up (healthy)
-opspilot_app_target   Up (healthy)
-opspilot_postgres     Up (healthy)
-opspilot_redis        Up (healthy)
+NAMES               STATUS                   PORTS
+opspilot_frontend   Up (healthy)             0.0.0.0:80->80/tcp
+opspilot_backend    Up (healthy)             0.0.0.0:3000->3000/tcp
+opspilot_postgres   Up (healthy)             0.0.0.0:5432->5432/tcp
+opspilot_redis      Up (healthy)             0.0.0.0:6379->6379/tcp
 ```
 
-### Step 3 — Access Web Dashboard
-Open **`http://localhost`** in your browser to access the complete developer platform.
+### 3. Access OpsPilot Web Application
+
+| Service | URL | Description |
+| :--- | :--- | :--- |
+| **OpsPilot Web UI** | `http://localhost` | Full Next.js 16 Dashboard & Demo Mode |
+| **API Backend** | `http://localhost:3000/v1` | NestJS REST API Gateway |
+| **Swagger OpenAPI** | `http://localhost:3000/api` | Interactive API documentation |
+| **Prometheus Metrics**| `http://localhost:3000/v1/metrics/prometheus` | Real-time system telemetry |
 
 ---
 
-## 🌐 Phase 16 — Production Cloud Deployment Runbook
+## 🛠️ Technology Stack Deep Dive
 
-To deploy OpsPilot into any production cloud VM (AWS EC2, DigitalOcean, GCP, Hetzner, Azure):
-
-```bash
-# 1. SSH into cloud server
-ssh root@<YOUR_SERVER_IP>
-
-# 2. Clone repository
-git clone https://github.com/abdul78-create/OpsPilot.git
-cd OpsPilot
-
-# 3. Configure production secrets & domain
-cp .env.production.example .env.production
-# Edit .env.production with your strong secrets, DB password, and domain (opspilot.ai)
-
-# 4. Launch the Production Stack (Ports 80 & 443 with TLS reverse proxy)
-docker compose -f docker-compose.prod.yml up -d --build
-
-# 5. Execute the Automated Single-Command Cloud Launch Runbook
-node scripts/cloud-launch-runbook.js
+```text
+┌────────────────────────────────────────────────────────────────────────┐
+│                          OPSPILOT TECH MATRIX                          │
+├───────────────────┬────────────────────────────────────────────────────┤
+│ Architecture      │ Modular Monolith with Event-Driven Worker Sandboxes │
+│ Backend Engine    │ NestJS 10.x, Express, TypeScript 5.3               │
+│ Frontend UI       │ Next.js 16.2 (App Router), React 19, Tailwind CSS 4 │
+│ Database & ORM    │ PostgreSQL 16, Prisma ORM 5.9                      │
+│ Job Queue & Cache │ Redis 7.x, BullMQ 6.x (Distributed Pipeline Queue) │
+│ Pipeline DAG      │ @xyflow/react (React Flow), Monaco Code Editor     │
+│ Terminal Stream   │ XTerm.js 6.x (WebGL Hardware Acceleration), SSE     │
+│ Container Engine  │ Docker Engine 24+, Multi-stage Dockerfiles         │
+│ Security & Vault  │ AES-256-GCM, HMAC-SHA256, Argon2, Helmet, JWT      │
+│ AI Diagnostics    │ Google Gemini API + Rule-Based Heuristic Engine    │
+│ Testing Suite     │ Jest 29, Supertest, Custom E2E Validation Scripts   │
+└───────────────────┴────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 🧪 Verification & Audit Commands
+## 🧪 Verification & Automated Testing
+
+Execute the automated test suites locally:
 
 ```bash
-# Full Backend Jest Test Suite (160/160 tests)
-npm run test
+# Run NestJS Backend Integration Tests
+npm run test -- demo-mode.integration.spec.ts
 
-# Visual DAG Pipeline Builder Audit (5/5 tests)
-node scripts/verify-dag-builder.js
+# Compile Backend Production Bundle
+npm run build
 
-# Real-Time SSE Log Streaming Audit
-node scripts/verify-sse-stream-v2.js
-
-# Production Cloud Deploy & TLS Audit (5/5 checks)
-node scripts/verify-cloud-deploy.js
-
-# High-Throughput Concurrency & Rate Limiter Audit
-node scripts/stress-test-concurrency.js
+# Compile Frontend Production Bundle (35/35 Static Pages)
+cd frontend && npm run build
 ```
 
 ---
 
 ## 📚 Documentation Index
 
-- [Architecture Deep-Dive](docs/ARCHITECTURE.md) — System architecture, module structure, and database schema
-- [API Reference](docs/API_DOCUMENTATION.md) — Complete REST API endpoints documentation
-- [Deployment Guide](docs/DEPLOYMENT_GUIDE.md) — Production deployment instructions for Docker, Kubernetes, and Cloud VMs
-- [Developer Guide](docs/DEVELOPER_GUIDE.md) — Local development, unit testing, and coding standards
-- [Release Checklist](docs/RELEASE_CHECKLIST.md) — Verified production checklist & runtime evidence matrix
+Explore the comprehensive architectural and deployment documentation:
+
+- 📖 [System Architecture Specification](docs/ARCHITECTURE.md) — Module hierarchy, relational schema, and security layers.
+- 🔌 [REST API Reference](docs/API_DOCUMENTATION.md) — Comprehensive endpoint schemas, headers, and request/response payloads.
+- 🚢 [Production Deployment Guide](docs/DEPLOYMENT_GUIDE.md) — Cloud VM (AWS, GCP, DigitalOcean) Docker deployment runbook.
+- 💻 [Developer Contribution Guide](docs/DEVELOPER_GUIDE.md) — Local development workflow, coding standards, and lint rules.
+- 🛡️ [Engineering & Security Principles](docs/ENGINEERING_PRINCIPLES.md) — Threat modeling, secret encryption, and SAIF guidelines.
+- ☁️ [Render Cloud Deployment Guide](docs/RENDER_DEPLOYMENT_GUIDE.md) — Live cloud deployment guide for hosted environments.
+- 📋 [Release Checklist & Evidence](docs/RELEASE_CHECKLIST.md) — Verified production milestones and runtime evidence matrix.
 
 ---
 
-## 🔒 Security & SAIF Compliance
+## 🏛️ Academic POC & Reality Disclosure
 
-- **HMAC Signatures**: Webhook requests without valid `X-Hub-Signature-256` headers are strictly rejected (`HTTP 401`).
-- **AES-256-GCM Vault**: Master symmetric encryption for repository access tokens and environment credentials.
-- **Rate-Limiting**: Active `ThrottlerGuard` enforcing 100 req/min limit to prevent abuse (`HTTP 429`).
-- **Secret Redactor**: Sensitive tokens and private keys are automatically redacted from all stdout/stderr logs.
-- **State Reconciliation**: Startup scan reconciles orphaned `RUNNING` jobs following worker process restarts.
+> **Note**: OpsPilot is developed as an advanced academic proof-of-concept demonstrating autonomous DevOps orchestration, visual DAG compilation, and AI root cause analysis.
+> - **Verified Real Capabilities**: Local Docker container sandboxes, BullMQ queuing, live Server-Sent Events log streaming, PostgreSQL persistence, cryptographic SHA-256 artifact generation, and binary downloads.
+> - **Simulated Demo Capabilities**: In Demo Mode, multi-cloud Kubernetes cluster provisioning and external GitHub OAuth are simulated to provide an instant, zero-cost, and reliable evaluation workflow.
 
 ---
 
 ## 📜 License
 
-Distributed under the MIT License. See [LICENSE](LICENSE) for details.
+Distributed under the **MIT License**. See [`LICENSE`](LICENSE) for full details.
+
+<p align="center">
+  <sub>Built with ❤️ by the OpsPilot Engineering Team. Designed for autonomous, resilient DevOps.</sub>
+</p>
