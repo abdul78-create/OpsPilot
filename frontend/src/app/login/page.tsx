@@ -19,6 +19,8 @@ import {
   Server,
   Activity,
   Box,
+  FlaskConical,
+  Zap,
 } from 'lucide-react';
 import { ThemeToggle } from '../../components/ui/ThemeToggle';
 import { getApiBaseUrl, getOAuthBaseUrl } from '@/lib/apiClient';
@@ -79,6 +81,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [demoLoading, setDemoLoading] = useState(false);
   const [error, setError] = useState('');
   const [oauthProviders, setOauthProviders] = useState<{ google: boolean; github: boolean }>({
     google: true,
@@ -184,6 +187,41 @@ export default function LoginPage() {
       setLoading(false);
     }
   };
+
+  /** Demo Login — hits /auth/demo-login and receives isDemo=true JWT */
+  const handleDemoLogin = async () => {
+    setError('');
+    setOauthHelp(null);
+    setDemoLoading(true);
+    try {
+      const apiBase = getApiBaseUrl();
+      const res = await fetch(`${apiBase}/auth/demo-login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      let data: Record<string, unknown> = {};
+      try {
+        data = await res.json();
+      } catch { /* ignore */ }
+
+      if (!res.ok) {
+        const msg = (data as any)?.message || `Demo login failed (HTTP ${res.status})`;
+        setError(msg);
+        return;
+      }
+
+      const tokens = (data as any)?.tokens as Record<string, string> | undefined;
+      const user = (data as any)?.user;
+      localStorage.setItem('opspilot_token', tokens?.accessToken || '');
+      localStorage.setItem('opspilot_user', JSON.stringify(user || {}));
+      window.location.href = '/dashboard';
+    } catch {
+      setError('Network connection error. Ensure the NestJS backend is reachable.');
+    } finally {
+      setDemoLoading(false);
+    }
+  };
+
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -567,6 +605,102 @@ export default function LoginPage() {
               )}
             </div>
           )}
+
+          {/* Demo Mode Hero Card */}
+          <div
+            style={{
+              background: 'linear-gradient(135deg, rgba(124,58,237,0.12) 0%, rgba(79,70,229,0.08) 50%, rgba(14,165,233,0.08) 100%)',
+              border: '1.5px solid rgba(124,58,237,0.3)',
+              borderRadius: '16px',
+              padding: '16px',
+              marginBottom: '4px',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+              <div
+                style={{
+                  background: 'linear-gradient(135deg, #7C3AED, #4F46E5)',
+                  borderRadius: '10px',
+                  padding: '8px',
+                  flexShrink: 0,
+                }}
+              >
+                <FlaskConical size={16} color="#FFFFFF" />
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                  <span
+                    style={{
+                      fontWeight: 800,
+                      fontSize: '13px',
+                      color: 'var(--text-primary)',
+                    }}
+                  >
+                    Try Demo Mode
+                  </span>
+                  <span
+                    style={{
+                      fontSize: '9px',
+                      fontFamily: 'var(--font-mono, monospace)',
+                      fontWeight: 800,
+                      letterSpacing: '0.12em',
+                      textTransform: 'uppercase',
+                      background: 'linear-gradient(90deg, #7C3AED, #4F46E5)',
+                      color: '#FFFFFF',
+                      padding: '2px 7px',
+                      borderRadius: '4px',
+                    }}
+                  >
+                    Simulated
+                  </span>
+                </div>
+                <p
+                  style={{
+                    fontSize: '11px',
+                    color: 'var(--text-secondary)',
+                    lineHeight: 1.5,
+                    margin: '0 0 12px 0',
+                  }}
+                >
+                  Experience the complete CI/CD workflow — pipeline execution, real-time logs, artifacts, and deployments — using safe, isolated demo data. No credentials needed.
+                </p>
+                <button
+                  id="demo-login-btn"
+                  type="button"
+                  onClick={handleDemoLogin}
+                  disabled={demoLoading}
+                  style={{
+                    width: '100%',
+                    padding: '10px 16px',
+                    borderRadius: '10px',
+                    border: 'none',
+                    background: 'linear-gradient(135deg, #7C3AED 0%, #4F46E5 60%, #0EA5E9 100%)',
+                    color: '#FFFFFF',
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    cursor: demoLoading ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    transition: 'opacity 0.15s, transform 0.1s',
+                    opacity: demoLoading ? 0.7 : 1,
+                    boxShadow: '0 4px 14px rgba(124,58,237,0.35)',
+                  }}
+                  onMouseOver={(e) => { if (!demoLoading) e.currentTarget.style.transform = 'translateY(-1px)'; }}
+                  onMouseOut={(e) => { e.currentTarget.style.transform = 'none'; }}
+                >
+                  {demoLoading ? (
+                    <Loader2 size={14} className="animate-spin" />
+                  ) : (
+                    <Zap size={14} />
+                  )}
+                  <span>Launch Demo — No Sign Up Required</span>
+                  {!demoLoading && <ArrowRight size={13} />}
+                </button>
+              </div>
+            </div>
+          </div>
 
           {/* Quick Demo QA Access Pill */}
           <div

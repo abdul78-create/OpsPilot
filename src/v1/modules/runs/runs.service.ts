@@ -16,6 +16,7 @@ import {
   JobStatus,
   TriggerType,
 } from '@prisma/client';
+import { DEMO_PIPELINE_SLUG } from '../demo/demo-seed.service';
 
 @Injectable()
 export class RunsService {
@@ -61,6 +62,9 @@ export class RunsService {
     );
 
     const result = await this.txManager.execute(async (tx) => {
+      // Detect demo pipeline — tag the run so workers route to DemoRunnerService
+      const isDemoRun = pipeline.slug === DEMO_PIPELINE_SLUG;
+
       const run = await tx.pipelineRun.create({
         data: {
           pipelineDefinition: { connect: { id: triggerReq.pipelineDefinitionId } },
@@ -71,6 +75,7 @@ export class RunsService {
           commitSha: triggerReq.commitSha,
           branch: triggerReq.branch,
           queuedAt: new Date(),
+          ...(isDemoRun ? { metadata: { demoMode: true } } : {}),
         },
       });
 

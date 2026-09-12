@@ -271,9 +271,13 @@ export function dagToYaml(
         yaml += `  - name: ${slug || 'build'}\n    jobs:\n      - name: docker-build\n        image: ${String(d.image || 'node:20-alpine')}\n        steps:\n          - name: build-artifact\n            run: ${buildCmd}\n`;
         break;
       }
-      case 'test':
-        yaml += `  - name: ${slug || 'test'}\n    jobs:\n      - name: test-suite\n        image: ${String(d.image || 'node:20-alpine')}\n        steps:\n          - name: run-tests\n            run: ${String(d.command || 'npm test')}\n`;
+      case 'test': {
+        const buildNode = orderedNodes.find((n) => n.type === 'build');
+        const fallbackImage = (buildNode?.data?.image as string) || 'node:20-alpine';
+        const testImage = String(d.image || fallbackImage);
+        yaml += `  - name: ${slug || 'test'}\n    jobs:\n      - name: test-suite\n        image: ${testImage}\n        steps:\n          - name: run-tests\n            run: ${String(d.command || 'npm test')}\n`;
         break;
+      }
       case 'security':
         yaml += `  - name: ${slug || 'security'}\n    jobs:\n      - name: security-audit\n        image: aquasec/trivy:latest\n        steps:\n          - name: trivy-scan\n            run: trivy fs . --severity HIGH,CRITICAL\n`;
         break;

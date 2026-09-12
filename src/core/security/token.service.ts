@@ -8,6 +8,7 @@ export interface JwtPayload {
   email: string;
   role: string;
   isSuperAdmin: boolean;
+  isDemo?: boolean;
   sid?: string;
   oid?: string;
   type: 'access';

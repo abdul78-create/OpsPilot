@@ -463,6 +463,7 @@ model PipelineRun {
   startedAt            DateTime?
   finishedAt           DateTime?
   durationSeconds      Int?
+  metadata             Json?
   createdAt            DateTime           @default(now())
   updatedAt            DateTime           @updatedAt
   deletedAt            DateTime?

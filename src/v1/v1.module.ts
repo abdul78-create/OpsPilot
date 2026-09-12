@@ -23,6 +23,7 @@ import { FlakyTestsModule } from './modules/flaky-tests/flaky-tests.module';
 import { ApiKeysModule } from './modules/api-keys/api-keys.module';
 import { AuditLogsModule } from './modules/audit-logs/audit-logs.module';
 import { AlertsModule } from './modules/alerts/alerts.module';
+import { DemoModule } from './modules/demo/demo.module';
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import { AlertsModule } from './modules/alerts/alerts.module';
     ApiKeysModule,
     AuditLogsModule,
     AlertsModule,
+    DemoModule,
   ],
   exports: [
     HealthModule,
@@ -76,6 +78,7 @@ import { AlertsModule } from './modules/alerts/alerts.module';
     ApiKeysModule,
     AuditLogsModule,
     AlertsModule,
+    DemoModule,
   ],
 })
 export class V1Module {}

@@ -9,6 +9,7 @@ import { DockerRunnerService } from './services/docker-runner.service';
 import { WorkspaceManagerService } from './services/workspace-manager.service';
 import { LogStreamingModule } from '../log-streaming/log-streaming.module';
 import { DeploymentsModule } from '../deployments/deployments.module';
+import { DemoModule } from '../demo/demo.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { DeploymentsModule } from '../deployments/deployments.module';
     }),
     LogStreamingModule,
     DeploymentsModule,
+    DemoModule,
   ],
   providers: [
     PipelineRunProcessor,

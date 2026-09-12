@@ -737,6 +737,7 @@ export class AiOrchestrationService {
         position: { x: 510, y: 150 },
         data: {
           label: 'Automated Tests',
+          image: runtimeImage,
           command: testCommand,
         },
       });

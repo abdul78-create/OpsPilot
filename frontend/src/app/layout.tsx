@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, Geist, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
+import { DemoBanner } from "@/components/ui/DemoBanner";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -51,8 +52,10 @@ export default function RootLayout({
       className={`${inter.variable} ${geist.variable} ${ibmMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col font-sans">
+        <DemoBanner />
         <Providers>{children}</Providers>
       </body>
     </html>
   );
 }
+

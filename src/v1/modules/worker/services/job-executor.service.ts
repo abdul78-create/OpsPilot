@@ -11,6 +11,7 @@ import { LogsService } from '../../log-streaming/logs.service';
 import { DockerRunnerService } from './docker-runner.service';
 import { WorkspaceManagerService } from './workspace-manager.service';
 import { PipelineJob, JobStatus, LogLevel } from '@prisma/client';
+import { DemoRunnerService } from '../../demo/demo-runner.service';
 
 @Injectable()
 export class JobExecutorService {
@@ -23,6 +24,7 @@ export class JobExecutorService {
     private readonly dockerRunner: DockerRunnerService,
     @Optional() private readonly workspaceManager?: WorkspaceManagerService,
     @Optional() private readonly logsService?: LogsService,
+    @Optional() private readonly demoRunner?: DemoRunnerService,
   ) {}
 
   /**
@@ -32,6 +34,18 @@ export class JobExecutorService {
    * yamlConfig contains the user's immutable pipeline definition.
    */
   async executeJob(job: PipelineJob, repoUrl: string, yamlConfig?: string): Promise<PipelineJob> {
+    // ──────────────────────────────────────────────────────────
+    //  DEMO MODE: Route to isolated demo runner — no Docker/git
+    // ──────────────────────────────────────────────────────────
+    const run = await this.prisma.pipelineRun.findUnique({ where: { id: job.pipelineRunId } });
+    const meta = run?.metadata as Record<string, unknown> | null;
+    if (meta?.demoMode === true) {
+      if (!this.demoRunner) {
+        throw new Error('DemoRunnerService is not available. Ensure DemoModule is registered.');
+      }
+      this.logger.log(`[DEMO] Routing job '${job.name}' to DemoRunnerService`);
+      return this.demoRunner.executeDemoJob(job);
+    }
     this.stateMachine.assertValidJobTransition(job.status, JobStatus.RUNNING);
 
     const startedAt = new Date();

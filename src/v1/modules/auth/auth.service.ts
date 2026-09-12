@@ -626,4 +626,57 @@ export class AuthService {
     });
     return { message: 'All other sessions revoked successfully' };
   }
+
+  // ─────────────────────────────────────────────
+  // DEMO LOGIN
+  // ─────────────────────────────────────────────
+  /**
+   * Issues a short-lived JWT for an isolated demo session.
+   * No email verification, no real password check, no refresh token.
+   * Only enabled when DEMO_MODE_ENABLED=true.
+   */
+  async demoLogin(
+    demoSeedService: import('../demo/demo-seed.service').DemoSeedService,
+  ): Promise<AuthResponseDto> {
+    const isDemoEnabled = process.env.DEMO_MODE_ENABLED === 'true';
+    if (!isDemoEnabled) {
+      throw new ForbiddenException(
+        'Demo mode is not enabled on this server. Set DEMO_MODE_ENABLED=true to activate.',
+      );
+    }
+
+    this.logger.log('[DEMO] Demo login initiated — seeding demo context...');
+    const ctx = await demoSeedService.ensureDemoContext();
+
+    const user = await this.prisma.user.findUnique({ where: { id: ctx.userId } });
+    if (!user) {
+      throw new NotFoundException('Demo user not found after seeding.');
+    }
+
+    // Issue a short-lived (2h) access token with isDemo=true claim
+    const accessToken = this.tokenService.generateAccessToken({
+      sub: user.id,
+      email: user.email,
+      role: user.role,
+      isSuperAdmin: false,
+      isDemo: true,
+      type: 'access',
+    });
+
+    this.logger.log(`[DEMO] Demo login successful for ${user.email}`);
+
+    return {
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name || 'Demo Operator',
+        role: user.role,
+      },
+      tokens: {
+        accessToken,
+        // Demo sessions do not issue refresh tokens
+        refreshToken: '',
+      },
+    };
+  }
 }
